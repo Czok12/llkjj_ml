@@ -20,10 +20,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-import spacy  # type: ignore
-from spacy.tokens import DocBin  # type: ignore
-from spacy.training import Example  # type: ignore
-from spacy.util import compounding, minibatch  # type: ignore
+import spacy
+from spacy.tokens import DocBin
+from spacy.training import Example
+from spacy.util import minibatch
 
 from src.config import Config
 
@@ -498,7 +498,7 @@ class TrainingService:
                 random.shuffle(train_examples)
 
                 # Optimierte Batch-Größen für Elektrotechnik-Daten
-                batches = minibatch(train_examples, size=compounding(2.0, 16.0, 1.001))
+                batches = minibatch(train_examples, size=8)
 
                 for batch in batches:
                     examples = []
@@ -678,7 +678,7 @@ class TrainingService:
             losses = {}
 
             # Training in optimierten Batches
-            batches = minibatch(train_docs, size=compounding(4.0, 32.0, 1.001))
+            batches = minibatch(train_docs, size=16)
             for batch in batches:
                 examples = []
                 for doc in batch:
@@ -844,7 +844,7 @@ class TrainingService:
                 random.shuffle(train_examples)
 
                 # Train in batches
-                batches = minibatch(train_examples, size=compounding(4.0, 32.0, 1.001))
+                batches = minibatch(train_examples, size=16)
 
                 for batch in batches:
                     examples = []
