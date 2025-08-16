@@ -7,8 +7,13 @@ aus PDF-Rechnungen für Elektrotechnik-Handwerk UG.
 
 import json
 import logging
+import os
+import time
 from dataclasses import dataclass
 from typing import Any
+
+from google import genai
+from google.genai import types
 
 logger = logging.getLogger(__name__)
 
@@ -46,120 +51,39 @@ class GeminiExtractionResult:
 class GeminiExtractor:
     """Gemini 2.5 Pro Client für Rechnungsextraktion"""
 
-    def __init__(self, api_key: str, model: str = "gemini-2.5-pro"):
+    def __init__(
+        self, api_key: str, model: str | None = None, prompt_path: str | None = None
+    ):
         """
         Initialisiert Gemini Client
 
         Args:
             api_key: Google AI API Key
             model: Gemini Modell Version
+            prompt_path: Pfad zur Prompt
         """
         self.api_key = api_key
-        self.model = model
-        self.client = None  # Wird später mit google.generativeai initialisiert
+        # Always ensure self.model is str, never None
+        self.model = (
+            model if model is not None else os.getenv("GEMINI_MODEL", "gemini-2.5-pro")
+        )
+        self.client = genai.Client(api_key=api_key)
 
-        # Elektrotechnik-spezifische Prompts
-        self.extraction_prompt = self._create_extraction_prompt()
+        # Prompt aus Datei laden
+        self.extraction_prompt = self._load_extraction_prompt(prompt_path)
+        logger.info("GeminiExtractor initialisiert mit %s", self.model)
 
-        logger.info(f"GeminiExtractor initialisiert mit {model}")
-
-    def _create_extraction_prompt(self) -> str:
-        """Erstellt optimierten Prompt für Elektrotechnik-Rechnungen"""
-        return """
-Du bist ein KI-Assistent für ein deutsches Elektrotechnik-Handwerksunternehmen.
-Analysiere diese PDF-Rechnung und extrahiere alle steuer- und finanzbuchungsrelevanten Daten.
-
-WICHTIGE HINWEISE:
-- Das Unternehmen führt doppelte Buchführung nach SKR03
-- Fokus auf Elektromaterial, Werkzeuge und Fremdleistungen
-- Deutsche Umsatzsteuer (19% Regelsteuersatz, 7% ermäßigt)
-- GWG-Grenze: 800€ für Anlagegüter vs. Betriebsausgaben
-
-EXTRAHIERE FOLGENDE DATEN:
-
-## RECHNUNGSKOPF:
-- Rechnungsnummer (eindeutig)
-- Rechnungsdatum (Format: YYYY-MM-DD)
-- Lieferant/Firma (vollständiger Name)
-- Lieferantennummer (falls vorhanden)
-- Auftragsnummer/Bestellnummer (falls vorhanden)
-
-## FINANZIELLE DATEN:
-- Nettobetrag gesamt
-- Umsatzsteuer gesamt (19% oder 7%)
-- Bruttobetrag gesamt
-- Währung (meist EUR)
-
-## EINZELPOSITIONEN:
-Für jede Rechnungsposition extrahiere:
-- Positionsnummer (falls vorhanden)
-- Artikelbezeichnung (vollständig)
-- Artikelnummer/SKU/Waren-ID (falls vorhanden)
-- Menge
-- Einheit (Stück, Meter, kg, etc.)
-- Einzelpreis (netto)
-- Gesamtpreis der Position (netto)
-- Umsatzsteuersatz (19% oder 7%)
-- Produktkategorie bestimmen:
-  * "elektromaterial" - Kabel, Schalter, Steckdosen, Sicherungen, Leuchten, Installationsmaterial
-  * "werkzeug_klein" - Handwerkzeug, Messgeräte unter 800€
-  * "anlagegueter" - Maschinen, Bohrmaschinen, teure Werkzeuge über 800€
-  * "bueroausstattung" - Büromaterial, Computer, Software
-  * "fremdleistung" - Montage, Installation durch Dritte
-  * "betriebsausstattung" - Fahrzeuge, Einrichtungen
-
-## SKR03 KONTIERUNG (KORREKTE KONTEN):
-Ordne jede Position automatisch einem SKR03-Konto zu:
-- 3400: Wareneingang 19% Vorsteuer (Elektromaterial, Verbrauchsmaterial)
-- 3410: Wareneingang 7% Vorsteuer (reduzierte USt, falls vorhanden)
-- 4985: Werkzeuge und Kleingeräte (unter 800€, Sofortaufwand)
-- 0200: Technische Anlagen und Maschinen (über 800€, aktivierungspflichtig)
-- 0210: Maschinen (Bohrmaschinen, größere Elektrowerkzeuge)
-- 0400: Betriebsausstattung (Büroausstattung)
-- 0420: Büroeinrichtung (Computer, Möbel)
-- 0440: Werkzeuge (aktivierungspflichtige Werkzeuge über 800€)
-- 4400: Fremdleistungen (externe Montage, Subunternehmer)
-
-## LIEFERANTEN-KLASSIFIKATION:
-Erkenne bekannte Elektro-Großhändler:
-- Rexel, Conrad, ELV, Elektro Nord
-- Wago, Phoenix Contact, Siemens, ABB
-- Schneider Electric, Legrand, Hager
-- Gira, Jung, Busch-Jaeger, Berker
-
-Gib das Ergebnis als strukturiertes JSON zurück mit folgendem Schema:
-
-{
-    "invoice_number": "string",
-    "invoice_date": "YYYY-MM-DD",
-    "supplier": "string",
-    "supplier_number": "string|null",
-    "order_number": "string|null",
-    "net_amount": number,
-    "vat_amount": number,
-    "gross_amount": number,
-    "currency": "EUR",
-    "line_items": [
-        {
-            "position_number": "string|null",
-            "description": "string",
-            "item_number": "string|null",
-            "product_id": "string|null",
-            "quantity": number,
-            "unit": "string",
-            "unit_price": number,
-            "total_price": number,
-            "vat_rate": number,
-            "product_category": "elektromaterial|werkzeug_klein|anlagegueter|bueroausstattung|fremdleistung|betriebsausstattung",
-            "skr03_account": "3400|3410|4985|0200|0210|0400|0420|0440|4400"
-        }
-    ],
-    "confidence_score": number,
-    "supplier_type": "elektro_grosshandel|local_supplier|unknown"
-}
-
-Analysiere den folgenden Rechnungstext:
-"""
+    def _load_extraction_prompt(self, prompt_path: str | None = None) -> str:
+        """Lädt den Prompt aus Datei, fallback auf Standardtext"""
+        prompt_file = prompt_path or os.path.join(
+            os.path.dirname(__file__), "gemini_prompt.txt"
+        )
+        try:
+            with open(prompt_file, encoding="utf-8") as f:
+                return f.read()
+        except Exception as e:
+            logger.warning("Prompt konnte nicht geladen werden: %s. Nutze Fallback.", e)
+            return "Analysiere den folgenden Rechnungstext:"
 
     def extract_from_text(self, text: str) -> GeminiExtractionResult:
         """
@@ -172,16 +96,22 @@ Analysiere den folgenden Rechnungstext:
             GeminiExtractionResult: Strukturierte Rechnungsdaten
         """
         logger.info("Starte Gemini-Extraktion...")
+        start_time = time.time()
 
         try:
-            # Placeholder - wird später mit echter Gemini API implementiert
-            # response = self.client.generate_content(self.extraction_prompt + text)
-
-            # Mock Response für Entwicklung
-            mock_response = self._create_mock_response(text)
+            # Echte Gemini API-Aufruf
+            response = self.client.models.generate_content(
+                model=self.model,
+                contents=self.extraction_prompt + text,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json"
+                ),
+            )
 
             # Parse JSON Response
-            result_data = json.loads(mock_response)
+            response_text = response.text or "{}"
+            result_data = json.loads(response_text)
+            processing_time_ms = int((time.time() - start_time) * 1000)
 
             # Validiere und strukturiere Ergebnis
             result = GeminiExtractionResult(
@@ -196,8 +126,8 @@ Analysiere den folgenden Rechnungstext:
                 currency=result_data.get("currency", "EUR"),
                 line_items=result_data.get("line_items", []),
                 confidence_score=float(result_data.get("confidence_score", 0.9)),
-                processing_time_ms=150,  # Mock-Wert
-                model_version=self.model,
+                processing_time_ms=processing_time_ms,
+                model_version=str(self.model),
             )
 
             logger.info(f"Gemini-Extraktion erfolgreich: {result.invoice_number}")
@@ -212,98 +142,6 @@ Analysiere den folgenden Rechnungstext:
                 supplier="Fehler bei Extraktion",
                 confidence_score=0.0,
             )
-
-    def _create_mock_response(self, text: str) -> str:
-        """
-        Erstellt Mock-Response für Entwicklung
-        (wird später durch echte Gemini API ersetzt)
-        """
-        # Erkennt einige Grundmuster im Text
-        mock_data: dict[str, object] = {
-            "invoice_number": "RE-2024-001",
-            "invoice_date": "2024-08-14",
-            "supplier": "Elektro Conrad GmbH & Co. KG",
-            "supplier_number": "10001",
-            "order_number": None,
-            "net_amount": 156.78,
-            "vat_amount": 29.79,
-            "gross_amount": 186.57,
-            "currency": "EUR",
-            "line_items": [
-                {
-                    "position_number": "1",
-                    "description": "Installationsleitung NYM-J 3x1,5 mm²",
-                    "item_number": "NYM-J-3x1.5",
-                    "product_id": "11020304",
-                    "quantity": 100.0,
-                    "unit": "m",
-                    "unit_price": 1.25,
-                    "total_price": 125.00,
-                    "vat_rate": 0.19,
-                    "product_category": "elektromaterial",
-                    "skr03_account": "3400",
-                },
-                {
-                    "position_number": "2",
-                    "description": "Steckdose SCHUKO weiß",
-                    "item_number": "SCHUKO-W-01",
-                    "product_id": "22030405",
-                    "quantity": 5.0,
-                    "unit": "Stk",
-                    "unit_price": 6.36,
-                    "total_price": 31.78,
-                    "vat_rate": 0.19,
-                    "product_category": "elektromaterial",
-                    "skr03_account": "3400",
-                },
-            ],
-            "confidence_score": 0.92,
-            "supplier_type": "elektro_grosshandel",
-        }
-
-        # Einfache Textanalyse für bessere Mock-Daten
-        if "conrad" in text.lower():
-            mock_data["supplier"] = "Conrad Electronic SE"
-            mock_data["supplier_type"] = "elektro_grosshandel"
-        elif "rexel" in text.lower():
-            mock_data["supplier"] = "Rexel Germany GmbH & Co. KG"
-        elif "wago" in text.lower():
-            mock_data["supplier"] = "WAGO Kontakttechnik GmbH & Co. KG"
-
-        # Werkzeug-Erkennung für korrekte SKR03-Kontierung
-        if any(
-            word in text.lower()
-            for word in ["bohrmaschine", "säge", "schleifer", "winkelschleifer"]
-        ):
-            # Teure Werkzeuge über 800€ -> Anlagegut
-            line_items = mock_data["line_items"]
-            if isinstance(line_items, list):
-                line_items.append(
-                    {
-                        "position_number": "3",
-                        "description": "Akku-Bohrschrauber 18V Professional",
-                        "item_number": "GSR18V-28",
-                        "product_id": "33040506",
-                        "quantity": 1.0,
-                        "unit": "Stk",
-                        "unit_price": 899.00,
-                        "total_price": 899.00,
-                        "vat_rate": 0.19,
-                        "product_category": "anlagegueter",
-                        "skr03_account": "0210",
-                    }
-                )
-            net_amount = mock_data["net_amount"]
-            if isinstance(net_amount, int | float):
-                mock_data["net_amount"] = net_amount + 899.00
-            vat_amount = mock_data["vat_amount"]
-            if isinstance(vat_amount, int | float):
-                mock_data["vat_amount"] = vat_amount + 170.81
-            gross_amount = mock_data["gross_amount"]
-            if isinstance(gross_amount, int | float):
-                mock_data["gross_amount"] = gross_amount + 1069.81
-
-        return json.dumps(mock_data, ensure_ascii=False, indent=2)
 
     def batch_extract(self, texts: list[str]) -> list[GeminiExtractionResult]:
         """
@@ -372,37 +210,17 @@ Analysiere den folgenden Rechnungstext:
         expected_vat_19 = round(result.net_amount * 0.19, 2)
         expected_vat_7 = round(result.net_amount * 0.07, 2)
 
-        if (
-            abs(result.vat_amount - expected_vat_19) > 0.50
-            and abs(result.vat_amount - expected_vat_7) > 0.50
-        ):
-            warnings = validation["warnings"]
-            if isinstance(warnings, list):
-                warnings.append(f"Unplausible Umsatzsteuer: {result.vat_amount}€")
+        if result.vat_amount > 0:
+            if not (
+                abs(result.vat_amount - expected_vat_19) < 0.01
+                or abs(result.vat_amount - expected_vat_7) < 0.01
+            ):
+                warnings = validation["warnings"]
+                if isinstance(warnings, list):
+                    warnings.append("Unplausible Umsatzsteuer")
 
-        # SKR03 Konten prüfen
-        valid_accounts = [
-            "3400",
-            "3410",
-            "4985",
-            "0200",
-            "0210",
-            "0400",
-            "0420",
-            "0440",
-            "4400",
-        ]
-        if result.line_items:
-            for item in result.line_items:
-                if item.get("skr03_account") not in valid_accounts:
-                    warnings = validation["warnings"]
-                    if isinstance(warnings, list):
-                        warnings.append(
-                            f"Unbekanntes SKR03 Konto: {item.get('skr03_account')}"
-                        )
-
-        # Confidence Score
-        if result.confidence_score < 0.7:
+        # Confidence Score Check
+        if result.confidence_score < 0.8:
             warnings = validation["warnings"]
             if isinstance(warnings, list):
                 warnings.append(f"Niedrige Confidence: {result.confidence_score}")
@@ -411,9 +229,13 @@ Analysiere den folgenden Rechnungstext:
 
 
 # Utility Functions
-def create_gemini_extractor(api_key: str) -> GeminiExtractor:
+def create_gemini_extractor() -> GeminiExtractor:
     """Factory Function für GeminiExtractor"""
-    return GeminiExtractor(api_key=api_key)
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        raise ValueError("GEMINI_API_KEY environment variable not set.")
+    model = os.getenv("GEMINI_MODEL", "gemini-2.5-pro")
+    return GeminiExtractor(api_key=api_key, model=model)
 
 
 def format_extraction_for_accounting(result: GeminiExtractionResult) -> dict[str, Any]:
@@ -475,7 +297,11 @@ def format_extraction_for_accounting(result: GeminiExtractionResult) -> dict[str
 
 if __name__ == "__main__":
     # Test der Gemini-Extraktion
-    extractor = GeminiExtractor(api_key="test-key")
+    from dotenv import load_dotenv
+
+    load_dotenv()
+
+    extractor = create_gemini_extractor()
 
     test_text = """
     RECHNUNG
