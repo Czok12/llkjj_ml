@@ -1,0 +1,132 @@
+[tool.poetry]
+name = "llkjj-ml"
+version = "0.1.0"
+description = "LLKJJ ML Pipeline - PDF Invoice Processing für Elektrotechnik-Handwerk UG"
+authors = ["Czok12 <your-email@domain.com>"]
+readme = "README.md"
+packages = [{ include = "src" }]
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.13"
+google-generativeai = "^0.8.3"
+pdfplumber = "^0.11.4"
+PyPDF2 = "^3.0.1"
+docling = "^2.44.0"
+pandas = "^2.2.3"
+numpy = ">=1.26.4,<2.1.0"
+pydantic = "^2.9.2"
+spacy = "^3.7.6"
+sentence-transformers = "^3.0.1"
+scikit-learn = "^1.5.2"
+torch = "^2.4.1"
+chromadb = "^0.5.5"
+faiss-cpu = "^1.8.0"
+python-dotenv = "^1.0.1"
+tqdm = "^4.66.5"
+click = "^8.1.7"
+loguru = "^0.7.2"
+openpyxl = "^3.1.5"
+xlrd = "^2.0.1"
+pydantic-settings = "^2.10.1"
+requests = "^2.32.4"
+pymupdf = "^1.26.3"
+pytesseract = "^0.3.13"
+pdf2image = "^1.17.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.3"
+black = "^24.8.0"
+mypy = "^1.11.2"
+ruff = "^0.6.4"
+pre-commit = "^3.8.0"
+
+[tool.poetry.scripts]
+llkjj-pipeline = "main:cli"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 88
+target-version = ['py310']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.ruff]
+target-version = "py310"
+line-length = 88
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "C4", # flake8-comprehensions
+    "UP", # pyupgrade
+]
+ignore = [
+    "E501", # line too long, handled by black
+    "B008", # do not perform function calls in argument defaults
+    "C901", # too complex
+]
+per-file-ignores = { "__init__.py" = ["F401"] }
+
+[tool.mypy]
+python_version = "3.10"
+check_untyped_defs = true
+disallow_any_generics = true
+disallow_incomplete_defs = true
+disallow_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_return_any = true
+strict_equality = true
+
+[[tool.mypy.overrides]]
+module = [
+    "pdfplumber.*",
+    "PyPDF2.*",
+    "chromadb.*",
+    "faiss.*",
+    "sentence_transformers.*",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["tests/*", "src/**/__pycache__/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+]
