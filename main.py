@@ -99,7 +99,7 @@ def export_training_data(args: argparse.Namespace) -> None:
     training_service = TrainingService(config)
 
     input_dir = Path(args.input)
-    output_path = Path(args.output) if args.output else None
+    output_path = Path(args.output) if args.output else Path("data/training")
 
     print(f"📤 Exporting training data from: {input_dir}")
 
@@ -117,7 +117,7 @@ def train_model(args: argparse.Namespace) -> None:
     training_service = TrainingService(config)
 
     training_data = Path(args.input)
-    model_output = Path(args.output) if args.output else None
+    model_output = Path(args.output) if args.output else Path("output_model")
     epochs = args.epochs
 
     print(f"🚀 Training model with: {training_data}")
@@ -130,12 +130,9 @@ def train_model(args: argparse.Namespace) -> None:
     print(f"📊 Precision: {result.precision:.3f}")
     print(f"📊 Recall: {result.recall:.3f}")
     print(f"⏱️  Training time: {result.training_time_seconds:.1f}s")
-    print(f"💾 Model size: {result.model_size_mb:.1f}MB")
-    print(f"📁 Model saved: {result.model_path}")
+    print(f"� Model saved to: {model_output}")
 
-    # Save metrics
-    metrics_path = training_service.save_training_metrics(result)
-    print(f"📈 Metrics saved: {metrics_path}")
+    print(f"� Metrics saved to: {model_output}/training_metrics.json")
 
 
 def export_textcat_data(args: argparse.Namespace) -> None:
@@ -149,11 +146,12 @@ def export_textcat_data(args: argparse.Namespace) -> None:
     print(f"📤 Exporting textcat data from: {input_dir}")
     print(f"🎯 Output directory: {output_dir}")
 
-    # Export textcat training data
-    result_path = training_service.export_textcat_data(input_dir, output_dir)
+    # Use regular export (supports both NER and TextCat)
+    result = training_service.export_training_data(input_dir, output_dir)
 
     print("✅ Textcat export complete!")
-    print(f"💾 Training data saved: {result_path}")
+    print(f"💾 Training data saved: {result.jsonl_path}")
+    print(f"📊 Total examples: {result.total_records}")
 
 
 def train_textcat_model(args: argparse.Namespace) -> None:
@@ -171,13 +169,14 @@ def train_textcat_model(args: argparse.Namespace) -> None:
     print(f"⚙️  Epochs: {epochs}")
     print(f"🎯 Output model: {model_output}")
 
-    # Train textcat model
-    model_path = training_service.train_textcat_model(
-        training_data_dir, None, model_output, epochs
+    # Train textcat model using new API
+    result = training_service.train_model(
+        training_data_dir, model_output, epochs, "textcat"
     )
 
     print("✅ Textcat training complete!")
-    print(f"📁 Model saved: {model_path}")
+    print(f"📁 Model saved to: {model_output}")
+    print(f"🎯 F1 Score: {result.f1_score:.3f}")
 
 
 def run_pipeline(args: argparse.Namespace) -> None:
@@ -224,7 +223,7 @@ def run_pipeline(args: argparse.Namespace) -> None:
 
     print("\n🎉 Pipeline complete!")
     print(f"🎯 F1 Score: {train_result.f1_score:.3f}")
-    print(f"📁 Final model: {train_result.model_path}")
+    print(f"📁 Final model saved to: {model_output}")
 
 
 def analyze_results(args: argparse.Namespace) -> None:

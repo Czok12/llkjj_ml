@@ -31,8 +31,8 @@ class Config(BaseSettings):
     vector_db_path: Path = Field(default_factory=lambda: Path("data/vectors"))
 
     # SKR03 Elektrohandwerk Configuration
-    skr03_regeln_file: str = "config/skr03_regeln.yaml"
-    gemini_prompt_file: str = "config/gemini_extraction_prompt.txt"
+    skr03_regeln_file: str = "src/config/skr03_regeln.yaml"
+    gemini_prompt_file: str = "src/config/gemini_extraction_prompt.txt"
 
     # ML Configuration
     spacy_model_name: str = "de_core_news_sm"
