@@ -25,8 +25,14 @@ from typing import Any
 import chromadb
 from sentence_transformers import SentenceTransformer
 
+try:
+    import google.generativeai as genai
+except ImportError:
+    genai = None  # type: ignore[assignment]
+
 from src.config import Config
-from src.processing import DataClassifier, DataExtractor, QualityAssessor
+from src.extraction import DataExtractor
+from src.processing import DataClassifier, QualityAssessor
 
 logger = logging.getLogger(__name__)
 
@@ -69,14 +75,26 @@ class UnifiedProcessor:
     Folgt KISS-Prinzipien durch klare Verantwortungstrennung.
     """
 
+    # Type annotations for instance attributes
+    config: Config
+    client: Any  # chromadb.Client
+    invoice_collection: Any | None
+    embedding_model: SentenceTransformer | None
+    extractor: Any  # DataExtractor
+    classifier: Any  # DataClassifier
+    quality_assessor: Any  # QualityAssessor
+
     def __init__(self, cfg: Config | None = None):
         """Initialize unified processor with modular components"""
         self.config = cfg or Config()
         self._setup_logging()
         self._setup_vector_db()
 
+        # Initialize Gemini model if API key is available
+        gemini_model = self._setup_gemini_model()
+
         # Initialize specialized modules
-        self.extractor = DataExtractor()
+        self.extractor = DataExtractor(gemini_model=gemini_model)
         self.classifier = DataClassifier(vector_store=self.invoice_collection)
         self.quality_assessor = QualityAssessor()
 
@@ -112,6 +130,31 @@ class UnifiedProcessor:
             logger.error("❌ Fehler bei Vektordatenbank-Setup: %s", e)
             self.invoice_collection = None
             self.embedding_model = None
+
+    def _setup_gemini_model(self) -> Any | None:
+        """Setup Gemini AI model for extraction enhancement"""
+        try:
+            if not genai:
+                logger.warning(
+                    "⚠️ Google Generative AI nicht installiert - Gemini deaktiviert"
+                )
+                return None
+
+            if not self.config.google_api_key:
+                logger.warning("⚠️ Keine Google API Key gefunden - Gemini deaktiviert")
+                return None
+
+            # Configure and initialize Gemini
+            # Note: Google AI library lacks proper type stubs
+            genai.configure(api_key=self.config.google_api_key)  # type: ignore[attr-defined]
+            model = genai.GenerativeModel(self.config.gemini_model)  # type: ignore[attr-defined]
+
+            logger.info("✅ Gemini %s initialisiert", self.config.gemini_model)
+            return model
+
+        except Exception as e:
+            logger.warning("⚠️ Gemini-Setup fehlgeschlagen: %s", e)
+            return None
 
     def process_pdf(self, pdf_path: str | Path) -> ProcessingResult:
         """

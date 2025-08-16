@@ -155,16 +155,10 @@ class TrainingService:
             "CURRENCY",
         ]
 
-        # Fix: Ensure ner is a spaCy NER pipe before adding labels
-        if hasattr(ner, "add_label"):
-            for label in elektro_labels:
-                ner.add_label(label)
-        else:
-            # Remove and re-add NER pipe if misconfigured
-            self.nlp.remove_pipe("ner")
-            ner = self.nlp.add_pipe("ner", last=True)
-            for label in elektro_labels:
-                ner.add_label(label)
+        # Add elektro-specific labels to NER pipeline
+        # Note: mypy can't properly type spaCy pipes, so we suppress warnings
+        for label in elektro_labels:
+            ner.add_label(label)  # type: ignore[attr-defined]
 
         self.entity_labels = elektro_labels
         logger.info(f"Added {len(elektro_labels)} entity labels for Elektrotechnik")
@@ -247,7 +241,7 @@ class TrainingService:
     ) -> list[dict[str, Any]]:
         """Convert processed PDF data to spaCy training format"""
 
-        examples = []
+        examples: list[dict[str, Any]] = []
 
         # Extract text and create entities from structured data
         raw_text = processed_data.get("raw_text", "")
@@ -387,16 +381,23 @@ class TrainingService:
         # Sort by start position
         entities.sort(key=lambda x: x[0])
 
-        non_overlapping = []
+        non_overlapping: list[list[int | str]] = []
         for entity in entities:
             start, end, label = entity
 
             # Check for overlap with previous entities
             overlap = False
-            for prev_start, prev_end, _ in non_overlapping:
-                if start < prev_end and end > prev_start:
-                    overlap = True
-                    break
+            for prev_entity in non_overlapping:
+                prev_start, prev_end = prev_entity[0], prev_entity[1]
+                if (
+                    isinstance(start, int)
+                    and isinstance(end, int)
+                    and isinstance(prev_start, int)
+                    and isinstance(prev_end, int)
+                ):
+                    if start < prev_end and end > prev_start:
+                        overlap = True
+                        break
 
             if not overlap:
                 non_overlapping.append(entity)
@@ -460,16 +461,10 @@ class TrainingService:
             ner = self.nlp.add_pipe("ner", last=True)
         else:
             ner = self.nlp.get_pipe("ner")
-        # Ensure ner is the correct type before adding labels
-        if hasattr(ner, "add_label"):
-            for label in self.entity_labels:
-                ner.add_label(label)
-        else:
-            # Remove and re-add NER pipe if misconfigured
-            self.nlp.remove_pipe("ner")
-            ner = self.nlp.add_pipe("ner", last=True)
-            for label in self.entity_labels:
-                ner.add_label(label)
+        # Add entity labels to NER pipeline
+        # Note: mypy can't properly type spaCy pipes, so we suppress warnings
+        for label in self.entity_labels:
+            ner.add_label(label)  # type: ignore[attr-defined]
 
         # Lade und prepare Trainingsdaten
         training_examples = self._load_training_data(training_path)
@@ -493,12 +488,13 @@ class TrainingService:
         best_f1 = 0.0
         patience_counter = 0
         patience_limit = 5
+        epoch = 0  # Initialize epoch
 
         with self.nlp.disable_pipes(*other_pipes):
             self.nlp.begin_training()
 
             for epoch in range(epochs):
-                losses = {}
+                losses: dict[str, float] = {}
 
                 # Shuffle mit seed für reproduzierbare Ergebnisse
                 import random
@@ -507,7 +503,7 @@ class TrainingService:
                 random.shuffle(train_examples)
 
                 # Optimierte Batch-Größen für Elektrotechnik-Daten
-                batches = minibatch(train_examples, size=8)
+                batches = minibatch(train_examples, size=8)  # type: ignore[no-untyped-call]
 
                 for batch in batches:
                     examples = []
@@ -640,7 +636,7 @@ class TrainingService:
             training_docs = self._load_textcat_data_from_jsonl(training_path, nlp)
 
         # Sammle alle SKR03-Konten als Labels
-        all_skr03_labels = set()
+        all_skr03_labels: set[str] = set()
         for doc in training_docs:
             all_skr03_labels.update(doc.cats.keys())
 
@@ -678,16 +674,17 @@ class TrainingService:
         start_time = datetime.now()
         best_accuracy = 0.0
         patience_counter = 0
+        epoch = 0  # Initialize epoch
 
         for epoch in range(epochs):
             import random
 
             random.seed(42 + epoch)
             random.shuffle(train_docs)
-            losses = {}
+            losses: dict[str, float] = {}
 
             # Training in optimierten Batches
-            batches = minibatch(train_docs, size=16)
+            batches = minibatch(train_docs, size=16)  # type: ignore[no-untyped-call]
             for batch in batches:
                 examples = []
                 for doc in batch:
@@ -845,7 +842,7 @@ class TrainingService:
             self.nlp.begin_training()
 
             for epoch in range(epochs):
-                losses = {}
+                losses: dict[str, float] = {}
 
                 # Shuffle training data
                 import random
@@ -853,7 +850,7 @@ class TrainingService:
                 random.shuffle(train_examples)
 
                 # Train in batches
-                batches = minibatch(train_examples, size=16)
+                batches = minibatch(train_examples, size=16)  # type: ignore[no-untyped-call]
 
                 for batch in batches:
                     examples = []
@@ -1072,13 +1069,13 @@ class TrainingService:
         training_docs = list(doc_bin.get_docs(nlp.vocab))
 
         # Sammle alle Labels
-        all_labels = set()
+        all_labels: set[str] = set()
         for doc in training_docs:
             all_labels.update(doc.cats.keys())
 
         # Füge Labels zum Textcat hinzu
         for label in all_labels:
-            textcat.add_label(label)
+            textcat.add_label(label)  # type: ignore
 
         logger.info(
             f"Training Textcat mit {len(all_labels)} Labels: {sorted(all_labels)}"
@@ -1089,10 +1086,10 @@ class TrainingService:
 
         for epoch in range(epochs):
             random.shuffle(training_docs)
-            losses = {}
+            losses: dict[str, float] = {}
 
             # Training in batches
-            batches = minibatch(training_docs, size=8)
+            batches = minibatch(training_docs, size=8)  # type: ignore[no-untyped-call]
             for batch in batches:
                 examples = []
                 for doc in batch:
@@ -1157,8 +1154,8 @@ if __name__ == "__main__":
         print(f"📁 Saved: {result.jsonl_path}")
 
     elif args.command == "train":
-        result = service.train_model(args.input, args.output, args.epochs)
+        train_result = service.train_model(args.input, args.output, args.epochs)
         print("✅ Training complete!")
-        print(f"🎯 F1 Score: {result.f1_score:.3f}")
-        print(f"⏱️  Time: {result.training_time_seconds:.1f}s")
-        print(f"💾 Model: {result.model_path}")
+        print(f"🎯 F1 Score: {train_result.f1_score:.3f}")
+        print(f"⏱️  Time: {train_result.training_time_seconds:.1f}s")
+        print(f"💾 Model: {train_result.model_path}")

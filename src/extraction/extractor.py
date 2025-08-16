@@ -39,7 +39,7 @@ class DataExtractor:
     - Invoice header and line item extraction
     """
 
-    def __init__(self, gemini_model=None):
+    def __init__(self, gemini_model: Any = None) -> None:
         """Initialize data extractor with optional Gemini model"""
         self.gemini_model = gemini_model
         self.document_converter = DocumentConverter()
@@ -224,7 +224,7 @@ WICHTIG:
             response = self.gemini_model.generate_content(prompt)
 
             # Parse Gemini response
-            enhanced_data = json.loads(response.text)
+            enhanced_data: dict[str, Any] = json.loads(response.text)
             enhanced_data.update(raw_data)  # Merge with raw data
             enhanced_data["enhancement_method"] = "gemini"
             enhanced_data["language"] = "de"  # Explicitly mark as German
