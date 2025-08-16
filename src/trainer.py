@@ -18,9 +18,10 @@ import random
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import spacy
+from spacy.pipeline import TextCategorizer
 from spacy.tokens import DocBin
 from spacy.training import Example
 from spacy.util import minibatch
@@ -154,8 +155,16 @@ class TrainingService:
             "CURRENCY",
         ]
 
-        for label in elektro_labels:
-            ner.add_label(label)
+        # Fix: Ensure ner is a spaCy NER pipe before adding labels
+        if hasattr(ner, "add_label"):
+            for label in elektro_labels:
+                ner.add_label(label)
+        else:
+            # Remove and re-add NER pipe if misconfigured
+            self.nlp.remove_pipe("ner")
+            ner = self.nlp.add_pipe("ner", last=True)
+            for label in elektro_labels:
+                ner.add_label(label)
 
         self.entity_labels = elektro_labels
         logger.info(f"Added {len(elektro_labels)} entity labels for Elektrotechnik")
@@ -217,7 +226,7 @@ class TrainingService:
         # Write to JSONL format
         with open(output_path, "w", encoding="utf-8") as f:
             for example in training_examples:
-                f.write(json.dumps(example, ensure_ascii=False) + "\\n")
+                f.write(json.dumps(example, ensure_ascii=False) + "\n")
 
         result = ExportResult(
             str(output_path),
@@ -620,7 +629,7 @@ class TrainingService:
                 "no_output_layer": False,
             },
         }
-        textcat = nlp.add_pipe("textcat", config=config)
+        textcat = cast(TextCategorizer, nlp.add_pipe("textcat", config=config))
 
         # Lade SKR03-Klassifizierungsdaten
         try:
@@ -919,7 +928,8 @@ class TrainingService:
         return examples
 
     def _evaluate_model(
-        self, validation_examples: list[tuple[str, dict[str, Any]]]
+        self,
+        validation_examples: list[tuple[str, dict[str, Any]]],
     ) -> dict[str, float]:
         """Evaluate model performance on validation set"""
 
@@ -958,7 +968,9 @@ class TrainingService:
         return {"precision": precision, "recall": recall, "f1_score": f1_score}
 
     def save_training_metrics(
-        self, metrics: TrainingMetrics, output_path: Path | str | None = None
+        self,
+        metrics: TrainingMetrics,
+        output_path: Path | str | None = None,
     ) -> Path:
         """Save training metrics to JSON file"""
 
@@ -977,7 +989,9 @@ class TrainingService:
         return output_path
 
     def export_textcat_data(
-        self, processed_data_dir: Path | str, output_path: Path | str | None = None
+        self,
+        processed_data_dir: Path | str,
+        output_path: Path | str | None = None,
     ) -> ExportResult:
         """Exportiert Daten speziell für das Text-Klassifizierungs-Training."""
         logger.info(

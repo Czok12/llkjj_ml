@@ -42,7 +42,6 @@ poetry.lock
 
 # Environment variables
 .env
-.env.*
 
 # mypy
 .mypy_cache/
@@ -59,7 +58,6 @@ logs/
 *.log
 
 # Data folders
-config/
 data/
 demo_output/
 output_model/

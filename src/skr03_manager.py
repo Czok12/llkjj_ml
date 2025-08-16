@@ -284,7 +284,7 @@ class SKR03Manager:
 # Convenience-Funktion für einfache Nutzung
 def lade_skr03_manager(
     regeln_pfad: str = "config/skr03_regeln.yaml",
-    kontenplan_pfad: str = "Kontenplan.csv",
+    kontenplan_pfad: str = "config/Kontenplan.csv",
 ) -> SKR03Manager:
     """Lädt SKR03Manager mit Standard-Pfaden"""
     # Base path ist jetzt das Projekt-Root (eine Ebene über src/)

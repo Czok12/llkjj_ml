@@ -1,0 +1,418 @@
+# ====================================================================
+# SKR03-Klassifizierungsregeln für Elektrotechnik-Unternehmen (v2.0)
+# ====================================================================
+# Erstellt basierend auf der Analyse des Buchungsjournals 2024.
+# Diese Datei dient als Wissensbasis für die automatische Vorkontierung.
+#
+# Format:
+#   kategorie_name:
+#     schlüsselwörter: [Liste von Keywords, Lieferantennamen, Produktcodes]
+#     standard_konto: "SKR03-Kontonummer"
+#     beschreibung: "Erläuterung der Kategorie und typische Anwendungsfälle."
+# ====================================================================
+
+kategorien:
+  # --------------------------------------------------------------------
+  # GRUPPE 1: MATERIAL, WARENEINGANG & FREMDLEISTUNGEN (Klasse 3)
+  # --------------------------------------------------------------------
+
+  wareneingang_elektro_allgemein:
+    schlüsselwörter:
+      # Lieferanten (höchste Priorität)
+      - famo gmbh
+      - sonepar
+      - str elektronik
+      - halmburger gmbh
+      - profipatch gmbh
+      - rexel
+      - elektrogroßhandel
+      # Keywords
+      - wareneingang
+      - elektromaterial
+      - handelswaren
+      - installationsmaterial
+      # Marken
+      - gira
+      - hager
+      - siemens
+      - abb
+      - schneider electric
+      - legrand
+      - busch-jaeger
+      - jung
+      - berker
+      - merten
+      - wago
+      - phoenix contact
+    standard_konto: "3400"
+    beschreibung: "Allgemeiner Wareneingang 19% VSt für Elektromaterial, Bauteile und Handelswaren."
+
+  kabel_leitungen:
+    schlüsselwörter:
+      - kabel
+      - leitung
+      - draht
+      - ader
+      - datenkabel
+      - netzwerkkabel
+      - stromkabel
+      - mantelleitung
+      - nym-j
+      - yym-j
+      - lichtwellenleiter
+      - glasfaser
+      - koaxial
+    standard_konto: "3400"
+    beschreibung: "Kabel, Leitungen und jegliches Verdrahtungsmaterial."
+
+  schalt_verteilertechnik:
+    schlüsselwörter:
+      - schalter
+      - taster
+      - sicherung
+      - automat
+      - leitungsschutzschalter
+      - lss
+      - fi-schalter
+      - rcd
+      - motorschutz
+      - relais
+      - schütz
+      - verteiler
+      - schaltschrank
+      - kleinverteiler
+      - zählerplatz
+      - serverschrank24
+    standard_konto: "3400"
+    beschreibung: "Schaltgeräte, Sicherungen, Relais und Verteilertechnik."
+
+  beleuchtungstechnik:
+    schlüsselwörter:
+      - lampe
+      - leuchte
+      - led
+      - halogen
+      - energiesparlampe
+      - licht
+      - beleuchtung
+      - strahler
+      - spots
+      - fluter
+    standard_konto: "3400"
+    beschreibung: "Beleuchtungstechnik, Leuchtmittel und LED-Systeme."
+
+  installations_anbauteile:
+    schlüsselwörter:
+      - steckdose
+      - rahmen
+      - abdeckung
+      - wippe
+      - einsatz
+      - schalterprogramm
+      - dimmer
+      - bewegungsmelder
+    standard_konto: "3400"
+    beschreibung: "Steckdosen, Schalterprogramme und Anbauteile für die Installation."
+
+  innereuropaeischer_warenerwerb:
+    schlüsselwörter:
+      - innergemeinschaftlicher erwerb
+      - amazon eu s.a.r.l.
+      - reverse charge
+      - ustg §13b
+      - ct global
+      - pearformance gmbh
+      - blue ocean global
+      - elfcam sarl
+    standard_konto: "3425"
+    beschreibung: "Wareneinkauf aus dem EU-Ausland (Reverse-Charge-Verfahren)."
+
+  fremdleistungen_subunternehmer:
+    schlüsselwörter:
+      # Lieferanten
+      - slawomir mogielnicki
+      - lüven ryabko
+      - niklas zander
+      - sara quintanilha # Wurde auf 4600 gebucht, könnte aber auch hier sein
+      # Keywords
+      - subunternehmer
+      - fremdleistung
+      - montageleistung
+      - dienstleistung von dritten
+    standard_konto: "3100"
+    beschreibung: "Fremdleistungen und Arbeiten von Subunternehmern (ohne §13b UStG)."
+
+  # --------------------------------------------------------------------
+  # GRUPPE 2: BETRIEBS- & GESCHÄFTSAUFWAND (Klasse 4)
+  # --------------------------------------------------------------------
+
+  bueromaterial:
+    schlüsselwörter:
+      # Lieferanten
+      - boettcher ag
+      # Keywords
+      - büromaterial
+      - bürobedarf
+      - papier
+      - druckerpatronen
+      - toner
+      - stifte
+      - ordner
+      - batterien
+      - notizblock
+    standard_konto: "4930"
+    beschreibung: "Klassisches Büromaterial wie Papier, Stifte, Druckerpatronen etc."
+
+  edv_zubehoer_hardware:
+    schlüsselwörter:
+      # Lieferanten
+      - notebooksbilliger.de
+      - lenovo
+      - hifi klubben
+      # Keywords
+      - computer zubehör
+      - hardware
+      - tastatur
+      - maus
+      - monitor
+      - festplatte
+      - kabel (für Computer)
+      - mehrfachsteckdose
+      - drucker
+    standard_konto: "4930" # Oft zusammen mit Büromaterial, kann aber getrennt werden.
+    beschreibung: "EDV-Zubehör und Kleinteile, die keine Anlagegüter sind."
+
+  werkzeuge_kleingeraete:
+    schlüsselwörter:
+      - werkzeug
+      - kleingeräte
+      - bohrmaschine
+      - akkuschrauber
+      - zange
+      - schraubendreher
+      - messgerät
+      - multimeter
+      - prüfgerät
+      - oszilloskop
+    standard_konto: "4985"
+    beschreibung: "Werkzeuge und Kleingeräte unter der GWG-Grenze, die als sofortiger Aufwand gelten."
+
+  arbeitskleidung_betriebsbedarf:
+    schlüsselwörter:
+      # Lieferanten
+      - elten gmbh
+      - sekastores
+      # Keywords
+      - arbeitskleidung
+      - sicherheitsschuhe
+      - berufsbekleidung
+      - betriebsbedarf
+      - schutzausrüstung
+    standard_konto: "4980"
+    beschreibung: "Sonstiger Betriebsbedarf wie Arbeitskleidung oder Verbrauchsmaterial."
+
+  kfz_kosten_laufend:
+    schlüsselwörter:
+      - kraftstoff
+      - tanken
+      - benzin
+      - diesel
+      - famila tank
+      - aral
+      - shell
+      - jet
+    standard_konto: "4530"
+    beschreibung: "Laufende Kfz-Betriebskosten, hauptsächlich für Kraftstoff."
+
+  reisekosten_unternehmer:
+    schlüsselwörter:
+      # Lieferanten
+      - db fernverkehr ag
+      - deutsche bahn
+      # Keywords
+      - reisekosten
+      - bahnticket
+      - zugticket
+      - fahrtkosten
+      - flugticket
+    standard_konto: "4673"
+    beschreibung: "Reisekosten des Unternehmers (Fahrtkosten, ÖPNV, Flüge)."
+
+  werbung_marketing:
+    schlüsselwörter:
+      # Lieferanten
+      - lasse bünemann
+      - veit rochus marr
+      - vistaprint
+      # Keywords
+      - werbekosten
+      - marketing
+      - design
+      - webdesign
+      - visitenkarten
+      - flyer
+      - streuartikel
+    standard_konto: "4600"
+    beschreibung: "Kosten für Werbung, Marketing, Design und Werbemittel."
+
+  rechts_beratung_verwaltung:
+    schlüsselwörter:
+      # Lieferanten
+      - ulrike römer
+      - amtsgericht walsrode
+      - haufe service center
+      - ebilanzplus gmbh
+      - bundesanzeiger verlag
+      # Keywords
+      - notarkosten
+      - gründungskosten
+      - rechtsanwalt
+      - beratung
+      - buchführung
+      - jahresabschluss
+      - veröffentlichung
+    standard_konto: "4950" # Sammelkonto, kann auf 4955, 4957 aufgeteilt werden.
+    beschreibung: "Kosten für Recht, Beratung, Notar, Buchführung und Verwaltung."
+
+  beitraege_gebuehren:
+    schlüsselwörter:
+      # Lieferanten
+      - handwerkskammer
+      - hwk
+      # Keywords
+      - kammerbeitrag
+      - beitrag
+      - gebühren
+      - gewerbeanmeldung
+    standard_konto: "4380"
+    beschreibung: "Beiträge für Kammern (HWK, IHK) und sonstige Gebühren."
+
+  telekommunikation_internet:
+    schlüsselwörter:
+      # Lieferanten
+      - klarmobil.de
+      - winsim
+      - drillisch online
+      - strato.de
+      # Keywords
+      - telefon
+      - mobilfunk
+      - internet
+      - domain
+      - e-mail-server
+      - hosting
+    standard_konto: "4920" # Kann auf 4925 aufgeteilt werden.
+    beschreibung: "Kosten für Telefon, Mobilfunk, Internet und Webhosting."
+
+  software_lizenzen:
+    schlüsselwörter:
+      # Lieferanten
+      - softwareindustrie24
+      - amazon media
+      - transaktionsdetails
+      # Keywords
+      - software
+      - lizenz
+      - abonnement
+      - saas
+      - office 365
+      - adobe
+    standard_konto: "4964"
+    beschreibung: "Kosten für EDV-Software, Lizenzen und Cloud-Dienste."
+
+  bankgebuehren:
+    schlüsselwörter:
+      - nebenkosten des geldverkehrs
+      - kontoführung
+      - abrechnung sparkasse
+      - bankgebühren
+      - entgelt
+    standard_konto: "4970"
+    beschreibung: "Gebühren für Kontoführung und sonstigen Zahlungsverkehr."
+
+  porto_versand:
+    schlüsselwörter:
+      - porto
+      - dhl
+      - deutsche post
+      - briefmarken
+      - versandkosten
+    standard_konto: "4910"
+    beschreibung: "Ausgaben für Porto und Versand."
+
+  reinigung_entsorgung:
+    schlüsselwörter:
+      - reinigungsmittel
+      - reinigung
+      - entsorgung
+      - müllgebühren
+    standard_konto: "4250"
+    beschreibung: "Kosten für Reinigungsmaterial und Entsorgungsgebühren."
+
+  sonstige_aufwendungen:
+    schlüsselwörter:
+      - weihnachtsfeier
+      - bewirtung
+      - sonstige aufwendungen
+      - betrugsversuch
+      - restbuchwert
+      - anlagenabgang
+    standard_konto: "4900"
+    beschreibung: "Sammelkonto für Aufwendungen ohne eigene Kategorie (z.B. Bewirtung)."
+
+  # --------------------------------------------------------------------
+  # GRUPPE 3: ANLAGEVERMÖGEN & ABSCHREIBUNGEN (Klasse 0 & 4)
+  # --------------------------------------------------------------------
+
+  anlagevermoegen_gwg:
+    schlüsselwörter:
+      # Lieferanten
+      - ergotopia gmbh
+      - computer universe
+      # Keywords
+      - geringwertige wirtschaftsgüter
+      - gwg
+      - bürostuhl
+      - iphone
+      - nas server
+      - synology
+    standard_konto: "0480"
+    beschreibung: "Anlagegüter bis 800 EUR netto (GWG), die sofort abgeschrieben werden."
+
+  anlagevermoegen_bga:
+    schlüsselwörter:
+      - macbook pro
+      - volt venture gmbh
+      - büroeinrichtung (über 800€)
+      - maschine
+      - anlage
+    standard_konto: "0490"
+    beschreibung: "Betriebs- und Geschäftsausstattung über 800 EUR netto (keine GWG)."
+
+  abschreibungen:
+    schlüsselwörter:
+      - abschreibung
+      - afa
+      - normal-afa
+      - sofort-abschreibung
+    standard_konto: "4830"
+    beschreibung: "Buchung von planmäßigen und Sofort-Abschreibungen."
+
+  # --------------------------------------------------------------------
+  # GRUPPE 4: STEUERN & LOHN (Klasse 2, 4)
+  # --------------------------------------------------------------------
+
+  lohn_gehalt:
+    schlüsselwörter:
+      - lohn und gehalt
+      - jonas christian czok
+      - autom. lohn-verbuchung
+    standard_konto: "4140" # Oder 4120 - je nach Verrechnung
+    beschreibung: "Lohn- und Gehaltszahlungen sowie deren Verrechnung."
+
+  gewerbesteuer:
+    schlüsselwörter:
+      - gewerbesteuer
+      - stadt osterholz-scharmbeck
+    standard_konto: "2200"
+    beschreibung: "Zahlungen der Gewerbesteuer-Vorauszahlungen und -Nachzahlungen."

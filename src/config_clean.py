@@ -1,8 +1,11 @@
+#!/usr/bin/env python3
 """
-LLKJJ ML Pipeline - Hauptkonfiguration
+LLKJJ ML Pipeline - Hauptkonfiguration (REFACTORED)
 
 Zentrale Konfiguration für die automatisierte PDF-Rechnungsverarbeitung
-für Elektrotechnik-Handwerk UG mit Gemini 2.5 Pro Integration.
+für Elektrotechnik-Handwerk UG.
+
+ONLY configuration values, NO business logic or prompts!
 """
 
 from pathlib import Path
@@ -16,7 +19,7 @@ load_dotenv()
 
 
 class Config(BaseSettings):
-    """Hauptkonfiguration für LLKJJ ML Pipeline"""
+    """Hauptkonfiguration für LLKJJ ML Pipeline - NUR Konfigurationswerte"""
 
     # API Configuration
     google_api_key: str | None = Field(default=None)
@@ -30,9 +33,10 @@ class Config(BaseSettings):
     models_path: Path = Field(default_factory=lambda: Path("models"))
     vector_db_path: Path = Field(default_factory=lambda: Path("data/vectors"))
 
-    # SKR03 Elektrohandwerk Configuration
-    skr03_regeln_file: str = "config/skr03_regeln.yaml"
+    # Configuration file paths (moved out of code!)
+    skr03_mapping_file: str = "config/skr03_elektro_mapping.yaml"
     gemini_prompt_file: str = "config/gemini_extraction_prompt.txt"
+    spacy_entities_file: str = "config/spacy_entities.yaml"
 
     # ML Configuration
     spacy_model_name: str = "de_core_news_sm"
@@ -80,7 +84,7 @@ class Config(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = False
-        extra = "ignore"  # Ignoriere unbekannte Felder aus .env
+        extra = "ignore"
 
     def __post_init__(self) -> None:
         """Erstelle notwendige Verzeichnisse"""
@@ -91,31 +95,11 @@ class Config(BaseSettings):
             self.models_path,
             self.vector_db_path,
             Path("logs"),
+            Path("config"),  # Config directory
         ]:
             path.mkdir(parents=True, exist_ok=True)
 
 
-# Default SKR03 accounts from skr03_regeln.yaml
-# These are fallback values - actual mapping is in skr03_regeln.yaml
-DEFAULT_ACCOUNTS = {
-    "elektromaterial": "3400",  # Wareneingang 19% Vorsteuer
-    "office": "4935",  # Büromaterial
-    "tools": "4985",  # Werkzeuge und Kleingeräte
-    "services": "4400",  # Fremdleistungen
-}
-
-SPACY_ENTITIES = [
-    "INVOICE_NUMBER",  # Rechnungsnummer
-    "INVOICE_DATE",  # Rechnungsdatum
-    "SUPPLIER",  # Lieferant
-    "NET_AMOUNT",  # Nettobetrag
-    "VAT_AMOUNT",  # Umsatzsteuer
-    "GROSS_AMOUNT",  # Bruttobetrag
-    "ITEM_DESCRIPTION",  # Artikelbezeichnung
-    "ITEM_NUMBER",  # Artikelnummer
-    "QUANTITY",  # Menge
-    "UNIT_PRICE",  # Einzelpreis
-    "TOTAL_PRICE",  # Gesamtpreis
-    "SKR03_ACCOUNT",  # SKR03 Konto
-    "PRODUCT_CATEGORY",  # Produktkategorie
-]
+def load_config() -> Config:
+    """Lade die Config-Instanz"""
+    return Config()
