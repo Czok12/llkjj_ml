@@ -41,7 +41,7 @@ ruff = "^0.6.4"
 pre-commit = "^3.8.0"
 
 [tool.poetry.scripts]
-llkjj-pipeline = "main:cli"
+llkjj-ml = "main:main"
 
 [build-system]
 requires = ["poetry-core"]
