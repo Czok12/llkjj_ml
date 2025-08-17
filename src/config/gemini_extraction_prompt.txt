@@ -1,38 +1,40 @@
-Analysiere diese PDF-Rechnung für ein deutsches Elektrotechnik-Handwerksunternehmen und extrahiere folgende Informationen:
+Du bist ein deutschsprachiger Experte für Elektrotechnik-Rechnungen und SKR03-Buchhaltung.
 
-RECHNUNGSDATEN:
-- Rechnungsnummer
-- Rechnungsdatum
-- Lieferant/Firma
-- Lieferantennummer
-- Auftragsnummer (falls vorhanden)
+AUFGABE: Analysiere diese deutsche Elektrotechnik-Rechnung und extrahiere strukturierte Daten.
+SPRACHE: Alle Antworten bitte auf Deutsch.
+KONTEXT: Deutsche Geschäftsdokumente, deutsches Rechnungswesen, deutsche Elektrobranche.
 
-FINANZIELLE DATEN:
-- Nettobetrag
-- Umsatzsteuer (19% oder 7%)
-- Bruttobetrag
-- Währung
+RECHNUNGSTEXT:
+{rechnungstext}
 
-POSITIONEN (für jede Rechnungsposition):
-- Positionsnummer (falls vorhanden)
-- Artikelbezeichnung
-- Artikelnummer/Waren-ID (falls vorhanden)
-- Menge
-- Einheit (Stück, m, kg, etc.)
-- Einzelpreis (netto)
-- Gesamtpreis (netto)
-- Umsatzsteuersatz
-- Produktkategorie (z.B. Elektromaterial, Werkzeug, Büromaterial)
+EXTRAHIERE FOLGENDE DATEN (als valides JSON):
+{{
+  "rechnung": {{
+    "nummer": "string",
+    "datum": "YYYY-MM-DD",
+    "betrag_netto": "number",
+    "betrag_brutto": "number",
+    "waehrung": "EUR"
+  }},
+  "lieferant": {{
+    "name": "string",
+    "adresse": "string",
+    "ust_id": "string"
+  }},
+  "positionen": [
+    {{
+      "beschreibung": "deutsche Artikelbeschreibung",
+      "menge": "number",
+      "einheit": "string",
+      "einzelpreis": "number",
+      "gesamtpreis": "number",
+      "kategorie": "Elektromaterial|Werkzeuge|Anlagen|Buero|Sonstiges"
+    }}
+  ]
+}}
 
-SKR03 KONTIERUNG (KORRIGIERTE KONTEN):
-Ordne jede Position einem SKR03-Konto zu:
-- 3400: Wareneingang 19% Vorsteuer (Elektromaterial, Kabel, Schalter, etc.)
-- 3410: Wareneingang 7% Vorsteuer (ermäßigter Steuersatz)
-- 4985: Werkzeuge und Kleingeräte (Sofortaufwand, unter 800€)
-- 0200: Technische Anlagen (über 800€)
-- 0210: Maschinen (über 800€)
-- 0400: Betriebsausstattung
-- 0420: Büroeinrichtung
-- 4400: Fremdleistungen/Montage
-
-Gib das Ergebnis als strukturiertes JSON zurück.
+WICHTIG:
+- Alle Texte auf Deutsch belassen
+- Deutsche Elektroterminologie verwenden
+- Preise als Zahlen (ohne Währungszeichen)
+- Nur valides JSON zurückgeben

@@ -80,7 +80,9 @@ class BaseTrainer:
         # Initialize entity labels list
         self.entity_labels: list[str] = []
 
-    def save_model(self, output_path: Path, model_name: str = "elektro_model") -> None:
+    def save_model(
+        self, output_path: Path, model_name: str = "spacy_extractor"
+    ) -> None:
         """Save trained model to disk."""
         model_path = output_path / model_name
         model_path.mkdir(parents=True, exist_ok=True)
@@ -304,8 +306,8 @@ class NERTrainer(BaseTrainer):
         # Evaluate model
         precision, recall, f1 = self._evaluate_ner_model(val_data)
 
-        # Save model
-        self.save_model(output_path)
+        # Save model with specific name for NER/Extractor
+        self.save_model(output_path, "spacy_extractor")
 
         metrics = TrainingMetrics(
             total_examples=len(train_examples),
@@ -370,41 +372,48 @@ class NERTrainer(BaseTrainer):
     def _evaluate_ner_model(
         self, validation_data: list[tuple[str, dict[str, Any]]]
     ) -> tuple[float, float, float]:
-        """Evaluate NER model performance."""
+        """Evaluate NER model performance using spaCy's Scorer.
+
+        This method uses spaCy's industrial-standard Scorer which handles
+        token alignment and provides more realistic evaluation metrics
+        compared to the previous strict character-level matching.
+        """
         if not validation_data:
             return 0.0, 0.0, 0.0
 
-        correct = 0
-        predicted = 0
-        actual = 0
+        # Import Scorer and Example from spaCy
+        from spacy.scorer import Scorer
+        from spacy.training import Example
 
+        # Create Example objects for evaluation
+        examples = []
         for text, annotations in validation_data:
-            doc = self.nlp(text)
+            # Create predicted document by processing text through model
+            pred_doc = self.nlp(text)
 
-            # Count predictions
-            predicted += len(doc.ents)
+            # Create Example object linking predicted and reference
+            # This handles tokenization alignment automatically
+            example = Example.from_dict(pred_doc, annotations)
+            examples.append(example)
 
-            # Count actual entities
-            entities = annotations.get("entities", [])
-            actual += len(entities)
+        # Use spaCy's Scorer to evaluate spans
+        # This provides industry-standard evaluation with proper alignment
+        scorer = Scorer()
+        scores = scorer.score_spans(examples, "ents")
 
-            # Count correct predictions (simplified)
-            pred_entities = {
-                (ent.start_char, ent.end_char, ent.label_) for ent in doc.ents
-            }
-            true_entities = set(entities)
-            correct += len(pred_entities.intersection(true_entities))
+        # Extract metrics from scores - these are now more realistic
+        precision = scores.get("ents_p", 0.0)
+        recall = scores.get("ents_r", 0.0)
+        f1_score = scores.get("ents_f", 0.0)
 
-        # Calculate metrics
-        precision = correct / predicted if predicted > 0 else 0.0
-        recall = correct / actual if actual > 0 else 0.0
-        f1 = (
-            2 * precision * recall / (precision + recall)
-            if (precision + recall) > 0
-            else 0.0
+        logger.info(
+            "🔍 NER Evaluation - P: %.3f, R: %.3f, F1: %.3f",
+            precision,
+            recall,
+            f1_score,
         )
 
-        return precision, recall, f1
+        return precision, recall, f1_score
 
 
 class TextCatTrainer(BaseTrainer):
@@ -461,8 +470,8 @@ class TextCatTrainer(BaseTrainer):
         # Evaluate model
         accuracy = self._evaluate_textcat_model(val_data)
 
-        # Save model
-        self.save_model(output_path)
+        # Save model with specific name for TextCat/SKR03
+        self.save_model(output_path, "spacy_skr03")
 
         metrics = TrainingMetrics(
             total_examples=len(train_examples),

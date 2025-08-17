@@ -173,7 +173,22 @@ class DataExtractor:
 
     def enhance_with_gemini(self, raw_data: dict[str, Any]) -> dict[str, Any]:
         """Enhance extraction using Gemini AI with German language optimization"""
-        prompt = f"""
+
+        # Load prompt template from config file
+        prompt_file = (
+            Path(__file__).parent.parent / "config" / "gemini_extraction_prompt.txt"
+        )
+        try:
+            with open(prompt_file, encoding="utf-8") as f:
+                prompt_template = f.read()
+
+            # Fill in the template with actual invoice text
+            prompt = prompt_template.format(rechnungstext=raw_data["raw_text"][:3000])
+
+        except (FileNotFoundError, KeyError) as e:
+            logger.warning(f"Could not load prompt template: {e}, using fallback")
+            # Fallback to hardcoded prompt if file not found
+            prompt = f"""
 Du bist ein deutschsprachiger Experte für Elektrotechnik-Rechnungen und SKR03-Buchhaltung.
 
 AUFGABE: Analysiere diese deutsche Elektrotechnik-Rechnung und extrahiere strukturierte Daten.
@@ -266,6 +281,50 @@ WICHTIG:
             match = re.search(pattern, text, re.IGNORECASE)
             if match:
                 header[key] = match.group(1).strip()
+
+        # --- Lieferantendaten Fallback-Extraktion ---
+        # Nur die ersten 20 Zeilen durchsuchen
+        lines = text.split("\n")[:20]
+        supplier_name = None
+        supplier_address = None
+        supplier_ust_id = None
+
+        # Name: Erste Zeile mit Großbuchstaben, kein "Rechnung", kein "Kunde"
+        for line in lines:
+            if (
+                line.strip()
+                and line.strip()[0].isupper()
+                and not re.search(
+                    r"Rechnung|Kunde|Lieferdatum|Datum|Nr", line, re.IGNORECASE
+                )
+                and len(line.strip()) > 3
+            ):
+                supplier_name = line.strip()
+                break
+
+        # Adresse: Zeile mit PLZ und Ort
+        for line in lines:
+            addr_match = re.search(r"\b\d{5}\s+[A-ZÄÖÜ][a-zäöüß]+.*", line)
+            if addr_match:
+                supplier_address = addr_match.group(0).strip()
+                break
+
+        # USt-IdNr.:
+        for line in lines:
+            ust_match = re.search(
+                r"USt[-\s]?IdNr\.?\s*:?[\s]*([A-Z]{2}\s?\d{9,12})", line
+            )
+            if ust_match:
+                supplier_ust_id = ust_match.group(1).replace(" ", "")
+                break
+
+        # Ergebnisse hinzufügen, falls gefunden
+        if supplier_name:
+            header["supplier_name"] = supplier_name
+        if supplier_address:
+            header["supplier_address"] = supplier_address
+        if supplier_ust_id:
+            header["supplier_ust_id"] = supplier_ust_id
 
         return header
 

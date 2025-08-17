@@ -185,7 +185,7 @@ def run_pipeline(args: argparse.Namespace) -> None:
 
     input_dir = Path(args.input)
     temp_processed = Path("data/processed/pipeline_temp")
-    temp_training = Path("data/training/pipeline_training.jsonl")
+    temp_training_dir = Path("data/training")  # Verzeichnis für Export
     model_output = (
         Path(args.output) if args.output else Path("output_model/pipeline_model")
     )
@@ -197,7 +197,6 @@ def run_pipeline(args: argparse.Namespace) -> None:
     # Step 1: Process PDFs
     print("\n📄 Step 1: Processing PDFs...")
     processor = UnifiedProcessor(config)
-
     pdf_files = list(input_dir.glob("*.pdf"))
     if not pdf_files:
         print(f"❌ No PDF files found in {input_dir}")
@@ -212,13 +211,15 @@ def run_pipeline(args: argparse.Namespace) -> None:
     # Step 2: Export training data
     print("\n📤 Step 2: Exporting training data...")
     training_service = TrainingService(config)
-    export_result = training_service.export_training_data(temp_processed, temp_training)
+    export_result = training_service.export_training_data(
+        temp_processed, temp_training_dir
+    )
     print(f"  ✅ {export_result.total_records} training examples exported")
 
     # Step 3: Train model
     print("\n🚀 Step 3: Training model...")
     train_result = training_service.train_model(
-        temp_training, model_output, args.epochs
+        Path(export_result.jsonl_path), model_output, args.epochs
     )
 
     print("\n🎉 Pipeline complete!")
