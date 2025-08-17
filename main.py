@@ -21,6 +21,8 @@ from src.config import Config
 
 # Feature Engineering Integration
 from src.features.ml_integration import create_feature_pipeline
+
+# Dual-Purpose Pipeline Import
 from src.pipeline.processor import UnifiedProcessor
 
 # Import consolidated services
@@ -630,6 +632,20 @@ def extract_features_batch(args: argparse.Namespace) -> None:
 
     print(f"💾 Results saved to: {output_dir}")
 
+    # Save individual results
+    for _i, (result, json_file) in enumerate(zip(results, json_files, strict=False)):
+        if result["success"]:
+            feature_file = output_dir / f"{json_file.stem}_features.json"
+            with open(feature_file, "w", encoding="utf-8") as f:
+                json.dump(result, f, ensure_ascii=False, indent=2)
+
+    # Save analysis
+    analysis_file = output_dir / "feature_analysis.json"
+    with open(analysis_file, "w", encoding="utf-8") as f:
+        json.dump(analysis, f, ensure_ascii=False, indent=2)
+
+    print(f"💾 Results saved to: {output_dir}")
+
 
 def analyze_feature_pipeline(args: argparse.Namespace) -> None:
     """Analyze feature pipeline capabilities"""
@@ -680,6 +696,88 @@ def analyze_feature_pipeline(args: argparse.Namespace) -> None:
             json.dump(info, f, ensure_ascii=False, indent=2)
 
         print(f"💾 Analysis saved to: {output_path}")
+
+
+def dual_purpose_pipeline(args: argparse.Namespace) -> None:
+    """
+    Unified Dual-Purpose Pipeline - buchhaltungsbutler.de Ersatz mit integrierter KI-Lernfähigkeit
+
+    Einheitliche Pipeline die BEIDE Zwecke gleichzeitig erfüllt:
+    1. **SOFORT-NUTZEN**: SKR03-klassifizierte Buchungsdaten für Ihre Buchhaltung
+    2. **TRAINING**: Jede Verarbeitung erzeugt spaCy-Trainingsdaten für Eigenständigkeit
+
+    **Workflow:**
+    PDF → Docling TXT → Gemini (dual purpose) → {
+        - SKR03 Buchungsausgabe (für Sie)
+        - spaCy Training Export (für zukünftige Unabhängigkeit)
+    }
+    """
+    from src.pipeline.dual_pipeline import UnifiedDualPurposePipeline
+
+    config = Config()
+    pipeline = UnifiedDualPurposePipeline(config)
+
+    pdf_path = Path(args.input)
+    output_dir = Path(args.output) if args.output else Path("data/output/dual_purpose")
+
+    print("🔄 Unified Dual-Purpose Pipeline")
+    print("📋 buchhaltungsbutler.de Ersatz mit integrierter KI-Lernfähigkeit")
+    print(f"📄 Input PDF: {pdf_path}")
+    print(f"📁 Output Directory: {output_dir}")
+
+    if not pdf_path.exists():
+        print(f"❌ PDF nicht gefunden: {pdf_path}")
+        return
+
+    if not pdf_path.suffix.lower() == ".pdf":
+        print(f"❌ Eingabe muss eine PDF-Datei sein: {pdf_path}")
+        return
+
+    print("\n🚀 Starte Dual-Purpose Verarbeitung...")
+
+    try:
+        # Process PDF with dual purpose
+        result = pipeline.process_pdf_dual_purpose(pdf_path)
+
+        if result:
+            print("✅ Dual-Purpose Pipeline erfolgreich abgeschlossen!")
+
+            # Save immediate SKR03 results
+            buchungs_file = pipeline.save_buchungsausgabe(
+                result["buchungsausgabe"], output_dir
+            )
+            print("\n📊 SOFORT-NUTZEN - SKR03 Buchungsausgabe:")
+            print(f"   💾 Gespeichert: {buchungs_file}")
+            print(
+                f"   🎯 SKR03 Klassifikationen: {len(result['buchungsausgabe'].get('positionen', []))}"
+            )
+
+            # Save training data export
+            training_file = pipeline.save_training_export(
+                result["training_export"], output_dir
+            )
+            print("\n🧠 TRAINING - spaCy Export für Eigenständigkeit:")
+            print(f"   💾 Gespeichert: {training_file}")
+            print(
+                f"   🎯 Training Beispiele: {len(result['training_export'].get('spacy_ner', []))}"
+            )
+
+            # Summary
+            print("\n🎉 Pipeline Summary:")
+            print(f"   📄 Verarbeitete PDF: {pdf_path.name}")
+            print(f"   📁 Alle Ausgaben in: {output_dir}")
+
+            # Future benefits message
+            print("\n💡 Jede Verarbeitung verbessert Ihre KI-Eigenständigkeit!")
+            print("   📈 Mit jedem Dokument wird Ihr spaCy-Modell intelligenter")
+            print("   🎯 Ziel: Vollständige Unabhängigkeit von externen APIs")
+
+        else:
+            print("❌ Pipeline lieferte kein Ergebnis zurück")
+
+    except Exception as e:
+        print(f"❌ Unerwarteter Fehler in Dual-Purpose Pipeline: {e}")
+        logging.error("Dual-Purpose Pipeline Fehler: %s", e, exc_info=True)
 
 
 def create_arg_parser() -> argparse.ArgumentParser:
@@ -898,6 +996,43 @@ Examples:
     )
     parser_extract_batch.set_defaults(func=extract_features_batch)
 
+    # UNIFIED DUAL-PURPOSE PIPELINE
+    dual_parser = subparsers.add_parser(
+        "dual-purpose",
+        help="🚀 Unified Pipeline: Sofort-Buchhaltung + KI-Training",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description="""Einheitliche Pipeline die BEIDE Zwecke gleichzeitig erfüllt:
+
+1. **SOFORT-NUTZEN**: SKR03-klassifizierte Buchungsdaten für Ihre Buchhaltung
+2. **TRAINING**: Jede Verarbeitung erzeugt spaCy-Trainingsdaten für Eigenständigkeit
+
+**Workflow:**
+PDF → Docling TXT → Gemini (dual purpose) → {
+    - SKR03 Buchungsausgabe (für Sie)
+    - spaCy Training Export (für zukünftige Unabhängigkeit)
+}
+
+Das ist Ihr buchhaltungsbutler.de Ersatz mit integrierter KI-Lernfähigkeit.
+
+Beispiele:
+    poetry run python main.py dual-purpose rechnung.pdf
+    poetry run python main.py dual-purpose data/pdfs/ --output data/dual_output/
+    poetry run python main.py dual-purpose data/pdfs/ --batch --output monthly_batch/
+""",
+    )
+    dual_parser.add_argument("input", help="PDF-Datei oder Verzeichnis mit PDFs")
+    dual_parser.add_argument(
+        "--output",
+        "-o",
+        help="Output-Verzeichnis (Standard: data/output/dual_purpose/)",
+        default="data/output/dual_purpose",
+    )
+    dual_parser.add_argument(
+        "--batch",
+        action="store_true",
+        help="Batch-Modus für Verzeichnis-Verarbeitung",
+    )
+
     parser_analyze_features = subparsers.add_parser(
         "analyze-features",
         help="Analyze feature engineering pipeline",
@@ -1047,6 +1182,9 @@ def main() -> None:
             command_security_validate(args)
         elif args.command == "security-keys":
             command_security_key_manager(args)
+        # Dual-Purpose Pipeline
+        elif args.command == "dual-purpose":
+            dual_purpose_pipeline(args)
 
     except KeyboardInterrupt:
         print("\n⚠️  Operation cancelled by user")

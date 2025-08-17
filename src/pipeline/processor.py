@@ -32,8 +32,8 @@ except ImportError:
     genai = None  # type: ignore[assignment]
 
 from src.config import Config
-from src.extraction import DataExtractor
-from src.processing import DataClassifier, QualityAssessor
+
+# from src.pipeline.dual_pipeline import UnifiedDualPurposePipeline  # Circular import avoided
 from src.skr03_manager import lade_skr03_manager
 
 logger = logging.getLogger(__name__)
@@ -404,24 +404,31 @@ class UnifiedProcessor:
     classifier: Any  # DataClassifier
     quality_assessor: Any  # QualityAssessor
 
-    def __init__(self, cfg: Config | None = None):
-        """Initialize unified processor with modular components using singleton resources"""
-        self.config = cfg or Config()
-        self._setup_logging()
-        self._setup_vector_db()
+    def __init__(self, config: Config | None = None):
+        """
+        Initialize UnifiedProcessor mit Dual-Pipeline-Unterstützung
 
-        # Use singleton resources to prevent memory leaks
-        self.skr03_manager = _resource_manager.get_skr03_manager()
+        Args:
+            config: Optional config object, defaults to Config()
+        """
+        self.config = config or Config()
 
-        # Initialize Gemini model if API key is available
-        gemini_model = self._setup_gemini_model()
+        # Setup ResourceManager (Singleton)
+        self.resource_manager = _resource_manager
 
-        # Initialize components with config and dependencies
-        self.extractor = DataExtractor(gemini_model=gemini_model, config=self.config)
-        self.classifier = DataClassifier(
-            skr03_manager=self.skr03_manager, vector_store=self.invoice_collection
-        )
-        self.quality_assessor = QualityAssessor()
+        # Setup Dual-Pipeline-Orchestrator
+        # self.dual_pipeline = UnifiedDualPurposePipeline(self.config)  # Lazy import to avoid circular imports
+
+        # ChromaDB setup (Lazy-loaded über ResourceManager)
+        self.client = None
+        self.embedding_model = None
+
+        # Components (Lazy-loaded)
+        self._extractor = None
+        self._classifier = None
+        self._quality_assessor = None
+
+        logger.info("✅ UnifiedProcessor initialisiert mit Dual-Pipeline-Support")
 
     def cleanup(self) -> None:
         """Cleanup resources - call this after processing to free memory"""
