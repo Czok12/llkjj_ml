@@ -422,11 +422,12 @@ class UnifiedProcessor:
         # ChromaDB setup (Lazy-loaded über ResourceManager)
         self.client = None
         self.embedding_model = None
+        self.invoice_collection = None
 
         # Components (Lazy-loaded)
-        self._extractor = None
-        self._classifier = None
-        self._quality_assessor = None
+        self.extractor = None
+        self.classifier = None
+        self.quality_assessor = None
 
         logger.info("✅ UnifiedProcessor initialisiert mit Dual-Pipeline-Support")
 
@@ -550,6 +551,40 @@ class UnifiedProcessor:
             logger.warning("⚠️ Gemini-Setup fehlgeschlagen: %s", e)
             return None
 
+    def _ensure_components_loaded(self) -> None:
+        """Lazy-load all components only when needed"""
+        # Setup Vector Database first for RAG system
+        if self.invoice_collection is None:
+            self._setup_vector_db()
+
+        if self.extractor is None:
+            logger.info("🔄 Initialisiere DataExtractor...")
+            from src.extraction.extractor import DataExtractor
+
+            self.extractor = DataExtractor(self.config)
+
+        if self.classifier is None:
+            logger.info("🔄 Initialisiere DataClassifier...")
+            from src.processing.classifier import DataClassifier
+
+            # Debug: Check what we're passing
+            logger.info(f"Debug: invoice_collection = {self.invoice_collection}")
+            logger.info(
+                f"Debug: invoice_collection type = {type(self.invoice_collection)}"
+            )
+
+            # Pass vector store to classifier for RAG functionality
+            self.classifier = DataClassifier(
+                skr03_manager=self.resource_manager.get_skr03_manager(),
+                vector_store=self.invoice_collection,
+            )
+
+        if self.quality_assessor is None:
+            logger.info("🔄 Initialisiere QualityAssessor...")
+            from src.processing.quality import QualityAssessor
+
+            self.quality_assessor = QualityAssessor()
+
     def process_pdf(self, pdf_path: str | Path) -> ProcessingResult:
         """
         Hauptfunktion: Verarbeitet eine PDF-Datei durch die modulare Pipeline.
@@ -566,10 +601,21 @@ class UnifiedProcessor:
         logger.info("🚀 Starte modulare PDF-Verarbeitung: %s", pdf_path.name)
 
         try:
+            # Lazy-load components
+            self._ensure_components_loaded()
+
             # Phase 1: Extraktion mit DataExtractor
             extraction_start = time.time()
-            extraction_result = self.extractor.process_pdf(pdf_path)
+            docling_result = self.extractor.process_pdf(pdf_path)
             ocr_time_ms = int((time.time() - extraction_start) * 1000)
+
+            # Normalisiere das Extraktions-Ergebnis format für Kompatibilität
+            extraction_result = {
+                "structured_data": docling_result,
+                "line_items": docling_result.get(
+                    "line_items", []
+                ),  # Nutze die geparsten line_items vom DataExtractor
+            }
 
             logger.info("✅ Extraktion abgeschlossen (%d ms)", ocr_time_ms)
 
@@ -603,18 +649,23 @@ class UnifiedProcessor:
             # Ergebnis zusammenstellen
             processing_time_ms = int((time.time() - start_time) * 1000)
 
+            # Qualitätsbewertung normalisieren für ProcessingResult
+            normalized_quality = quality_assessment
+            if quality_assessment == "poor":
+                normalized_quality = "low"
+
             proc_result = ProcessingResult(
                 pdf_path=str(pdf_path),
                 processing_timestamp=datetime.now().isoformat(),
-                raw_text=extraction_result["raw_text"],
+                raw_text=docling_result.get("raw_text", ""),
                 structured_data=extraction_result["structured_data"],
-                invoice_data=extraction_result["invoice_data"],
+                invoice_data=docling_result.get("invoice_data", {}),
                 skr03_classifications=classifications,
                 processing_time_ms=processing_time_ms,
                 ocr_time_ms=ocr_time_ms,
                 classification_time_ms=classification_time_ms,
                 confidence_score=confidence_score,
-                extraction_quality=quality_assessment,
+                extraction_quality=normalized_quality,
             )
 
             # Phase 4: Vektorisierung für RAG-System (optional)

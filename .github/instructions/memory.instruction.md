@@ -55,6 +55,23 @@ applyTo: '**'
 
 Recorded: 2025-08-17 by automated assistant
 
+## Projektkontext Vergleich (automatisch protokolliert)
+- Datum: 2025-08-17
+- Vergleich von: `Projektkontext01.md` vs. `Projektkontext02.md`
+- Ergebnis: Empfehlung zur Verwendung und Platzierung der Dateien im Repo
+
+Kurzfassung:
+- `Projektkontext02.md` ist besser geeignet als übergeordnetes Vision/Manifest für das Core-Backend und als generelles Projektmanifest. Es ist umfassend, strukturiert, und beschreibt Architekturprinzipien, Komponenten, Workflows und Governance (Sicherheit, Tests, CI/CD) klar.
+- `Projektkontext01.md` ist besser geeignet als konkretes, AI-/Entwickler-orientiertes Manifest für das ML-Plugin (Workspace 2). Es enthält präzisere technische Vorgaben, Tool- und Kommandohinweise (Poetry), ML-Stack-Details und direkt anwendbare Best-Practices.
+
+Empfehlungen:
+1. Verwende `Projektkontext02.md` als Haupt-Vision/Manifest im Repository-Root oder in `docs/` (z. B. `docs/vision_manifest.md`).
+2. Platziere `Projektkontext01.md` innerhalb des ML-Plugin-Workspaces (z. B. `src/` oder `ml_service/README_ml_manifest.md`) als detailliertes Entwickler- und AI-Kontextdokument.
+3. Ergänze in der gewählten Haupt-Manifestdatei eine maschinenlesbare YAML-Frontmatter (keys: `title`, `version`, `last_updated`, `scope`, `audience`) zur einfachen Erfassung durch AI-Assistenten.
+4. Optional: Erzeuge eine kurze, synoptische `manifest_summary.json` mit Kernfeldern für schnelle maschinelle Nutzung.
+
+Diese Empfehlung wurde automatisch erstellt und im Memory protokolliert.
+
 ## Notes
 - Start with type annotation and stub errors, then address assignment and attribute errors
 - Update memory after each major step

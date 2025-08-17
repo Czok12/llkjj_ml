@@ -222,6 +222,78 @@ ruff check .
 black .
 ```
 
+## GitHub Copilot Agent Mode Optimierung (2025)
+
+### Agent Mode Best Practices
+
+**Für komplexe Multi-Step-Aufgaben nutzen:**
+
+- Code-Refactoring der gesamten ML-Pipeline
+- Migration zwischen ML-Frameworks (z.B. spaCy-Updates)
+- Implementierung neuer SKR03-Klassifizierungsregeln
+- End-to-End-Feature-Entwicklung mit Tests
+- Performance-Optimierung der Dokumentverarbeitung
+
+**Task-Scoping für optimale Ergebnisse:**
+
+- Klare Akzeptanzkriterien definieren (z.B. "Klassifizierungsgenauigkeit >92%")
+- Spezifische Dateien benennen die geändert werden sollen
+- Deutsche Elektrohandwerk-Kontext explizit erwähnen
+- Performance-Anforderungen spezifizieren (<30s pro Dokument)
+
+### Model Context Protocol (MCP) Integration
+
+**Verfügbare MCP-Tools für LLKJJ:**
+
+- GitHub MCP Server für Repository-Management
+- Playwright MCP Server für UI-Testing (falls Frontend-Integration)
+- Custom MCP Server für SKR03-Datenbank-Abfragen
+
+### Custom Instructions Hierarchie
+
+**Repository-weit:** `.github/copilot-instructions.md` (diese Datei)
+**ML-spezifisch:** `.github/instructions/ml-pipeline.instructions.md`
+**Test-spezifisch:** `.github/instructions/tests.instructions.md`
+**Config-spezifisch:** `.github/instructions/config.instructions.md`
+
+### Agent Mode Workflow-Optimierung
+
+```markdown
+# Beispiel für optimale Agent Mode-Nutzung:
+
+@copilot Implementiere eine neue SKR03-Klassifizierungsregel für
+Photovoltaik-Komponenten.
+
+Anforderungen:
+
+- Neue Regel in skr03_regeln.yaml hinzufügen
+- Tests in test_skr03_classification.py erweitern
+- Konfidenz-Threshold von mindestens 0.85
+- Deutsche Keywords für PV-Module, Wechselrichter, Batteriespeicher
+- Performance-Test dass Klassifizierung <2s dauert
+
+Dateien die geändert werden sollen:
+
+- src/skr03_manager.py
+- data/config/skr03_regeln.yaml
+- tests/test_skr03_classification.py
+- docs/klassifizierung.md
+```
+
+### Iterative Verbesserung mit @copilot
+
+**Pull Request Reviews:**
+
+- Nutze `@copilot` in PR-Kommentaren für Verbesserungen
+- Batch-Reviews mit "Start a review" für mehrere Änderungen
+- Spezifische Performance-Optimierungen anfragen
+
+**Code-Qualitäts-Checks:**
+
+- Automatische mypy --strict Compliance-Prüfung
+- Deutsche Kommentar- und Variablen-Validierung
+- SKR03-Konformitäts-Checks
+
 ## Projektziele & Erfolgsmetriken
 
 ### Primäre Ziele

@@ -45,6 +45,11 @@ class DataClassifier:
         self.vector_store = vector_store
         self.skr03_regeln = skr03_regeln or {}
         logger.info("DataClassifier initialized with German SKR03 optimization")
+        logger.debug(
+            "DataClassifier vector_store parameter: %s (type: %s)",
+            self.vector_store,
+            type(self.vector_store),
+        )
 
     def process_classifications(
         self, line_items: list[dict[str, Any]], structured_data: dict[str, Any]

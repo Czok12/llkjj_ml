@@ -522,18 +522,25 @@ class AdvancedDoclingProcessor:
         # Tabellen extrahieren und parsen
         tables = self._extract_tables(document)
 
+        # WICHTIG: Original Docling Tables für neue API verfügbar machen
+        original_tables = []
+        if hasattr(document, "tables"):
+            original_tables = document.tables
+
         # Metadaten sammeln
         metadata = {
             "page_count": len(document.pages) if hasattr(document, "pages") else 1,
             "processing_method": "docling_optimized",
             "table_count": len(tables),
+            "original_table_count": len(original_tables),
             "has_ocr": self.enable_ocr,
             "table_mode": self.table_mode,
         }
 
         return {
             "raw_text": raw_text,
-            "tables": tables,
+            "tables": tables,  # Legacy-Format für Rückwärtskompatibilität
+            "docling_tables": original_tables,  # Native Docling Tables für neue API
             "metadata": metadata,
             "extraction_method": "docling_optimized",
         }
