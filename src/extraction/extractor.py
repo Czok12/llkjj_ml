@@ -238,6 +238,16 @@ WICHTIG:
             # Debug logging for Gemini response
             logger.debug(f"Gemini Response: {response_text[:500]}...")
 
+            # NEU: Bereinige den Text von Markdown-Codeblöcken
+            if "```json" in response_text:
+                # Extrahiere nur den JSON-Teil
+                response_text = response_text.split("```json\n", 1)[1].rsplit(
+                    "\n```", 1
+                )[0]
+            elif response_text.strip().startswith("```"):
+                # Allgemeinerer Fall für Codeblöcke
+                response_text = response_text.strip().strip("`").strip()
+
             # Safe JSON parsing with fallback
             try:
                 if not response_text or response_text.strip() == "":
@@ -368,11 +378,25 @@ WICHTIG:
                         if i < len(row) and header_map.get(header):
                             item[header_map[header]] = row[i]
 
-                    if item.get("description") or item.get("artikel"):
+                    # NEU: Validierung VOR dem Hinzufügen
+                    # Annahme: item['article_number'], item['description'], item['quantity'] sind befüllt
+                    # Verwende die striktere Sonepar-Validierung für Tabellen
+                    if (
+                        item.get("description")
+                        and item.get("article_number")
+                        and self._validate_sonepar_line_item(
+                            "01",  # Platzhalter für Positionsnummer
+                            item.get("description", ""),
+                            item.get("article_number", ""),
+                            item.get("quantity", "0"),
+                        )
+                    ):
                         items.append(item)
                         logger.info(
-                            f"DEBUG: Item aus Tabelle hinzugefügt: {item.get('description', 'N/A')[:30]}"
+                            f"DEBUG: VALIDES Item aus Tabelle hinzugefügt: {item.get('description', 'N/A')[:30]}"
                         )
+                    else:
+                        logger.warning(f"DEBUG: UNGÜLTIGES Item verworfen: {row}")
 
         logger.info(
             f"DEBUG: Tabellen-Extraktion abgeschlossen. {len(items)} Items gefunden"
@@ -409,13 +433,25 @@ WICHTIG:
 
         # Pattern für Docling-Ausgabe: Marke + Beschreibung + Artikelnummer + Pipe + Menge + Pipe
         sonepar_docling_pattern = re.compile(
-            r"((?:GIRA|SIEMENS|ABB|SCHNEIDER|LEGRAND|HAGER|Spelsberg|Striebel)[^|]*?(\d{6})[^|]*?)\|\s*(\d+)\s*\|",
+            r"((?:GIRA|SIEMENS|ABB|SCHNEIDER|LEGRAND|HAGER|Spelsberg|Striebel|CIMCO)[^|]*?(\d{6})[^|]*?)\|\s*(\d+)\s*\|",
+            re.IGNORECASE,
+        )
+
+        # Pattern für Seite 2 Format: Artikel-Nr. in separater Spalte
+        sonepar_page2_pattern = re.compile(
+            r"(\d{6,})\s*\|\s*([^|]*(?:Spelsberg|Hager|Striebel|CIMCO)[^|]*?)\s*\|\s*(\d+)\s*\|",
+            re.IGNORECASE,
+        )
+
+        # Pattern für Positionen ohne erkennbare Artikelnummer (Siemens, Hager ohne Nummer)
+        sonepar_no_article_pattern = re.compile(
+            r"(?:Bestellposition Kunde: \d+\s+)?(SIEMENS|Hager)\s+([^|]*(?:Blindabdeckstreifen|Abdeckstreifen)[^|]*?)\s*\|\s*(\d+)\s*\|",
             re.IGNORECASE,
         )
 
         # Fallback Pattern für OCR-Format (falls verfügbar)
         sonepar_ocr_pattern = re.compile(
-            r"(\d{2})(\d{7})\s*\|([^|]*(?:GIRA|SIEMENS|ABB|SCHNEIDER|LEGRAND|HAGER|Spelsberg|Striebel)[^|]*?)\s*(\d+)\s*\|\s*(\d+)\s*(\d+)\s*(\d+)",
+            r"(\d{2})(\d{7})\s*\|([^|]*(?:GIRA|SIEMENS|ABB|SCHNEIDER|LEGRAND|HAGER|Spelsberg|Striebel|CIMCO)[^|]*?)\s*(\d+)\s*\|\s*(\d+)\s*(\d+)\s*(\d+)",
             re.IGNORECASE,
         )
 
@@ -423,16 +459,20 @@ WICHTIG:
         patterns = [
             # Pattern 1: Sonepar Docling-Format (PRIORITÄT für echte PDF-Extraktion)
             sonepar_docling_pattern,
-            # Pattern 2: Sonepar OCR-Format (Fallback für OCR-Dateien)
+            # Pattern 2: Sonepar Seite 2 Format (Artikel-Nr. in separater Spalte)
+            sonepar_page2_pattern,
+            # Pattern 3: Positionen ohne Artikelnummer (Siemens, Hager)
+            sonepar_no_article_pattern,
+            # Pattern 4: Sonepar OCR-Format (Fallback für OCR-Dateien)
             sonepar_ocr_pattern,
-            # Pattern 3: Standard Docling pipe-separated Format
+            # Pattern 5: Standard Docling pipe-separated Format
             re.compile(
-                r"(\d{6,})\s*\|\s*([^|]*(?:GIRA|SIEMENS|ABB|SCHNEIDER|LEGRAND|HAGER)[^|]*)\s*\|\s*(\d+)\s*\|\s*(\d+[,.]?\d*)\s*\|\s*(\d+[,.]?\d*)",
+                r"(\d{6,})\s*\|\s*([^|]*(?:GIRA|SIEMENS|ABB|SCHNEIDER|LEGRAND|HAGER|Spelsberg|Striebel|CIMCO)[^|]*)\s*\|\s*(\d+)\s*\|\s*(\d+[,.]?\d*)\s*\|\s*(\d+[,.]?\d*)",
                 re.IGNORECASE,
             ),
-            # Pattern 4: Whitespace-separated Format mit Marken-Keywords
+            # Pattern 6: Whitespace-separated Format mit Marken-Keywords
             re.compile(
-                r"(\d{6,})\s+([^0-9]*(?:GIRA|SIEMENS|ABB|SCHNEIDER|LEGRAND|HAGER)[^0-9]*?)\s+(\d+)\s+(\d+[,.]?\d*)\s+(\d+[,.]?\d*)",
+                r"(\d{6,})\s+([^0-9]*(?:GIRA|SIEMENS|ABB|SCHNEIDER|LEGRAND|HAGER|Spelsberg|Striebel|CIMCO)[^0-9]*?)\s+(\d+)\s+(\d+[,.]?\d*)\s+(\d+[,.]?\d*)",
                 re.IGNORECASE,
             ),
         ]
@@ -497,7 +537,80 @@ WICHTIG:
                             f"❌ Item Validierung fehlgeschlagen: {article_no}"
                         )
 
-                elif pattern_idx == 1:  # Sonepar OCR-Format
+                elif pattern_idx == 1:  # Sonepar Seite 2 Format
+                    article_no, description, quantity = match
+
+                    # Extrahiere saubere Produktbeschreibung
+                    description_clean = self._extract_product_description(description)
+
+                    # Für Seite 2 Format fehlen die Preise, setze Platzhalter
+                    pos_nr = "01"  # Platzhalter da Position im Docling-Text fehlt
+                    unit_price = "0"  # Nicht verfügbar in diesem Format
+                    total_price = "0"  # Nicht verfügbar in diesem Format
+
+                    logger.info(
+                        f"Sonepar Seite 2 Pattern extrahiert: Art={article_no} | {description_clean[:30]}... | Qty={quantity}"
+                    )
+
+                    # Verwende dieselbe Validierung wie Pattern 0 für Konsistenz
+                    if self._validate_sonepar_line_item(
+                        pos_nr, description_clean, article_no, quantity
+                    ):
+                        item = {
+                            "position_number": pos_nr,
+                            "article_number": article_no.strip(),
+                            "description": description_clean.strip(),
+                            "quantity": quantity.strip(),
+                            "unit_price": unit_price,
+                            "total_price": total_price,
+                        }
+                        items.append(item)
+                        logger.info(f"✅ Item validiert und hinzugefügt: {article_no}")
+                    else:
+                        logger.warning(
+                            f"❌ Item Validierung fehlgeschlagen: {article_no}"
+                        )
+
+                elif pattern_idx == 2:  # Positionen ohne Artikelnummer (Siemens, Hager)
+                    brand, description, quantity = match
+
+                    # Kombiniere Marke und Beschreibung
+                    full_description = f"{brand} {description}".strip()
+                    description_clean = self._extract_product_description(
+                        full_description
+                    )
+
+                    # Setze Platzhalter für fehlende Daten
+                    pos_nr = "01"
+                    article_no = "000000"  # Platzhalter für fehlende Artikelnummer
+                    unit_price = "0"
+                    total_price = "0"
+
+                    logger.info(
+                        f"Sonepar Ohne-Artikelnummer Pattern extrahiert: Brand={brand} | {description_clean[:30]}... | Qty={quantity}"
+                    )
+
+                    if self._validate_line_item(
+                        article_no, description_clean, quantity
+                    ):
+                        item = {
+                            "position_number": pos_nr,
+                            "article_number": article_no.strip(),
+                            "description": description_clean.strip(),
+                            "quantity": quantity.strip(),
+                            "unit_price": unit_price,
+                            "total_price": total_price,
+                        }
+                        items.append(item)
+                        logger.info(
+                            f"✅ Item validiert und hinzugefügt: {brand} {description[:20]}..."
+                        )
+                    else:
+                        logger.warning(
+                            f"❌ Item Validierung fehlgeschlagen: {brand} {description[:20]}..."
+                        )
+
+                elif pattern_idx == 3:  # Sonepar OCR-Format
                     (
                         pos_nr,
                         sonepar_nr,
@@ -541,7 +654,7 @@ WICHTIG:
                         }
                         items.append(item)
 
-                elif len(match) >= 5:  # Standard patterns (Index 2+)
+                elif len(match) >= 5:  # Standard patterns (Index 4+)
                     article_no, description, quantity, unit_price, total_price = match[
                         :5
                     ]
@@ -586,9 +699,9 @@ WICHTIG:
         desc = re.sub(r"^.*?Lieferung.*?Scharmbeck\s*", "", full_description)
 
         # Extrahiere Produktteil bis zur Artikelnummer am Ende
-        # Format: "GIRA Produktname ... Artikelnummer"
+        # Format: "MARKE Produktname ... Artikelnummer"
         product_match = re.search(
-            r"(GIRA|SIEMENS|ABB|SCHNEIDER|LEGRAND|HAGER|Spelsberg|Striebel)([^0-9]+)",
+            r"(GIRA|SIEMENS|ABB|SCHNEIDER|LEGRAND|HAGER|Spelsberg|Striebel|CIMCO)([^0-9]+)",
             desc,
             re.IGNORECASE,
         )
@@ -632,6 +745,7 @@ WICHTIG:
             "HAGER",
             "Spelsberg",
             "Striebel",
+            "CIMCO",  # Hinzugefügt für CIMCO Positionen
         ]
         if not any(brand.lower() in description.lower() for brand in elektro_brands):
             return False
@@ -651,11 +765,29 @@ WICHTIG:
     ) -> bool:
         """Validiert ob es sich um eine echte Rechnungsposition handelt"""
 
-        # Artikelnummer muss mindestens 6 Ziffern haben
+        # Artikelnummer muss mindestens 6 Ziffern haben (entspanntere Validierung)
         if not re.match(r"^\d{6,}$", article_no.strip()):
-            return False
+            # Fallback: Prüfe ob die Beschreibung stark genug ist, um fehlende Artikelnummer zu kompensieren
+            strong_elektro_indicators = [
+                "GIRA",
+                "SIEMENS",
+                "HAGER",
+                "Spelsberg",
+                "Striebel",
+                "CIMCO",
+                "Abdeckrahmen",
+                "Abdeckstreifen",
+                "Blindabdeckung",
+                "Verschlußstreifen",
+                "Überziehschuhe",
+            ]
+            if not any(
+                indicator.lower() in description.lower()
+                for indicator in strong_elektro_indicators
+            ):
+                return False
 
-        # Beschreibung muss mindestens eine Elektro-Marke enthalten
+        # Beschreibung muss mindestens eine Elektro-Marke oder ein Elektro-Keyword enthalten
         elektro_keywords = [
             "GIRA",
             "SIEMENS",
@@ -665,8 +797,16 @@ WICHTIG:
             "HAGER",
             "WAGO",
             "PHOENIX",
+            "Spelsberg",  # Hinzugefügt für Position 7
+            "Striebel",  # Hinzugefügt für Position 9 (Striebel&J)
+            "CIMCO",  # Hinzugefügt für Position 10
             "Klingeltaster",
             "Abdeckrahmen",
+            "Abdeckstreifen",  # Hinzugefügt für Position 6, 7, 8
+            "Blindabdeckung",  # Für GIRA und Siemens
+            "Blindabdeckstreifen",  # Spezifisch für Siemens Position 6
+            "Verschlußstreifen",  # Für Striebel&J Position 9
+            "Überziehschuhe",  # Für CIMCO Position 10
             "Dimmer",
             "Schalter",
             "Steckdose",
@@ -694,7 +834,6 @@ WICHTIG:
         invalid_terms = [
             "artikel-nr",
             "pos",
-            "bestellposition",
             "menge",
             "preis",
             "gesamt",
@@ -706,8 +845,31 @@ WICHTIG:
             "hannover",
         ]
 
-        if any(term in description.lower() for term in invalid_terms):
-            return False
+        # Prüfe auf ungültige Header-Begriffe, aber erlaube "bestellposition" in Produktbeschreibungen
+        for term in invalid_terms:
+            if term in description.lower():
+                return False
+
+        # Spezielle Prüfung für "bestellposition" - nur verbieten wenn es als Header-Zeile aussieht
+        if "bestellposition" in description.lower():
+            # Erlaube wenn es Teil einer Produktbeschreibung mit Marke ist
+            has_brand = any(
+                brand.lower() in description.lower()
+                for brand in [
+                    "gira",
+                    "siemens",
+                    "hager",
+                    "spelsberg",
+                    "striebel",
+                    "cimco",
+                    "abb",
+                    "schneider",
+                    "legrand",
+                ]
+            )
+            # Verbiete nur wenn es wie eine reine Header-Zeile aussieht (ohne Marke und ohne Artikelnummer)
+            if not has_brand and not re.search(r"\d{6,}", description):
+                return False
 
         return True
 
