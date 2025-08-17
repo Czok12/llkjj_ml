@@ -18,12 +18,12 @@ import json
 import logging
 import os
 import time
-from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import chromadb
+from pydantic import BaseModel, Field, field_validator
 from sentence_transformers import SentenceTransformer
 
 try:
@@ -39,30 +39,85 @@ from src.skr03_manager import lade_skr03_manager
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class ProcessingResult:
-    """Unified result from PDF processing pipeline"""
+class ProcessingResult(BaseModel):
+    """
+    Unified result from PDF processing pipeline.
+
+    Migrated from dataclass to Pydantic BaseModel for enhanced:
+    - Type safety and runtime validation
+    - Automatic serialization/deserialization
+    - German invoice processing optimization
+    """
 
     # Source information
-    pdf_path: str
-    processing_timestamp: str
+    pdf_path: str = Field(..., description="Pfad zur verarbeiteten PDF-Datei")
+    processing_timestamp: str = Field(
+        ..., description="Zeitstempel der Verarbeitung (ISO format)"
+    )
 
     # Extraction results
-    raw_text: str
-    structured_data: dict[str, Any]
+    raw_text: str = Field(..., description="Extrahierter Rohtext aus PDF")
+    structured_data: dict[str, Any] = Field(
+        default_factory=dict, description="Strukturierte Daten aus Docling"
+    )
 
     # Classification results
-    invoice_data: dict[str, Any]
-    skr03_classifications: list[dict[str, Any]]
+    invoice_data: dict[str, Any] = Field(
+        default_factory=dict, description="Klassifizierte Rechnungsdaten"
+    )
+    skr03_classifications: list[dict[str, Any]] = Field(
+        default_factory=list, description="SKR03-Kontierungen"
+    )
 
     # Performance metrics
-    processing_time_ms: int
-    ocr_time_ms: int
-    classification_time_ms: int
+    processing_time_ms: int = Field(
+        ..., ge=0, description="Gesamtverarbeitungszeit in Millisekunden"
+    )
+    ocr_time_ms: int = Field(
+        ..., ge=0, description="OCR-Verarbeitungszeit in Millisekunden"
+    )
+    classification_time_ms: int = Field(
+        ..., ge=0, description="Klassifizierungszeit in Millisekunden"
+    )
 
     # Quality indicators
-    confidence_score: float
-    extraction_quality: str  # "high", "medium", "low"
+    confidence_score: float = Field(
+        ..., ge=0.0, le=1.0, description="Konfidenz-Score (0.0-1.0)"
+    )
+    extraction_quality: Literal["high", "medium", "low"] = Field(
+        ..., description="Qualitätsbewertung der Extraktion"
+    )
+
+    @field_validator("processing_timestamp")
+    @classmethod
+    def validate_timestamp_format(cls, v: str) -> str:
+        """Validiere ISO-Zeitstempel-Format"""
+        try:
+            datetime.fromisoformat(v.replace("Z", "+00:00"))
+            return v
+        except ValueError as e:
+            raise ValueError(f"Ungültiges Zeitstempel-Format: {v}") from e
+
+    @field_validator("pdf_path")
+    @classmethod
+    def validate_pdf_path(cls, v: str) -> str:
+        """Validiere PDF-Dateipfad"""
+        if not v.lower().endswith(".pdf"):
+            raise ValueError(f"Pfad muss eine PDF-Datei sein: {v}")
+        return v
+
+    def to_dict(self) -> dict[str, Any]:
+        """Konvertiere zu Dictionary für Rückwärtskompatibilität"""
+        return self.model_dump()
+
+    def get_summary(self) -> str:
+        """Erstelle eine Zusammenfassung der Verarbeitungsergebnisse"""
+        return (
+            f"PDF: {Path(self.pdf_path).name} | "
+            f"Qualität: {self.extraction_quality} | "
+            f"Konfidenz: {self.confidence_score:.2f} | "
+            f"Zeit: {self.processing_time_ms}ms"
+        )
 
 
 class UnifiedProcessor:
@@ -155,13 +210,14 @@ class UnifiedProcessor:
                 logger.warning("⚠️ Keine Google API Key gefunden - Gemini deaktiviert")
                 return None
 
-            # Configure and initialize Gemini Client (new google-genai API)
-            client = genai.Client(api_key=self.config.google_api_key)
+            # Configure API Key
+            genai.configure(api_key=self.config.google_api_key)
 
-            logger.info(
-                "✅ Gemini Client initialisiert für %s", self.config.gemini_model
-            )
-            return client
+            # Initialize the generative model
+            model = genai.GenerativeModel(self.config.gemini_model)
+
+            logger.info("✅ Gemini Model initialisiert: %s", self.config.gemini_model)
+            return model
 
         except Exception as e:
             logger.warning("⚠️ Gemini-Setup fehlgeschlagen: %s", e)
@@ -353,9 +409,9 @@ class UnifiedProcessor:
         # Ensure output directory exists
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Save as JSON
+        # Save as JSON using Pydantic's model_dump
         with open(output_path, "w", encoding="utf-8") as f:
-            json.dump(asdict(proc_result), f, indent=2, ensure_ascii=False)
+            json.dump(proc_result.model_dump(), f, indent=2, ensure_ascii=False)
 
         logger.info("Results saved to: %s", output_path)
         return output_path

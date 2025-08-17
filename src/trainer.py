@@ -13,12 +13,12 @@ Version: 2.1.0 (Refactored)
 import json
 import logging
 import random
-from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any, cast
 
 import spacy
+from pydantic import BaseModel, Field, field_validator
 from spacy.pipeline import TextCategorizer
 from spacy.training import Example
 from spacy.util import minibatch
@@ -28,28 +28,112 @@ from src.config import Config
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class TrainingMetrics:
-    """Training performance metrics"""
+class TrainingMetrics(BaseModel):
+    """
+    Training performance metrics for ML models.
 
-    total_examples: int
-    training_examples: int
-    validation_examples: int
-    precision: float
-    recall: float
-    f1_score: float
-    epochs_trained: int
-    training_time_seconds: float
+    Migrated from dataclass to Pydantic BaseModel for enhanced:
+    - Numerical validation for ML metrics
+    - Automatic JSON serialization
+    - Better logging and debugging
+    """
+
+    total_examples: int = Field(
+        ..., ge=0, description="Gesamtzahl der Trainingsbeispiele"
+    )
+    training_examples: int = Field(..., ge=0, description="Anzahl Trainingsbeispiele")
+    validation_examples: int = Field(
+        ..., ge=0, description="Anzahl Validierungsbeispiele"
+    )
+    precision: float = Field(
+        ..., ge=0.0, le=1.0, description="Precision Score (0.0-1.0)"
+    )
+    recall: float = Field(..., ge=0.0, le=1.0, description="Recall Score (0.0-1.0)")
+    f1_score: float = Field(..., ge=0.0, le=1.0, description="F1 Score (0.0-1.0)")
+    epochs_trained: int = Field(..., ge=1, description="Anzahl trainierter Epochen")
+    training_time_seconds: float = Field(
+        ..., ge=0.0, description="Trainingszeit in Sekunden"
+    )
+
+    @field_validator("training_examples", "validation_examples")
+    @classmethod
+    def validate_example_counts(cls, v: int, info) -> int:
+        """Validiere dass Trainings-/Validierungsbeispiele <= total_examples"""
+        if info.data.get("total_examples") is not None:
+            total = info.data["total_examples"]
+            if v > total:
+                raise ValueError(
+                    f"Beispielanzahl ({v}) kann nicht größer als total_examples ({total}) sein"
+                )
+        return v
+
+    def get_summary(self) -> str:
+        """Erstelle eine Zusammenfassung der Trainingsmetriken"""
+        return (
+            f"Training: {self.training_examples}/{self.total_examples} Beispiele | "
+            f"F1: {self.f1_score:.3f} | Precision: {self.precision:.3f} | "
+            f"Recall: {self.recall:.3f} | Zeit: {self.training_time_seconds:.1f}s"
+        )
 
 
-@dataclass
-class ExportResult:
-    """Data export result"""
+class ExportResult(BaseModel):
+    """
+    Data export result for training pipelines.
 
-    jsonl_path: str
-    total_records: int
-    skr03_classifications: int
-    export_timestamp: str
+    Migrated from dataclass to Pydantic BaseModel for enhanced:
+    - Path validation and normalization
+    - Export status tracking
+    - Better error handling
+    """
+
+    jsonl_path: str = Field(..., description="Pfad zur exportierten JSONL-Datei")
+    total_records: int = Field(
+        ..., ge=0, description="Gesamtzahl exportierter Datensätze"
+    )
+    skr03_classifications: int = Field(
+        ..., ge=0, description="Anzahl SKR03-Klassifizierungen"
+    )
+    export_timestamp: str = Field(
+        ..., description="Zeitstempel des Exports (ISO format)"
+    )
+
+    @field_validator("jsonl_path")
+    @classmethod
+    def validate_jsonl_path(cls, v: str) -> str:
+        """Validiere JSONL-Dateipfad"""
+        if not v.lower().endswith(".jsonl"):
+            raise ValueError(f"Pfad muss eine JSONL-Datei sein: {v}")
+        return v
+
+    @field_validator("export_timestamp")
+    @classmethod
+    def validate_export_timestamp(cls, v: str) -> str:
+        """Validiere ISO-Zeitstempel-Format"""
+        try:
+            datetime.fromisoformat(v.replace("Z", "+00:00"))
+            return v
+        except ValueError as e:
+            raise ValueError(f"Ungültiges Zeitstempel-Format: {v}") from e
+
+    @field_validator("skr03_classifications")
+    @classmethod
+    def validate_skr03_count(cls, v: int, info) -> int:
+        """Validiere dass SKR03-Klassifizierungen <= total_records"""
+        if info.data.get("total_records") is not None:
+            total = info.data["total_records"]
+            if v > total:
+                raise ValueError(
+                    f"SKR03-Klassifizierungen ({v}) können nicht größer als total_records ({total}) sein"
+                )
+        return v
+
+    def get_summary(self) -> str:
+        """Erstelle eine Zusammenfassung des Exports"""
+        jsonl_file = Path(self.jsonl_path).name
+        return (
+            f"Export: {jsonl_file} | {self.total_records} Datensätze | "
+            f"{self.skr03_classifications} SKR03-Klassifizierungen"
+        )
 
 
 class BaseTrainer:
@@ -95,7 +179,7 @@ class BaseTrainer:
         """Save training metrics to JSON."""
         metrics_file = output_path / "training_metrics.json"
         with open(metrics_file, "w", encoding="utf-8") as f:
-            json.dump(asdict(metrics), f, indent=2, ensure_ascii=False)
+            json.dump(metrics.model_dump(), f, indent=2, ensure_ascii=False)
         logger.info("📊 Metrics saved to %s", metrics_file)
 
 
@@ -110,7 +194,12 @@ class DataExporter(BaseTrainer):
         json_files = list(input_path.glob("*.json"))
         if not json_files:
             logger.warning("No JSON files found in %s", input_path)
-            return ExportResult("", 0, 0, datetime.now().isoformat())
+            return ExportResult(
+                jsonl_path="",
+                total_records=0,
+                skr03_classifications=0,
+                export_timestamp=datetime.now().isoformat(),
+            )
 
         logger.info("📁 Found %d JSON files for export", len(json_files))
 
@@ -136,7 +225,12 @@ class DataExporter(BaseTrainer):
 
         if not all_examples:
             logger.warning("No valid examples found")
-            return ExportResult("", 0, 0, datetime.now().isoformat())
+            return ExportResult(
+                jsonl_path="",
+                total_records=0,
+                skr03_classifications=0,
+                export_timestamp=datetime.now().isoformat(),
+            )
 
         # Convert to spaCy format and save
         output_file = output_path / "pipeline_training.jsonl"
