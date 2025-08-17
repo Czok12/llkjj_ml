@@ -383,7 +383,7 @@ class NERTrainer(BaseTrainer):
             random.shuffle(train_data)
 
             # Training in batches
-            batches = minibatch(train_data, size=8)  # type: ignore[no-untyped-call]
+            batches = minibatch(train_data, size=8)
             for batch in batches:
                 examples = []
                 for text, annotations in batch:
@@ -548,7 +548,7 @@ class TextCatTrainer(BaseTrainer):
             random.shuffle(train_data)
 
             # Training in batches
-            batches = minibatch(train_data, size=16)  # type: ignore[no-untyped-call]
+            batches = minibatch(train_data, size=16)
             for batch in batches:
                 examples = []
                 for doc in batch:

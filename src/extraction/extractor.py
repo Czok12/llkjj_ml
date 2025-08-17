@@ -54,15 +54,26 @@ class DataExtractor:
         """Initialize data extractor with optional Gemini model and config"""
         self.gemini_model = gemini_model
         self.config = config or Config()
-        self.docling_processor = AdvancedDoclingProcessor(
-            use_gpu=True,
-            enable_table_structure=True,
-            enable_ocr=True,
-            ocr_engine="tesseract_cli",  # Startet mit TesseractCLI, fällt auf robuste Engines zurück
-            table_mode="accurate",
-            german_optimized=True,  # Deutsche NER + intelligentes OCR-Fallback
-        )
-        logger.info("DataExtractor initialized with optimized Docling processor")
+
+        # Use singleton DoclingProcessor to prevent memory leaks
+        try:
+            from src.pipeline.processor import _resource_manager
+
+            self.docling_processor = _resource_manager.get_docling_processor()
+            logger.info("DataExtractor initialized with singleton DoclingProcessor")
+        except ImportError:
+            # Fallback if ResourceManager is not available
+            self.docling_processor = AdvancedDoclingProcessor(
+                use_gpu=True,
+                enable_table_structure=True,
+                enable_ocr=True,
+                ocr_engine="tesseract_cli",  # Startet mit TesseractCLI, fällt auf robuste Engines zurück
+                table_mode="accurate",
+                german_optimized=True,  # Deutsche NER + intelligentes OCR-Fallback
+            )
+            logger.warning(
+                "DataExtractor fallback: created own DoclingProcessor (ResourceManager unavailable)"
+            )
 
     def process_pdf(self, pdf_path: Path) -> dict[str, Any]:
         """
@@ -272,16 +283,52 @@ WICHTIG:
             return self.extract_structured_data(raw_data)
 
     def extract_structured_data(self, raw_data: dict[str, Any]) -> dict[str, Any]:
-        """Fallback structured extraction using patterns (without line_items - already extracted)"""
-        text = raw_data.get("raw_text", "")
+        """Fallback structured extraction using patterns.
 
-        # Basic pattern extraction for German invoices (without line_items to avoid duplication)
-        structured = {
-            "invoice_header": self.extract_invoice_header(text),
-            "totals": self.extract_totals(text),
+        Returns a structure compatible with consumers/tests expecting:
+        - header, line_items, footer keys.
+        """
+        # Support both raw_text and content fields
+        text = raw_data.get("raw_text") or raw_data.get("content") or ""
+
+        # Header extraction
+        header = self.extract_invoice_header(text)
+
+        # Totals extraction and normalization
+        totals_raw = self.extract_totals(text)
+        footer: dict[str, Any] = {}
+
+        if "net_total" in totals_raw:
+            try:
+                footer["netto_total"] = float(totals_raw["net_total"].replace(",", "."))
+            except Exception:
+                footer["netto_total"] = 0.0
+
+        if "gross_total" in totals_raw:
+            try:
+                footer["brutto_total"] = float(
+                    totals_raw["gross_total"].replace(",", ".")
+                )
+            except Exception:
+                footer["brutto_total"] = 0.0
+
+        if "vat_amount" in totals_raw:
+            try:
+                footer["vat_total"] = float(totals_raw["vat_amount"].replace(",", "."))
+            except Exception:
+                footer["vat_total"] = 0.0
+
+        # Line items extraction
+        line_items = self.extract_line_items(raw_data.get("tables", []), text)
+
+        structured: dict[str, Any] = {
+            "header": header,
+            "line_items": line_items,
+            "footer": footer,
             "enhancement_method": "pattern_based",
         }
 
+        # Preserve original raw_data for debugging
         structured.update(raw_data)
         return structured
 
@@ -894,19 +941,43 @@ WICHTIG:
         return mapping
 
     def extract_totals(self, text: str) -> dict[str, Any]:
-        """Extract invoice totals"""
-        totals = {}
+        """Extract invoice totals (net, vat, gross) as strings for normalization."""
+        totals: dict[str, Any] = {}
 
-        # German total patterns
+        # German total patterns (support common labels and vat rates)
         patterns = {
             "net_total": r"(?:Netto|Zwischensumme)\s*:?\s*(\d+[.,]\d{2})",
-            "vat_amount": r"(?:MwSt|USt|19%)\s*:?\s*(\d+[.,]\d{2})",
+            "vat_amount": r"(?:MwSt|USt|(?:\d{1,2}%))\s*:?\s*(\d+[.,]\d{2})",
             "gross_total": r"(?:Brutto|Gesamt|Endbetrag)\s*:?\s*(\d+[.,]\d{2})",
         }
 
         for key, pattern in patterns.items():
             match = re.search(pattern, text, re.IGNORECASE)
             if match:
-                totals[key] = match.group(1).replace(",", ".")
+                totals[key] = match.group(1).strip()
 
         return totals
+
+    def cleanup(self):
+        """Cleanup DataExtractor resources to prevent memory leaks"""
+        import gc
+
+        logger.info("🧹 Cleanup DataExtractor resources...")
+
+        # Cleanup Gemini model
+        if hasattr(self, "gemini_model") and self.gemini_model:
+            try:
+                del self.gemini_model
+                self.gemini_model = None
+            except Exception as e:
+                logger.warning(f"Gemini model cleanup warning: {e}")
+
+        # Note: DoclingProcessor is managed by ResourceManager singleton
+        # Don't cleanup shared resources here
+
+        # Force garbage collection
+        collected = gc.collect()
+        if collected > 0:
+            logger.info(f"DataExtractor GC: {collected} objects collected")
+
+        logger.info("✅ DataExtractor cleanup complete")

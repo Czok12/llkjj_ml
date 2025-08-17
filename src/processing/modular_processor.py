@@ -183,11 +183,16 @@ class ModularProcessor:
 
         try:
             # Basic PDF text extraction using PyMuPDF (faster and more reliable)
-            import fitz  # PyMuPDF  # type: ignore[import-untyped]
+            import importlib
+            from typing import Any
+
+            # Import dynamically so mypy won't attempt to analyze the external
+            # PyMuPDF package (which has no stubs/py.typed marker here).
+            fitz: Any = importlib.import_module("fitz")
 
             text_content = ""
             with fitz.open(pdf_path) as pdf_doc:
-                for page_num in range(pdf_doc.page_count):
+                for page_num in range(fitz.open(pdf_path).page_count):
                     page = pdf_doc[page_num]
                     text_content += page.get_text("text") + "\n"
 

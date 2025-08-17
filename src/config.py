@@ -5,7 +5,9 @@ Zentrale Konfiguration für die automatisierte PDF-Rechnungsverarbeitung
 für Elektrotechnik-Handwerk UG mit Gemini 2.5 Pro Integration.
 """
 
+import logging
 from pathlib import Path
+from typing import Any
 
 from dotenv import load_dotenv
 from pydantic import Field
@@ -13,6 +15,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Load environment variables
 load_dotenv()
+
+
+logger = logging.getLogger(__name__)
 
 
 class Config(BaseSettings):
@@ -65,9 +70,10 @@ class Config(BaseSettings):
     gwg_grenze: float = Field(default=800.0)  # GWG-Grenze für Anlagegüter
 
     # Default SKR03 Accounts (konfigurierbar via .env)
-    default_account_elektro: str = Field(default="4830")
-    default_account_office: str = Field(default="4935")
-    default_account_tools: str = Field(default="4600")
+    # Empfohlene, semantisch passende Defaults (werden beim Zugriff validiert)
+    default_account_elektro: str = Field(default="3400")
+    default_account_office: str = Field(default="4930")
+    default_account_tools: str = Field(default="4985")
     default_account_assets: str = Field(default="0490")
 
     # External Data Files
@@ -105,8 +111,9 @@ class Config(BaseSettings):
                     if line and not line.startswith("#"):
                         lieferanten.append(line)
                 return lieferanten
-        except Exception:
-            # Fallback bei Fehlern
+        except (OSError, UnicodeError) as e:
+            # Fallback bei Dateizugriffs- oder Dekodierungsfehlern
+            logger.warning("Fehler beim Lesen der Lieferanten-Datei: %s", e)
             return ["Rexel", "Conrad", "ELV", "Wago", "Phoenix Contact"]
 
     @property
@@ -118,6 +125,82 @@ class Config(BaseSettings):
             "tools": self.default_account_tools,
             "assets": self.default_account_assets,
         }
+
+    def _normalize_konto(self, konto: str) -> str:
+        """Normalisiert eine Kontonummer für Vergleich/Lookup.
+
+        Entfernt Nicht-Ziffern und führende Nullen. Liefert leere Zeichenkette
+        bei ungültigen Eingaben zurück.
+        """
+        if not konto:
+            return ""
+        digits = "".join(ch for ch in konto if ch.isdigit())
+        # Entferne führende Nullen, falls der Kontenplan ohne führende Nullen vorliegt
+        normalized = digits.lstrip("0")
+        return normalized or digits
+
+    def _load_kontenplan_parser(self) -> Any | None:
+        """Versucht, den Kontenplan-Parser zu laden (lazy import).
+
+        Gibt None zurück wenn der Parser oder die CSV nicht verfügbar ist.
+        """
+        try:
+            # Lazy import, um zyklische Importe zu vermeiden
+            from src.skr03_manager import KontenplanParser
+
+            kontenplan_path = self.project_root / "src" / "config" / "Kontenplan.csv"
+            if not kontenplan_path.exists():
+                logger.debug("Kontenplan-Datei nicht gefunden: %s", kontenplan_path)
+                return None
+            return KontenplanParser(kontenplan_path)
+        except (ImportError, OSError) as e:
+            logger.debug("KontenplanParser konnte nicht geladen werden: %s", e)
+            return None
+
+    @property
+    def default_accounts_validated(self) -> dict[str, str]:
+        """Gibt die Default-Accounts normalisiert und gegen den Kontenplan validiert zurück.
+
+        Wenn ein Default ungültig ist, wird ein sicheres Fallback-Konto verwendet und
+        eine Warnung geloggt.
+        """
+        mapping = self.default_accounts
+        parser = self._load_kontenplan_parser()
+
+        # Sinnvolle Fallbacks (konservativ)
+        fallbacks: dict[str, str] = {
+            "elektromaterial": "3400",
+            "office": "4930",
+            "tools": "4985",
+            "assets": "490",
+        }
+
+        validated: dict[str, str] = {}
+        for key, konto in mapping.items():
+            norm = self._normalize_konto(konto)
+            # Versuche Validierung gegen Kontenplan (falls verfügbar)
+            if parser:
+                if parser.ist_gueltig(norm):
+                    validated[key] = norm
+                elif parser.ist_gueltig(konto):
+                    # Falls der Kontenplan originale Form enthält
+                    validated[key] = konto
+                else:
+                    logger.warning(
+                        "Ungültiges Default-Konto '%s' für '%s' - nutze Fallback '%s'",
+                        konto,
+                        key,
+                        fallbacks[key],
+                    )
+                    validated[key] = fallbacks[key]
+            else:
+                # Ohne Kontenplan nur normalisiert zurückgeben (ohne Validierung)
+                if norm:
+                    validated[key] = norm
+                else:
+                    validated[key] = fallbacks[key]
+
+        return validated
 
     def __post_init__(self) -> None:
         """Erstelle notwendige Verzeichnisse"""

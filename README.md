@@ -35,7 +35,15 @@ Die Architektur ist modular und kommandozeilen-gesteuert. Die Logik ist in spezi
 
 Alle Befehle werden mit `poetry run python main.py ...` ausgeführt.
 
-### 4.1. Modulare Workflows
+### 4.1. Haupt-Workflow
+
+- **Einzelne PDF-Rechnung oder ganzen Ordner verarbeiten:**
+  ```bash
+  poetry run python main.py process PFAD_ZUR_RECHNUNG.pdf
+  poetry run python main.py process PFAD_ZUM_ORDNER/
+  ```
+
+### 4.2. Modulare Workflows (für Debugging)
 
 - **Workflow 1: Nur Text-Extraktion (PDF -> TXT)**
   ```bash
@@ -54,7 +62,7 @@ Alle Befehle werden mit `poetry run python main.py ...` ausgeführt.
   poetry run python main.py workflow4 PFAD_ZUR_RECHNUNG.pdf
   ```
 
-### 4.2. Datenbank-Management
+### 4.3. Datenbank-Management
 
 - **Datenbank initialisieren:**
   ```bash
@@ -68,16 +76,59 @@ Alle Befehle werden mit `poetry run python main.py ...` ausgeführt.
   ```bash
   poetry run python main.py database backup --name mein_backup
   ```
+- **Datenbank optimieren:**
+  ```bash
+  poetry run python main.py database optimize --path data/vectors
+  ```
 
-### 4.3. Training (Beispiel)
+### 4.4. Training
 
-- **Trainingsdaten exportieren:**
+- **Trainingsdaten exportieren (NER):**
   ```bash
   poetry run python main.py export data/processed/ --output data/training/training_data.jsonl
   ```
-- **Modell trainieren:**
+- **Modell trainieren (NER):**
   ```bash
   poetry run python main.py train data/training/training_data.jsonl --output output_model/
+  ```
+- **Trainingsdaten exportieren (Text-Klassifikation):**
+  ```bash
+  poetry run python main.py export-textcat data/processed/ --output data/training/textcat/
+  ```
+- **Modell trainieren (Text-Klassifikation):**
+  ```bash
+  poetry run python main.py train-textcat data/training/textcat/ --output output_model/textcat_model/
+  ```
+
+### 4.5. Security
+
+- **Security Audit durchführen:**
+  ```bash
+  poetry run python main.py security-audit
+  ```
+- **Produktionsumgebung validieren:**
+  ```bash
+  poetry run python main.py security-validate
+  ```
+- **API-Schlüssel verwalten:**
+  ```bash
+  poetry run python main.py security-keys list
+  poetry run python main.py security-keys store --service gemini --key "DEIN_KEY"
+  ```
+
+### 4.6. Feature Engineering
+
+- **Features für ein Dokument extrahieren:**
+  ```bash
+  poetry run python main.py extract-features data/processed/mein_dokument.json
+  ```
+- **Features für einen ganzen Ordner extrahieren:**
+  ```bash
+  poetry run python main.py extract-features-batch data/processed/
+  ```
+- **Feature-Pipeline analysieren:**
+  ```bash
+  poetry run python main.py analyze-features
   ```
 
 ## 5. Architektur

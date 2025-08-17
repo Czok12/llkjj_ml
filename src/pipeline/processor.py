@@ -39,6 +39,123 @@ from src.skr03_manager import lade_skr03_manager
 logger = logging.getLogger(__name__)
 
 
+class ResourceManager:
+    """
+    Singleton Resource Manager für schwere ML-Modelle und DB-Verbindungen.
+    Verhindert Memory-Leaks durch mehrfache Initialisierung.
+    """
+
+    _instance = None
+    _embedding_model = None
+    _chromadb_client = None
+    _skr03_manager = None
+    _docling_processor = None  # Add DoclingProcessor singleton
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+    def get_embedding_model(self) -> SentenceTransformer:
+        """Lazy-loaded Singleton SentenceTransformer"""
+        if self._embedding_model is None:
+            logger.info("🔄 Lade SentenceTransformer (Singleton)...")
+            self._embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
+            logger.info("✅ SentenceTransformer geladen")
+        return self._embedding_model
+
+    def get_chromadb_client(self, db_path: str) -> Any:
+        """Lazy-loaded Singleton ChromaDB Client"""
+        if self._chromadb_client is None:
+            logger.info("🔄 Lade ChromaDB Client (Singleton)...")
+            # Deaktiviere ChromaDB Telemetry für saubere Logs
+            os.environ["ANONYMIZED_TELEMETRY"] = "False"
+            self._chromadb_client = chromadb.PersistentClient(path=db_path)
+            logger.info("✅ ChromaDB Client geladen")
+        return self._chromadb_client
+
+    def get_skr03_manager(self):
+        """Lazy-loaded Singleton SKR03 Manager"""
+        if self._skr03_manager is None:
+            logger.info("🔄 Lade SKR03Manager (Singleton)...")
+            self._skr03_manager = lade_skr03_manager()
+            logger.info("✅ SKR03Manager geladen")
+        return self._skr03_manager
+
+    def get_docling_processor(self):
+        """Lazy-loaded Singleton DoclingProcessor"""
+        if self._docling_processor is None:
+            logger.info("🔄 Lade DoclingProcessor (Singleton)...")
+            from src.extraction.docling_processor import AdvancedDoclingProcessor
+
+            self._docling_processor = AdvancedDoclingProcessor(
+                use_gpu=True,
+                ocr_engine="rapid",
+                table_mode="accurate",
+                german_optimized=True,
+            )
+            logger.info("✅ DoclingProcessor geladen")
+        return self._docling_processor
+
+    def cleanup(self):
+        """Explicitly cleanup all resources to prevent memory leaks"""
+        import gc
+
+        import torch
+
+        logger.info("🧹 Bereinige ResourceManager...")
+
+        # Cleanup ChromaDB client
+        if self._chromadb_client:
+            try:
+                # ChromaDB hat keine explizite close(), aber reset das Objekt
+                self._chromadb_client = None
+            except Exception as e:
+                logger.warning(f"ChromaDB cleanup warning: {e}")
+
+        # Cleanup embedding model with explicit torch cache clear
+        if self._embedding_model:
+            try:
+                # Clear CUDA cache if available
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+
+                # Delete embedding model
+                del self._embedding_model
+                self._embedding_model = None
+            except Exception as e:
+                logger.warning(f"Embedding model cleanup warning: {e}")
+
+        # Cleanup Docling processor
+        if self._docling_processor:
+            try:
+                # Delete docling processor
+                del self._docling_processor
+                self._docling_processor = None
+            except Exception as e:
+                logger.warning(f"DoclingProcessor cleanup warning: {e}")
+
+        # Cleanup SKR03 manager
+        if self._skr03_manager:
+            try:
+                del self._skr03_manager
+                self._skr03_manager = None
+            except Exception as e:
+                logger.warning(f"SKR03 manager cleanup warning: {e}")
+
+        # Force garbage collection multiple times
+        for i in range(5):
+            collected = gc.collect()
+            if collected > 0:
+                logger.info(f"GC Pass {i+1}: {collected} objects collected")
+
+        logger.info("✅ ResourceManager bereinigt")
+
+
+# Global Resource Manager Instance
+_resource_manager = ResourceManager()
+
+
 class ProcessingResult(BaseModel):
     """
     Unified result from PDF processing pipeline.
@@ -142,14 +259,13 @@ class UnifiedProcessor:
     quality_assessor: Any  # QualityAssessor
 
     def __init__(self, cfg: Config | None = None):
-        """Initialize unified processor with modular components"""
+        """Initialize unified processor with modular components using singleton resources"""
         self.config = cfg or Config()
         self._setup_logging()
         self._setup_vector_db()
 
-        # Initialize SKR03 Manager for rule-based classification
-        self.skr03_manager = lade_skr03_manager()
-        logger.info("✅ SKR03Manager loaded successfully")
+        # Use singleton resources to prevent memory leaks
+        self.skr03_manager = _resource_manager.get_skr03_manager()
 
         # Initialize Gemini model if API key is available
         gemini_model = self._setup_gemini_model()
@@ -161,6 +277,70 @@ class UnifiedProcessor:
         )
         self.quality_assessor = QualityAssessor()
 
+    def cleanup(self):
+        """Cleanup resources - call this after processing to free memory"""
+        import gc
+
+        logger.info("🧹 Cleanup UnifiedProcessor resources...")
+
+        # Explicit cleanup of all components
+        if hasattr(self, "extractor") and self.extractor:
+            try:
+                # Clear any cached models in extractor
+                if hasattr(self.extractor, "cleanup"):
+                    self.extractor.cleanup()
+                del self.extractor
+            except Exception as e:
+                logger.warning(f"Extractor cleanup warning: {e}")
+
+        if hasattr(self, "classifier") and self.classifier:
+            try:
+                del self.classifier
+            except Exception as e:
+                logger.warning(f"Classifier cleanup warning: {e}")
+
+        if hasattr(self, "quality_assessor") and self.quality_assessor:
+            try:
+                del self.quality_assessor
+            except Exception as e:
+                logger.warning(f"Quality assessor cleanup warning: {e}")
+
+        if hasattr(self, "invoice_collection") and self.invoice_collection:
+            try:
+                del self.invoice_collection
+            except Exception as e:
+                logger.warning(f"Invoice collection cleanup warning: {e}")
+
+        if hasattr(self, "embedding_model") and self.embedding_model:
+            try:
+                del self.embedding_model
+            except Exception as e:
+                logger.warning(f"Embedding model cleanup warning: {e}")
+
+        if hasattr(self, "client") and self.client:
+            try:
+                del self.client
+            except Exception as e:
+                logger.warning(f"Client cleanup warning: {e}")
+
+        # Clear all references
+        self.extractor = None
+        self.classifier = None
+        self.quality_assessor = None
+        self.invoice_collection = None
+        self.embedding_model = None
+        self.client = None
+
+        # Force garbage collection
+        for i in range(3):
+            collected = gc.collect()
+            if collected > 0:
+                logger.info(
+                    f"UnifiedProcessor GC Pass {i+1}: {collected} objects collected"
+                )
+
+        logger.info("✅ UnifiedProcessor cleanup complete")
+
     def _setup_logging(self) -> None:
         """Configure logging for the processor"""
         logging.basicConfig(
@@ -169,14 +349,11 @@ class UnifiedProcessor:
         )
 
     def _setup_vector_db(self) -> None:
-        """Setup ChromaDB and embedding model for RAG system"""
+        """Setup ChromaDB and embedding model for RAG system using singletons"""
         try:
-            # Deaktiviere ChromaDB Telemetry für saubere Logs
-            os.environ["ANONYMIZED_TELEMETRY"] = "False"
-
-            # Initialize ChromaDB client
-            self.client = chromadb.PersistentClient(
-                path=str(self.config.vector_db_path)
+            # Use singleton ChromaDB client
+            self.client = _resource_manager.get_chromadb_client(
+                str(self.config.vector_db_path)
             )
 
             # Get or create collection for invoices
@@ -187,10 +364,10 @@ class UnifiedProcessor:
                 },
             )
 
-            # Initialize embedding model for semantic search
-            self.embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
+            # Use singleton embedding model
+            self.embedding_model = _resource_manager.get_embedding_model()
 
-            logger.info("✅ ChromaDB und Embedding-Model initialisiert")
+            logger.info("✅ ChromaDB und Embedding-Model initialisiert (Singleton)")
 
         except Exception as e:
             logger.error("❌ Fehler bei Vektordatenbank-Setup: %s", e)
