@@ -25,9 +25,15 @@ from src.processing.modular_processor import ModularProcessor
 from src.trainer import TrainingService
 
 
-def setup_logging(verbose: bool = False) -> None:
+def setup_logging(verbose: bool = False, production: bool = False) -> None:
     """Configure logging for CLI"""
-    level = logging.DEBUG if verbose else logging.INFO
+    if production:
+        # Produktions-Modus: Nur Warnungen und Fehler
+        level = logging.WARNING
+    else:
+        # Development-Modus: Debug oder Info
+        level = logging.DEBUG if verbose else logging.INFO
+
     logging.basicConfig(
         level=level,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",

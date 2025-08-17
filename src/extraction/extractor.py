@@ -1,6 +1,13 @@
 #!/usr/bin/env python3
 """
-LLKJJ ML Pipeline - Data Extraction Module
+LLKJJ ML Pipeline - Da        self.docling_processor = AdvancedDoclingProcessor(
+            use_gpu=True,
+            enable_table_structure=True,
+            enable_ocr=True,
+            ocr_engine="tesseract_cli",  # Beste deutsche OCR
+            table_mode="accurate",
+            german_optimized=True  # Deutsche NER aktiviert
+        )raction Module
 ==========================================
 
 This module handles all data extraction functionality:
@@ -25,9 +32,8 @@ import re
 from pathlib import Path
 from typing import Any
 
-from docling.document_converter import DocumentConverter
-
 from src.config import Config
+from src.extraction.docling_processor import AdvancedDoclingProcessor
 
 logger = logging.getLogger(__name__)
 
@@ -48,12 +54,22 @@ class DataExtractor:
         """Initialize data extractor with optional Gemini model and config"""
         self.gemini_model = gemini_model
         self.config = config or Config()
-        self.document_converter = DocumentConverter()
-        logger.info("DataExtractor initialized with German optimization")
+        self.docling_processor = AdvancedDoclingProcessor(
+            use_gpu=True,
+            enable_table_structure=True,
+            enable_ocr=True,
+            ocr_engine="tesseract_cli",  # Startet mit TesseractCLI, fällt auf robuste Engines zurück
+            table_mode="accurate",
+            german_optimized=True,  # Deutsche NER + intelligentes OCR-Fallback
+        )
+        logger.info("DataExtractor initialized with optimized Docling processor")
 
     def process_pdf(self, pdf_path: Path) -> dict[str, Any]:
         """
-        Hauptmethode für PDF-Extraktion - Öffentliche API.
+        Hauptmethode für PDF-Extraktion mit intelligenter OCR-Fallback-Logik.
+
+        2025 Update: Nutzt das neue process() System mit automatischer
+        OCR-Engine-Auswahl für maximale Robustheit.
 
         Args:
             pdf_path: Pfad zur PDF-Datei
@@ -62,10 +78,45 @@ class DataExtractor:
             Dictionary mit strukturierten Extraktionsergebnissen
         """
         try:
-            logger.info("🔍 Starte PDF-Extraktion: %s", pdf_path.name)
+            logger.info("🔍 Starte intelligente PDF-Extraktion: %s", pdf_path.name)
 
-            # Phase 1: Docling-Extraktion
-            raw_result = self.extract_with_docling(pdf_path)
+            # Phase 1: Intelligente Docling-Extraktion mit OCR-Fallback
+            try:
+                # Neue intelligente Methode mit OCR-Fallback
+                result, quality_score = self.docling_processor.process(str(pdf_path))
+
+                logger.info("✅ Intelligente Extraktion erfolgreich:")
+                logger.info(f"   Engine: {result['ocr_engine_used']}")
+                logger.info(
+                    f"   Versuch: {result['attempt_number']}/{result['total_attempts']}"
+                )
+                logger.info(f"   Qualität: {quality_score:.2f}")
+
+                # Strukturierte Daten aus intelligentem Result verwenden
+                if "structured_data" in result:
+                    raw_result = result["structured_data"]
+                else:
+                    # Fallback: Strukturierte Extraktion aus Content
+                    raw_result = {
+                        "raw_text": result["content"],
+                        "tables": [],
+                        "pages": result["pages"],
+                        "processing_metadata": {
+                            "ocr_engine_used": result["ocr_engine_used"],
+                            "quality_score": quality_score,
+                            "processing_time": result["processing_time"],
+                            "character_count": result["character_count"],
+                            "attempt_number": result["attempt_number"],
+                            "total_attempts": result["total_attempts"],
+                            "german_ner_applied": result["german_ner_applied"],
+                        },
+                    }
+
+            except Exception as e:
+                logger.warning(f"⚠️ Intelligente Extraktion fehlgeschlagen: {e}")
+                logger.info("🔄 Fallback auf Standard process_pdf...")
+                # Fallback: Standard process_pdf
+                raw_result = self.docling_processor.process_pdf(pdf_path)
 
             # Phase 2: Strukturierte Datenextraktion
             structured_data = self.extract_structured_data(raw_result)
@@ -107,75 +158,6 @@ class DataExtractor:
         except Exception as e:
             logger.error("❌ Fehler bei PDF-Extraktion: %s", e)
             raise
-
-    def extract_with_docling(self, pdf_path: Path) -> dict[str, Any]:
-        """Extract data using Docling with optimized settings"""
-        try:
-            # Convert PDF with optimized pipeline
-            conv_result = self.document_converter.convert(str(pdf_path))
-
-            # Extract structured data
-            raw_text = conv_result.document.export_to_markdown()
-
-            # Extract tables (invoice positions)
-            tables = []
-            for table in conv_result.document.tables:
-                # Convert table to structured format
-                table_data = self.parse_table_data(table)
-                if table_data:
-                    tables.append(table_data)
-
-            result = {
-                "raw_text": raw_text,
-                "tables": tables,
-                "page_count": len(conv_result.document.pages),
-                "extraction_method": "docling_optimized",
-            }
-
-            logger.debug(f"Docling extracted {len(tables)} tables from {pdf_path.name}")
-            return result
-
-        except Exception as e:
-            logger.error(f"Docling extraction failed for {pdf_path}: {e}")
-            # Fallback to basic text extraction
-            return {
-                "raw_text": f"Extraction failed: {str(e)}",
-                "tables": [],
-                "page_count": 0,
-                "extraction_method": "fallback",
-            }
-
-    def parse_table_data(self, table: Any) -> dict[str, Any] | None:
-        """Parse Docling table into structured invoice positions"""
-        try:
-            # Extract table structure
-            rows = []
-            if hasattr(table, "data") and table.data:
-                for row in table.data:
-                    if hasattr(row, "cells"):
-                        row_data = [
-                            cell.text.strip() if hasattr(cell, "text") else str(cell)
-                            for cell in row.cells
-                        ]
-                        if any(row_data):  # Skip empty rows
-                            rows.append(row_data)
-
-            if not rows:
-                return None
-
-            # Detect header and data rows
-            header_row = rows[0] if rows else []
-            data_rows = rows[1:] if len(rows) > 1 else []
-
-            return {
-                "headers": header_row,
-                "rows": data_rows,
-                "row_count": len(data_rows),
-            }
-
-        except Exception as e:
-            logger.warning(f"Table parsing failed: {e}")
-            return None
 
     def enhance_with_gemini(self, raw_data: dict[str, Any]) -> dict[str, Any]:
         """Enhance extraction using Gemini AI with German language optimization"""
@@ -248,11 +230,26 @@ WICHTIG:
                 contents=prompt,
             )
 
-            # Parse Gemini response - new API returns different structure
+            # Parse Gemini response - robust JSON handling
             response_text = (
                 response.text if hasattr(response, "text") else str(response)
             )
-            enhanced_data: dict[str, Any] = json.loads(response_text)
+
+            # Debug logging for Gemini response
+            logger.debug(f"Gemini Response: {response_text[:500]}...")
+
+            # Safe JSON parsing with fallback
+            try:
+                if not response_text or response_text.strip() == "":
+                    logger.warning("Gemini returned empty response")
+                    enhanced_data = {}
+                else:
+                    enhanced_data: dict[str, Any] = json.loads(response_text)
+            except json.JSONDecodeError as json_error:
+                logger.warning(
+                    f"Gemini JSON decode error: {json_error}, using fallback"
+                )
+                enhanced_data = {}
             enhanced_data.update(raw_data)  # Merge with raw data
             enhanced_data["enhancement_method"] = "gemini"
             enhanced_data["language"] = "de"  # Explicitly mark as German

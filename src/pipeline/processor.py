@@ -16,6 +16,7 @@ Version: 2.1.0 (Post-Konsolidierung Refactoring)
 
 import json
 import logging
+import os
 import time
 from dataclasses import asdict, dataclass
 from datetime import datetime
@@ -115,6 +116,9 @@ class UnifiedProcessor:
     def _setup_vector_db(self) -> None:
         """Setup ChromaDB and embedding model for RAG system"""
         try:
+            # Deaktiviere ChromaDB Telemetry für saubere Logs
+            os.environ["ANONYMIZED_TELEMETRY"] = "False"
+
             # Initialize ChromaDB client
             self.client = chromadb.PersistentClient(
                 path=str(self.config.vector_db_path)
@@ -280,7 +284,7 @@ class UnifiedProcessor:
                 "confidence": float(
                     item.get("confidence", 0.0)
                 ),  # FIXED: Add confidence field for RAG querying
-                "amount": float(str(item.get("amount", "0")).replace(",", ".")),
+                "amount": self._parse_safe_float(item.get("amount", "0")),
                 "pdf_path": str(proc_result.pdf_path),
             }
             metadatas_to_store.append(metadata)
@@ -289,16 +293,43 @@ class UnifiedProcessor:
             ids_to_add.append(f"{Path(proc_result.pdf_path).stem}_{i}")
 
         try:
-            # Vektoren erstellen
-            embeddings = self.embedding_model.encode(documents_to_embed).tolist()
+            # Prüfe auf existierende IDs um Warnungen zu vermeiden
+            existing_ids = []
+            if ids_to_add:
+                try:
+                    existing_items = self.invoice_collection.get(ids=ids_to_add)
+                    existing_ids = existing_items["ids"] if existing_items else []
+                except Exception:
+                    # Falls get() fehlschlägt, fahre normal fort
+                    existing_ids = []
 
-            # In ChromaDB speichern
-            self.invoice_collection.add(
-                embeddings=embeddings,
-                documents=documents_to_embed,
-                metadatas=metadatas_to_store,
-                ids=ids_to_add,
-            )
+            # Nur neue Items hinzufügen (oder upsert verwenden)
+            if existing_ids:
+                logger.debug(
+                    "Verwende upsert für %d existierende Items", len(existing_ids)
+                )
+                # Vektoren erstellen
+                embeddings = self.embedding_model.encode(documents_to_embed).tolist()
+
+                # Upsert statt add um Duplikate zu vermeiden
+                self.invoice_collection.upsert(
+                    embeddings=embeddings,
+                    documents=documents_to_embed,
+                    metadatas=metadatas_to_store,
+                    ids=ids_to_add,
+                )
+            else:
+                # Vektoren erstellen
+                embeddings = self.embedding_model.encode(documents_to_embed).tolist()
+
+                # Normale Addition für neue Items
+                self.invoice_collection.add(
+                    embeddings=embeddings,
+                    documents=documents_to_embed,
+                    metadatas=metadatas_to_store,
+                    ids=ids_to_add,
+                )
+
             logger.info(
                 "%d Positionen für '%s' in Vektordatenbank gespeichert.",
                 len(items),
@@ -328,6 +359,49 @@ class UnifiedProcessor:
 
         logger.info("Results saved to: %s", output_path)
         return output_path
+
+    def _parse_safe_float(self, value: str | float | int) -> float:
+        """
+        Sichere Float-Konvertierung mit Fallback.
+
+        Args:
+            value: Wert zur Konvertierung
+
+        Returns:
+            Float-Wert oder 0.0 bei Fehlern
+        """
+        if isinstance(value, int | float):
+            return float(value)
+
+        try:
+            # String-Bereinigung
+            clean_value = str(value).strip()
+
+            # Leer oder None
+            if not clean_value or clean_value.lower() in ["none", "null", ""]:
+                return 0.0
+
+            # Nur Zahlen und Komma/Punkt enthalten
+            import re
+
+            # Entferne alle nicht-numerischen Zeichen außer Komma und Punkt
+            clean_value = re.sub(r"[^\d,.-]", "", clean_value)
+
+            # Deutsche Notation: Komma als Dezimaltrennzeichen
+            clean_value = clean_value.replace(",", ".")
+
+            # Multiple Punkte handhaben (z.B. "1.234.56" -> "1234.56")
+            if clean_value.count(".") > 1:
+                parts = clean_value.split(".")
+                clean_value = "".join(parts[:-1]) + "." + parts[-1]
+
+            return float(clean_value)
+
+        except (ValueError, AttributeError):
+            logger.warning(
+                f"Konnte Wert nicht zu Float konvertieren: '{value}', verwende 0.0"
+            )
+            return 0.0
 
 
 # Convenience functions for backward compatibility
