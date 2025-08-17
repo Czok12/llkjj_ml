@@ -5,8 +5,11 @@ LLKJJ ML Pipeline - Data Extraction Module
 
 This module handles all data extraction functionality:
 - PDF text extraction with Docling
-- Table parsing and structure recognition
-- Gemini AI enhancement
+- Table parsing and structure recogni            # Use new google-genai API: client.models.generate_content
+            response = self.gemini_model.models.generate_content(
+                model=self.config.gemini_model,  # Use the model from config
+                contents=prompt
+            )- Gemini AI enhancement
 - Pattern-based fallback extraction
 - Invoice header and line item extraction
 
@@ -24,6 +27,8 @@ from typing import Any
 
 from docling.document_converter import DocumentConverter
 
+from src.config import Config
+
 logger = logging.getLogger(__name__)
 
 
@@ -39,9 +44,10 @@ class DataExtractor:
     - Invoice header and line item extraction
     """
 
-    def __init__(self, gemini_model: Any = None) -> None:
-        """Initialize data extractor with optional Gemini model"""
+    def __init__(self, gemini_model: Any = None, config: Config | None = None) -> None:
+        """Initialize data extractor with optional Gemini model and config"""
         self.gemini_model = gemini_model
+        self.config = config or Config()
         self.document_converter = DocumentConverter()
         logger.info("DataExtractor initialized with German optimization")
 
@@ -236,10 +242,17 @@ WICHTIG:
                 logger.warning("Gemini model not available, using fallback extraction")
                 return self.extract_structured_data(raw_data)
 
-            response = self.gemini_model.generate_content(prompt)
+            # Use new google-genai API: client.models.generate_content
+            response = self.gemini_model.models.generate_content(
+                model=self.config.gemini_model,  # Use the model from config
+                contents=prompt,
+            )
 
-            # Parse Gemini response
-            enhanced_data: dict[str, Any] = json.loads(response.text)
+            # Parse Gemini response - new API returns different structure
+            response_text = (
+                response.text if hasattr(response, "text") else str(response)
+            )
+            enhanced_data: dict[str, Any] = json.loads(response_text)
             enhanced_data.update(raw_data)  # Merge with raw data
             enhanced_data["enhancement_method"] = "gemini"
             enhanced_data["language"] = "de"  # Explicitly mark as German

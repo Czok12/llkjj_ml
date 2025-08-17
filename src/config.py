@@ -9,7 +9,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from pydantic import Field
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Load environment variables
 load_dotenv()
@@ -18,9 +18,13 @@ load_dotenv()
 class Config(BaseSettings):
     """Hauptkonfiguration für LLKJJ ML Pipeline"""
 
+    model_config = SettingsConfigDict(
+        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+    )
+
     # API Configuration
     google_api_key: str | None = Field(default=None)
-    gemini_model: str = Field(default="gemini-2.5-pro")
+    gemini_model: str = Field(default="gemini-2.0-flash-exp")
 
     # Paths
     project_root: Path = Path(__file__).parent.parent
@@ -76,11 +80,6 @@ class Config(BaseSettings):
         "Busch-Jaeger",
         "Berker",
     ]
-
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
-        extra = "ignore"  # Ignoriere unbekannte Felder aus .env
 
     def __post_init__(self) -> None:
         """Erstelle notwendige Verzeichnisse"""

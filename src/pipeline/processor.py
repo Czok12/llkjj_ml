@@ -26,7 +26,7 @@ import chromadb
 from sentence_transformers import SentenceTransformer
 
 try:
-    import google.generativeai as genai  # type: ignore[import-untyped]
+    from google import genai  # type: ignore[import-untyped]
 except ImportError:
     genai = None
 
@@ -93,8 +93,8 @@ class UnifiedProcessor:
         # Initialize Gemini model if API key is available
         gemini_model = self._setup_gemini_model()
 
-        # Initialize specialized modules
-        self.extractor = DataExtractor(gemini_model=gemini_model)
+        # Initialize components with config
+        self.extractor = DataExtractor(gemini_model=gemini_model, config=self.config)
         self.classifier = DataClassifier(vector_store=self.invoice_collection)
         self.quality_assessor = QualityAssessor()
 
@@ -144,13 +144,13 @@ class UnifiedProcessor:
                 logger.warning("⚠️ Keine Google API Key gefunden - Gemini deaktiviert")
                 return None
 
-            # Configure and initialize Gemini
-            # Note: Google AI library lacks proper type stubs
-            genai.configure(api_key=self.config.google_api_key)
-            model = genai.GenerativeModel(self.config.gemini_model)
+            # Configure and initialize Gemini Client (new google-genai API)
+            client = genai.Client(api_key=self.config.google_api_key)
 
-            logger.info("✅ Gemini %s initialisiert", self.config.gemini_model)
-            return model
+            logger.info(
+                "✅ Gemini Client initialisiert für %s", self.config.gemini_model
+            )
+            return client
 
         except Exception as e:
             logger.warning("⚠️ Gemini-Setup fehlgeschlagen: %s", e)
