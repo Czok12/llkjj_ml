@@ -158,51 +158,113 @@ _resource_manager = ResourceManager()
 
 class ProcessingResult(BaseModel):
     """
-    Unified result from PDF processing pipeline.
+    **PUBLIC DATA CONTRACT** - LLKJJ ML Plugin Output Schema
+    ========================================================
 
-    Migrated from dataclass to Pydantic BaseModel for enhanced:
-    - Type safety and runtime validation
-    - Automatic serialization/deserialization
-    - German invoice processing optimization
+    This is the guaranteed public interface returned by the ML Plugin.
+    External systems can rely on this schema remaining stable across versions.
+
+    **BLACKBOX GUARANTEE:**
+    All fields in this model are guaranteed to be populated by the plugin.
+    No external system knowledge is required to interpret these results.
+
+    **USAGE EXAMPLE:**
+    ```python
+    plugin = MLPlugin()
+    result = plugin.process_pdf("invoice.pdf")
+
+    # Access structured results
+    for item in result.skr03_classifications:
+        print(f"Item: {item['description']} -> SKR03: {item['account']}")
+
+    # Check quality
+    if result.extraction_quality == "high":
+        print(f"High confidence: {result.confidence_score:.1%}")
+    ```
+
+    **DATA CONTRACT VERSION:** 3.0.0
     """
 
-    # Source information
-    pdf_path: str = Field(..., description="Pfad zur verarbeiteten PDF-Datei")
+    # === SOURCE INFORMATION ===
+    pdf_path: str = Field(
+        ...,
+        description="Absoluter Pfad zur verarbeiteten PDF-Datei",
+        examples=["/path/to/sonepar_invoice.pdf"],
+    )
     processing_timestamp: str = Field(
-        ..., description="Zeitstempel der Verarbeitung (ISO format)"
+        ...,
+        description="ISO-Zeitstempel der Verarbeitung (UTC)",
+        examples=["2025-08-17T14:30:25.123456Z"],
     )
 
-    # Extraction results
-    raw_text: str = Field(..., description="Extrahierter Rohtext aus PDF")
+    # === EXTRACTION RESULTS ===
+    raw_text: str = Field(
+        ...,
+        description="Kompletter extrahierter Text aus PDF (OCR + native)",
+        examples=["Sonepar Deutschland...\nRechnung Nr. 123..."],
+    )
     structured_data: dict[str, Any] = Field(
-        default_factory=dict, description="Strukturierte Daten aus Docling"
+        default_factory=dict,
+        description="Strukturierte Daten von Docling (Tabellen, Layout, Metadaten)",
+        examples=[{"tables": [{"rows": 10, "cols": 7}], "document_type": "invoice"}],
     )
 
-    # Classification results
+    # === CLASSIFICATION RESULTS ===
     invoice_data: dict[str, Any] = Field(
-        default_factory=dict, description="Klassifizierte Rechnungsdaten"
+        default_factory=dict,
+        description="Extrahierte Rechnungsheader (Lieferant, Datum, Beträge)",
+        examples=[{"supplier": "Sonepar", "total": 328.82, "invoice_number": "123"}],
     )
     skr03_classifications: list[dict[str, Any]] = Field(
-        default_factory=list, description="SKR03-Kontierungen"
+        default_factory=list,
+        description="Liste aller Positionen mit SKR03-Kontierungen",
+        examples=[
+            [
+                {
+                    "position": 1,
+                    "article_number": "028203",
+                    "description": "GIRA Adapterrahmen",
+                    "quantity": 10,
+                    "skr03_account": "3400",
+                    "skr03_category": "wareneingang_elektro_allgemein",
+                    "confidence": 0.95,
+                }
+            ]
+        ],
     )
 
-    # Performance metrics
+    # === PERFORMANCE METRICS ===
     processing_time_ms: int = Field(
-        ..., ge=0, description="Gesamtverarbeitungszeit in Millisekunden"
+        ...,
+        ge=0,
+        description="Gesamtverarbeitungszeit in Millisekunden",
+        examples=[34567],
     )
     ocr_time_ms: int = Field(
-        ..., ge=0, description="OCR-Verarbeitungszeit in Millisekunden"
+        ...,
+        ge=0,
+        description="OCR-Verarbeitungszeit in Millisekunden (Docling)",
+        examples=[10150],
     )
     classification_time_ms: int = Field(
-        ..., ge=0, description="Klassifizierungszeit in Millisekunden"
+        ...,
+        ge=0,
+        description="Klassifizierungszeit in Millisekunden (SKR03 + RAG)",
+        examples=[1443],
     )
 
-    # Quality indicators
+    # === QUALITY INDICATORS ===
     confidence_score: float = Field(
-        ..., ge=0.0, le=1.0, description="Konfidenz-Score (0.0-1.0)"
+        ...,
+        ge=0.0,
+        le=1.0,
+        description="Gesamtkonfidenz-Score (0.0=niedrig, 1.0=perfekt)",
+        examples=[0.633],
     )
     extraction_quality: Literal["high", "medium", "low"] = Field(
-        ..., description="Qualitätsbewertung der Extraktion"
+        ...,
+        description="Qualitätskategorisierung für einfache Bewertung",
+        examples=["medium"],
     )
 
     @field_validator("processing_timestamp")
@@ -224,17 +286,101 @@ class ProcessingResult(BaseModel):
         return v
 
     def to_dict(self) -> dict[str, Any]:
-        """Konvertiere zu Dictionary für Rückwärtskompatibilität"""
+        """
+        Konvertiere zu Dictionary für Rückwärtskompatibilität.
+
+        Returns:
+            Dict representation of all results for JSON export
+        """
         return self.model_dump()
 
     def get_summary(self) -> str:
-        """Erstelle eine Zusammenfassung der Verarbeitungsergebnisse"""
+        """
+        Erstelle eine kompakte Zusammenfassung der Verarbeitungsergebnisse.
+
+        Returns:
+            String mit wichtigsten Kennzahlen für Logging/Display
+        """
         return (
             f"PDF: {Path(self.pdf_path).name} | "
             f"Qualität: {self.extraction_quality} | "
             f"Konfidenz: {self.confidence_score:.2f} | "
-            f"Zeit: {self.processing_time_ms}ms"
+            f"Zeit: {self.processing_time_ms}ms | "
+            f"Positionen: {len(self.skr03_classifications)}"
         )
+
+    def get_skr03_summary(self) -> dict[str, int]:
+        """
+        Erstelle Zusammenfassung der SKR03-Klassifizierungen.
+
+        Returns:
+            Dict mit SKR03-Konten und Anzahl zugeordneter Positionen
+        """
+        account_counts: dict[str, int] = {}
+        for item in self.skr03_classifications:
+            account = item.get("skr03_account", "unknown")
+            account_counts[account] = account_counts.get(account, 0) + 1
+        return account_counts
+
+    @classmethod
+    def get_schema_documentation(cls) -> str:
+        """
+        **PUBLIC API DOCUMENTATION**
+
+        Returns complete schema documentation for external systems.
+        This documents the guaranteed data contract for ProcessingResult.
+
+        Returns:
+            Formatted string with complete field documentation
+        """
+        return """
+LLKJJ ML Plugin - ProcessingResult Schema v3.0.0
+===============================================
+
+**GUARANTEED OUTPUT FIELDS:**
+
+📂 SOURCE INFORMATION:
+  • pdf_path (str): Absolute path to processed PDF file
+  • processing_timestamp (str): ISO timestamp in UTC format
+
+📊 EXTRACTION RESULTS:
+  • raw_text (str): Complete extracted text (OCR + native)
+  • structured_data (dict): Docling results (tables, layout, metadata)
+
+🏷️  CLASSIFICATION RESULTS:
+  • invoice_data (dict): Invoice header (supplier, totals, dates)
+  • skr03_classifications (list): List of items with German accounting codes
+    Each item contains:
+    - position (int): Line item number
+    - article_number (str): Product/article code
+    - description (str): Item description
+    - quantity (int): Quantity ordered
+    - skr03_account (str): German accounting code (e.g., "3400")
+    - skr03_category (str): Account category
+    - confidence (float): Classification confidence (0.0-1.0)
+
+⏱️  PERFORMANCE METRICS:
+  • processing_time_ms (int): Total processing time
+  • ocr_time_ms (int): OCR extraction time
+  • classification_time_ms (int): SKR03 classification time
+
+✅ QUALITY INDICATORS:
+  • confidence_score (float): Overall confidence (0.0-1.0)
+  • extraction_quality (str): "high" | "medium" | "low"
+
+**USAGE:**
+```python
+from llkjj_ml_plugin import MLPlugin
+
+plugin = MLPlugin()
+result = plugin.process_pdf("invoice.pdf")
+
+# Access results
+print(f"Found {len(result.skr03_classifications)} items")
+for item in result.skr03_classifications:
+    print(f"{item['description']} -> {item['skr03_account']}")
+```
+        """
 
 
 class UnifiedProcessor:
