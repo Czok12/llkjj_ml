@@ -1,0 +1,50 @@
+{
+  "deployment_timestamp": "2025-08-17T15:54:01.263495",
+  "environment": "development",
+  "configuration": {
+    "environment": "development",
+    "debug": true,
+    "logging_level": "DEBUG",
+    "ml_config": {
+      "model_cache_size": 100,
+      "batch_size": 16,
+      "gpu_enabled": false,
+      "cpu_threads": 4,
+      "memory_limit_gb": 4,
+      "timeout_seconds": 300
+    },
+    "security_config": {
+      "enable_encryption": false,
+      "api_rate_limit": 10000,
+      "session_timeout_minutes": 30,
+      "max_upload_size_mb": 50,
+      "allowed_file_types": [
+        "pdf"
+      ]
+    }
+  },
+  "system_info": {
+    "cpu_count": 11,
+    "memory_total_gb": 18.0,
+    "disk_total_gb": 460.4317207336426,
+    "python_version": "3.12.11 (main, Jun  3 2025, 15:41:47) [Clang 17.0.0 (clang-1700.0.13.3)]"
+  },
+  "health_status": {
+    "status": "unhealthy",
+    "components": {
+      "memory": "degraded",
+      "disk": "healthy",
+      "cpu": "healthy",
+      "ml_models": "unhealthy",
+      "chromadb": "healthy"
+    },
+    "memory_usage_percent": 81.7,
+    "disk_usage_percent": 5.0,
+    "cpu_usage_percent": 25.5,
+    "timestamp": "2025-08-17T15:54:02.271044"
+  },
+  "performance_metrics": {},
+  "recommendations": [
+    "Consider increasing system memory"
+  ]
+}

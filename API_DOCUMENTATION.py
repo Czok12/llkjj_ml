@@ -222,7 +222,7 @@ class SKR03ClassificationSchema:
 # =============================================================================
 
 
-def example_simple_usage():
+def example_simple_usage() -> None:
     """Example: Simple one-shot processing"""
     from llkjj_ml_plugin import process_pdf_simple
 
@@ -235,7 +235,7 @@ def example_simple_usage():
         print(f"  {item['description']} -> SKR03: {item['skr03_account']}")
 
 
-def example_batch_processing():
+def example_batch_processing() -> None:
     """Example: Batch processing with resource management"""
     from pathlib import Path
 
@@ -261,7 +261,7 @@ def example_batch_processing():
         plugin.cleanup()  # Important: cleanup resources
 
 
-def example_integration_check():
+def example_integration_check() -> None:
     """Example: Check plugin capabilities before use"""
     from llkjj_ml_plugin import MLPlugin
 
@@ -296,7 +296,7 @@ class IntegrationPatterns:
     """
 
     @staticmethod
-    def web_api_integration():
+    def web_api_integration() -> None:
         """
         Pattern: Web API endpoint
 
@@ -314,7 +314,7 @@ class IntegrationPatterns:
         ml_plugin = MLPlugin()
 
         @app.post("/process-invoice")
-        async def process_invoice(file: UploadFile):
+        async def process_invoice(file: UploadFile) -> dict[str, Any]:
             if not file.filename or not file.filename.endswith(".pdf"):
                 raise HTTPException(400, "Only PDF files allowed")
 
@@ -341,11 +341,11 @@ class IntegrationPatterns:
                 os.unlink(tmp_path)  # Cleanup temp file
 
         @app.on_event("shutdown")
-        async def shutdown():
+        async def shutdown() -> None:
             ml_plugin.cleanup()  # Cleanup on server shutdown
 
     @staticmethod
-    def batch_processing_pattern():
+    def batch_processing_pattern() -> None:
         """
         Pattern: Batch processing with progress tracking
 
@@ -400,7 +400,7 @@ class IntegrationPatterns:
             return results
 
     @staticmethod
-    def quality_filtering_pattern():
+    def quality_filtering_pattern() -> None:
         """
         Pattern: Quality-based processing decisions
 
@@ -459,7 +459,7 @@ class ErrorHandling:
     """
 
     @staticmethod
-    def robust_processing_example():
+    def robust_processing_example() -> None:
         """
         Example: Robust error handling with proper logging
         """

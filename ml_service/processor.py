@@ -35,8 +35,14 @@ try:
     LEGACY_COMPONENTS_AVAILABLE = True
 except ImportError:
     LEGACY_COMPONENTS_AVAILABLE = False
-    BaseProcessingResult = None
-    UnifiedProcessor = None
+    from typing import TYPE_CHECKING
+
+    if TYPE_CHECKING:
+        from src.pipeline.processor import ProcessingResult as BaseProcessingResult
+        from src.pipeline.processor import UnifiedProcessor
+    else:
+        BaseProcessingResult = None  # type: ignore[misc,assignment]
+        UnifiedProcessor = None  # type: ignore[misc,assignment]
 
 logger = logging.getLogger(__name__)
 
@@ -255,7 +261,9 @@ class MLProcessor:
         legacy_result = legacy_processor.process_pdf(str(pdf_path))
 
         # Legacy ProcessingResult zu eigenständigem Result konvertieren
-        if BaseProcessingResult and isinstance(legacy_result, BaseProcessingResult):
+        if LEGACY_COMPONENTS_AVAILABLE and isinstance(
+            legacy_result, BaseProcessingResult
+        ):
             # Direktes Mapping falls kompatibel
             return ProcessingResult(**legacy_result.model_dump())
         else:
@@ -357,7 +365,11 @@ class MLProcessor:
         Returns:
             Dict mit Konfigurationszusammenfassung
         """
-        return self.settings.validate_configuration()["summary"]
+        from typing import cast
+
+        validation_result = self.settings.validate_configuration()
+        summary = validation_result.get("summary", {})
+        return cast(dict[str, Any], summary)
 
     def cleanup(self) -> None:
         """Bereinigt alle Ressourcen."""
@@ -373,11 +385,16 @@ class MLProcessor:
 
         logger.info("✅ ML Processor bereinigt")
 
-    def __enter__(self):
+    def __enter__(self) -> "MLProcessor":
         """Context Manager Eingang."""
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: object,
+    ) -> None:
         """Context Manager Ausgang."""
         self.cleanup()
 

@@ -1,50 +1,74 @@
-[tool.poetry]
+[project]
 name = "llkjj-ml"
 version = "0.1.0"
 description = "LLKJJ ML Pipeline - PDF Invoice Processing für Elektrotechnik-Handwerk UG"
-authors = ["Czok12 <your-email@domain.com>"]
+authors = [{ name = "Czok12", email = "your-email@domain.com" }]
 readme = "README.md"
+requires-python = ">=3.10,<3.13"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Office/Business :: Financial :: Accounting",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+keywords = ["pdf", "invoice", "accounting", "ml", "skr03", "elektrohandwerk"]
+dependencies = [
+    "docling>=2.44.0,<3.0.0",
+    "pandas>=2.2.3,<3.0.0",
+    "numpy>=1.26.4,<2.1.0",
+    "pydantic>=2.9.2,<3.0.0",
+    "spacy>=3.7.6,<4.0.0",
+    "sentence-transformers>=3.0.1,<4.0.0",
+    "scikit-learn>=1.5.2,<2.0.0",
+    "torch>=2.4.1,<3.0.0",
+    "chromadb>=0.5.5,<1.0.0",
+    "faiss-cpu>=1.8.0,<2.0.0",
+    "python-dotenv>=1.0.1,<2.0.0",
+    "tqdm>=4.66.5,<5.0.0",
+    "click>=8.1.7,<9.0.0",
+    "loguru>=0.7.2,<1.0.0",
+    "openpyxl>=3.1.5,<4.0.0",
+    "xlrd>=2.0.1,<3.0.0",
+    "pydantic-settings>=2.10.1,<3.0.0",
+    "requests>=2.32.4,<3.0.0",
+    "pymupdf>=1.26.3,<2.0.0",
+    "pytesseract>=0.3.13,<1.0.0",
+    "pdf2image>=1.17.0,<2.0.0",
+    "google-genai>=1.30.0,<2.0.0",
+    "opencv-python>=4.12.0.88,<5.0.0",
+    "aiofiles>=24.1.0,<25.0.0",
+    "cryptography>=45.0.6,<46.0.0",
+]
+
+[project.scripts]
+llkjj-ml = "main:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.3,<9.0.0",
+    "black>=24.8.0,<25.0.0",
+    "mypy>=1.11.2,<2.0.0",
+    "ruff>=0.6.4,<1.0.0",
+    "pre-commit>=4.2.0,<5.0.0",
+    "types-pyyaml>=6.0.12.20250809",
+    "bandit>=1.8.6,<2.0.0",
+    "safety>=3.6.0,<4.0.0",
+    "types-psutil>=7.0.0.20250801",
+    "types-aiofiles>=24.1.0.20250809",
+]
+gpu = ["torch[cuda]>=2.4.1,<3.0.0"]
+cuda = ["nvidia-ml-py3>=7.352.0,<8.0.0"]
+
+[tool.poetry]
 packages = [{ include = "src" }]
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.13"
-docling = "^2.44.0"
-pandas = "^2.2.3"
-numpy = ">=1.26.4,<2.1.0"
-pydantic = "^2.9.2"
-spacy = "^3.7.6"
-sentence-transformers = "^3.0.1"
-scikit-learn = "^1.5.2"
-torch = "^2.4.1"
-chromadb = "^0.5.5"
-faiss-cpu = "^1.8.0"
-python-dotenv = "^1.0.1"
-tqdm = "^4.66.5"
-click = "^8.1.7"
-loguru = "^0.7.2"
-openpyxl = "^3.1.5"
-xlrd = "^2.0.1"
-pydantic-settings = "^2.10.1"
-requests = "^2.32.4"
-pymupdf = "^1.26.3"
-pytesseract = "^0.3.13"
-pdf2image = "^1.17.0"
-google-genai = "^1.30.0"
-opencv-python = "^4.12.0.88"
-aiofiles = "^24.1.0"
-cryptography = "^45.0.6"
-
-[tool.poetry.group.dev.dependencies]
-pytest = "^8.3.3"
-black = "^24.8.0"
-mypy = "^1.11.2"
-ruff = "^0.6.4"
-pre-commit = ">=4.2.0,<5.0.0"
-types-pyyaml = "^6.0.12.20250809"
-bandit = "^1.8.6"
-safety = "^3.6.0"
-types-psutil = "^7.0.0.20250801"
-types-aiofiles = "^24.1.0.20250809"
 
 [tool.poetry.group.gpu]
 optional = true
@@ -60,8 +84,13 @@ optional = true
 # CUDA-specific dependencies for GPU acceleration
 nvidia-ml-py3 = { version = "^7.352.0", optional = true }
 
-[tool.poetry.scripts]
-llkjj-ml = "main:main"
+
+[tool.poetry.group.dev.dependencies]
+pandas = "^2.3.1"
+matplotlib = "^3.10.5"
+seaborn = "^0.13.2"
+uvicorn = "^0.35.0"
+fastapi = "^0.116.1"
 
 [build-system]
 requires = ["poetry-core"]

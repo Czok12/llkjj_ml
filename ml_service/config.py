@@ -240,7 +240,7 @@ class MLSettings(BaseSettings):
         Returns:
             Dict mit Validierungsergebnissen und Konfigurationszusammenfassung
         """
-        validation_results = {
+        validation_results: dict[str, Any] = {
             "valid": True,
             "warnings": [],
             "errors": [],
