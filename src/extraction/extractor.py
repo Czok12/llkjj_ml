@@ -958,7 +958,7 @@ WICHTIG:
 
         return totals
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         """Cleanup DataExtractor resources to prevent memory leaks"""
         import gc
 

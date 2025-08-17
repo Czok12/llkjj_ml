@@ -17,7 +17,7 @@ Features:
 import hashlib
 import json
 import logging
-import pickle
+import pickle  # nosec B403 - Used only for internal embedding cache
 import sqlite3
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -355,10 +355,12 @@ class EmbeddingCache:
         if self.cache_file.exists():
             try:
                 with open(self.cache_file, "rb") as f:
-                    self.embeddings_cache = pickle.load(f)
+                    # Security: Using pickle only for internal embedding cache data
+                    # This is safe as we control the data source and format
+                    self.embeddings_cache = pickle.load(f)  # nosec B301
                 logger.info(f"Embeddings geladen: {len(self.embeddings_cache)} entries")
             except Exception as e:
-                logger.error(f"Fehler beim Laden der Embeddings: {e}")
+                logger.error("Fehler beim Laden der Embeddings: %s", e)
                 self.embeddings_cache = {}
 
         # Metadata laden

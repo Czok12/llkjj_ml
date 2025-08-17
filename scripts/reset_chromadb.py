@@ -55,10 +55,19 @@ def reset_chromadb() -> None:
 
 if __name__ == "__main__":
     # Frage zur Sicherheit nach Bestätigung
-    response = input(
-        "Möchtest du die ChromaDB wirklich komplett zurücksetzen? Alle Vektordaten gehen verloren. (ja/nein): "
+    response = (
+        input(
+            "Möchtest du die ChromaDB wirklich komplett zurücksetzen? Alle Vektordaten gehen verloren. (ja/nein): "
+        )
+        .strip()
+        .lower()
     )
-    if response.lower() == "ja":
+
+    # Input validation for security
+    if response in ["ja", "yes", "y"]:
         reset_chromadb()
-    else:
+    elif response in ["nein", "no", "n", ""]:
         print("Aktion abgebrochen.")
+    else:
+        print("Ungültige Eingabe. Aktion abgebrochen.")
+        sys.exit(1)

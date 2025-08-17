@@ -51,7 +51,7 @@ class ResourceManager:
     _skr03_manager = None
     _docling_processor = None  # Add DoclingProcessor singleton
 
-    def __new__(cls):
+    def __new__(cls) -> "ResourceManager":
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
@@ -74,7 +74,7 @@ class ResourceManager:
             logger.info("✅ ChromaDB Client geladen")
         return self._chromadb_client
 
-    def get_skr03_manager(self):
+    def get_skr03_manager(self) -> Any:
         """Lazy-loaded Singleton SKR03 Manager"""
         if self._skr03_manager is None:
             logger.info("🔄 Lade SKR03Manager (Singleton)...")
@@ -82,7 +82,7 @@ class ResourceManager:
             logger.info("✅ SKR03Manager geladen")
         return self._skr03_manager
 
-    def get_docling_processor(self):
+    def get_docling_processor(self) -> Any:
         """Lazy-loaded Singleton DoclingProcessor"""
         if self._docling_processor is None:
             logger.info("🔄 Lade DoclingProcessor (Singleton)...")
@@ -97,7 +97,7 @@ class ResourceManager:
             logger.info("✅ DoclingProcessor geladen")
         return self._docling_processor
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         """Explicitly cleanup all resources to prevent memory leaks"""
         import gc
 
@@ -277,7 +277,7 @@ class UnifiedProcessor:
         )
         self.quality_assessor = QualityAssessor()
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         """Cleanup resources - call this after processing to free memory"""
         import gc
 

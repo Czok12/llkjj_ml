@@ -324,7 +324,7 @@ class FeaturePipeline:
         ]
 
         key_string = "|".join(key_fields)
-        return hashlib.md5(key_string.encode()).hexdigest()[:16]
+        return hashlib.sha256(key_string.encode()).hexdigest()[:16]
 
 
 class FeatureSelector:

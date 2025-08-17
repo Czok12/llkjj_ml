@@ -286,10 +286,11 @@ class AdvancedDoclingProcessor:
 
                 # Neue Pipeline-Optionen für diesen Versuch
                 ocr_options = engine_config["options"]
-                assert isinstance(
+                if not isinstance(
                     ocr_options,
                     TesseractCliOcrOptions | RapidOcrOptions | EasyOcrOptions,
-                )
+                ):
+                    raise TypeError(f"Invalid OCR options type: {type(ocr_options)}")
                 pipeline_options = self._create_pipeline_options_for_engine(ocr_options)
                 pdf_format_options = PdfFormatOption(pipeline_options=pipeline_options)
 
