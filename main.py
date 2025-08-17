@@ -21,6 +21,7 @@ from pathlib import Path
 # Import consolidated services
 from src.config import Config
 from src.pipeline.processor import UnifiedProcessor
+from src.processing.modular_processor import ModularProcessor
 from src.trainer import TrainingService
 
 
@@ -284,6 +285,84 @@ def analyze_results(args: argparse.Namespace) -> None:
         print(f"   Average quality score: {avg_quality:.3f}")
 
 
+# NEW MODULAR WORKFLOW FUNCTIONS
+def run_workflow_1(args: argparse.Namespace) -> None:
+    """Run Workflow 1: PDF → Docling → TXT only"""
+    config = Config()
+    processor = ModularProcessor(config)
+
+    pdf_path = Path(args.input)
+    output_path = Path(args.output) if args.output else None
+
+    print("🔄 Workflow 1: PDF → Docling → TXT")
+    print(f"📄 Input: {pdf_path}")
+
+    result = processor.workflow_1_pdf_to_docling_txt(pdf_path, output_path)
+
+    print("✅ Workflow 1 completed!")
+    print(f"📝 Output TXT: {result['output_txt']}")
+    print(f"📊 Text length: {result['text_length']} characters")
+    print(f"📋 Tables found: {result['table_count']}")
+
+
+def run_workflow_2(args: argparse.Namespace) -> None:
+    """Run Workflow 2: PDF → Gemini directly"""
+    config = Config()
+    processor = ModularProcessor(config)
+
+    pdf_path = Path(args.input)
+    output_path = Path(args.output) if args.output else None
+
+    print("🔄 Workflow 2: PDF → Gemini direct")
+    print(f"📄 Input: {pdf_path}")
+
+    result = processor.workflow_2_pdf_to_gemini_direct(pdf_path, output_path)
+
+    print("✅ Workflow 2 completed!")
+    print(f"💾 Output JSON: {result['output_json']}")
+    print(f"📊 Raw text: {result['raw_text_length']} characters")
+    print(f"🤖 Method: {result['extraction_method']}")
+
+
+def run_workflow_3(args: argparse.Namespace) -> None:
+    """Run Workflow 3: Docling TXT → Gemini processing"""
+    config = Config()
+    processor = ModularProcessor(config)
+
+    txt_path = Path(args.input)
+    output_path = Path(args.output) if args.output else None
+
+    print("🔄 Workflow 3: Docling TXT → Gemini")
+    print(f"📝 Input: {txt_path}")
+
+    result = processor.workflow_3_docling_txt_to_gemini(txt_path, output_path)
+
+    print("✅ Workflow 3 completed!")
+    print(f"💾 Output JSON: {result['output_json']}")
+    print(f"📊 Text processed: {result['text_length']} characters")
+    print(f"🤖 Method: {result['processing_method']}")
+
+
+def run_workflow_4(args: argparse.Namespace) -> None:
+    """Run Workflow 4: Complete pipeline"""
+    config = Config()
+    processor = ModularProcessor(config)
+
+    pdf_path = Path(args.input)
+    output_path = Path(args.output) if args.output else None
+
+    print("🔄 Workflow 4: Complete pipeline")
+    print(f"📄 Input: {pdf_path}")
+
+    result = processor.workflow_4_complete_pipeline(pdf_path, output_path)
+
+    print("✅ Workflow 4 completed!")
+    print(f"💾 Output JSON: {result['output_json']}")
+    print(f"📊 Line items: {result['summary']['line_items_found']}")
+    print(f"🎯 SKR03 classifications: {result['summary']['skr03_classifications']}")
+    print(f"🤖 Gemini enhanced: {result['summary']['has_gemini_enhancement']}")
+
+
 def main() -> None:
     """Main CLI entry point"""
     parser = argparse.ArgumentParser(
@@ -382,6 +461,33 @@ Examples:
     analyze_parser = subparsers.add_parser("analyze", help="Analyze processing results")
     analyze_parser.add_argument("input", help="Directory containing result JSON files")
 
+    # NEW MODULAR WORKFLOWS
+    # Workflow 1: PDF → Docling → TXT only
+    w1_parser = subparsers.add_parser("workflow1", help="PDF → Docling → TXT only")
+    w1_parser.add_argument("input", help="PDF file to process")
+    w1_parser.add_argument("--output", "-o", help="Output TXT file path (optional)")
+
+    # Workflow 2: PDF → Gemini directly (bypass Docling)
+    w2_parser = subparsers.add_parser(
+        "workflow2", help="PDF → Gemini direct (bypass Docling)"
+    )
+    w2_parser.add_argument("input", help="PDF file to process")
+    w2_parser.add_argument("--output", "-o", help="Output JSON file path (optional)")
+
+    # Workflow 3: Docling TXT → Gemini processing
+    w3_parser = subparsers.add_parser(
+        "workflow3", help="Docling TXT → Gemini processing"
+    )
+    w3_parser.add_argument("input", help="TXT file from Docling to process")
+    w3_parser.add_argument("--output", "-o", help="Output JSON file path (optional)")
+
+    # Workflow 4: Complete pipeline
+    w4_parser = subparsers.add_parser(
+        "workflow4", help="Complete pipeline: PDF → Docling → Gemini → Output"
+    )
+    w4_parser.add_argument("input", help="PDF file to process")
+    w4_parser.add_argument("--output", "-o", help="Output JSON file path (optional)")
+
     args = parser.parse_args()
 
     if not args.command:
@@ -413,6 +519,15 @@ Examples:
             run_pipeline(args)
         elif args.command == "analyze":
             analyze_results(args)
+        # NEW MODULAR WORKFLOWS
+        elif args.command == "workflow1":
+            run_workflow_1(args)
+        elif args.command == "workflow2":
+            run_workflow_2(args)
+        elif args.command == "workflow3":
+            run_workflow_3(args)
+        elif args.command == "workflow4":
+            run_workflow_4(args)
 
     except KeyboardInterrupt:
         print("\n⚠️  Operation cancelled by user")

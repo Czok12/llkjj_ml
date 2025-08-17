@@ -33,6 +33,7 @@ except ImportError:
 from src.config import Config
 from src.extraction import DataExtractor
 from src.processing import DataClassifier, QualityAssessor
+from src.skr03_manager import lade_skr03_manager
 
 logger = logging.getLogger(__name__)
 
@@ -90,12 +91,18 @@ class UnifiedProcessor:
         self._setup_logging()
         self._setup_vector_db()
 
+        # Initialize SKR03 Manager for rule-based classification
+        self.skr03_manager = lade_skr03_manager()
+        logger.info("✅ SKR03Manager loaded successfully")
+
         # Initialize Gemini model if API key is available
         gemini_model = self._setup_gemini_model()
 
-        # Initialize components with config
+        # Initialize components with config and dependencies
         self.extractor = DataExtractor(gemini_model=gemini_model, config=self.config)
-        self.classifier = DataClassifier(vector_store=self.invoice_collection)
+        self.classifier = DataClassifier(
+            skr03_manager=self.skr03_manager, vector_store=self.invoice_collection
+        )
         self.quality_assessor = QualityAssessor()
 
     def _setup_logging(self) -> None:
@@ -181,8 +188,12 @@ class UnifiedProcessor:
 
             # Phase 2: Klassifizierung mit DataClassifier
             classification_start = time.time()
+            # Fix: Ensure line_items are accessible in structured_data for classification
+            structured_data_with_items = extraction_result["structured_data"].copy()
+            structured_data_with_items["line_items"] = extraction_result["line_items"]
+
             classifications = self.classifier.process_classifications(
-                extraction_result["line_items"], extraction_result["structured_data"]
+                extraction_result["line_items"], structured_data_with_items
             )
             classification_time_ms = int((time.time() - classification_start) * 1000)
 
@@ -258,9 +269,17 @@ class UnifiedProcessor:
 
             # Die Metadaten, die wir abrufen wollen
             metadata = {
-                "supplier": str(proc_result.invoice_data.get("supplier", "")),
+                "supplier": str(proc_result.invoice_data.get("supplier", "Unknown")),
                 "description": str(item.get("description", "")),
-                "skr03_konto": str(item.get("skr03_konto", "N/A")),
+                "skr03_account": str(
+                    item.get("skr03_konto", "N/A")
+                ),  # FIXED: Use skr03_account for consistency
+                "category": str(
+                    item.get("category", "Unbekannt")
+                ),  # ADDED: Category field
+                "confidence": float(
+                    item.get("confidence", 0.0)
+                ),  # FIXED: Add confidence field for RAG querying
                 "amount": float(str(item.get("amount", "0")).replace(",", ".")),
                 "pdf_path": str(proc_result.pdf_path),
             }

@@ -71,11 +71,11 @@ class DataExtractor:
             structured_data = self.extract_structured_data(raw_result)
 
             # Phase 3: Invoice-Header extrahieren
-            invoice_data = self.extract_invoice_header(raw_result.get("text", ""))
+            invoice_data = self.extract_invoice_header(raw_result.get("raw_text", ""))
 
             # Phase 4: Line Items extrahieren
             line_items = self.extract_line_items(
-                raw_result.get("tables", []), raw_result.get("text", "")
+                raw_result.get("tables", []), raw_result.get("raw_text", "")
             )
 
             # Gemini-Enhancement (falls verfügbar)
@@ -89,7 +89,7 @@ class DataExtractor:
                     logger.warning("⚠️ Gemini-Enhancement fehlgeschlagen: %s", e)
 
             result = {
-                "raw_text": raw_result.get("text", ""),
+                "raw_text": raw_result.get("raw_text", ""),
                 "structured_data": structured_data,
                 "invoice_data": invoice_data,
                 "line_items": line_items,
@@ -265,13 +265,12 @@ WICHTIG:
             return self.extract_structured_data(raw_data)
 
     def extract_structured_data(self, raw_data: dict[str, Any]) -> dict[str, Any]:
-        """Fallback structured extraction using patterns"""
+        """Fallback structured extraction using patterns (without line_items - already extracted)"""
         text = raw_data.get("raw_text", "")
 
-        # Basic pattern extraction for German invoices
+        # Basic pattern extraction for German invoices (without line_items to avoid duplication)
         structured = {
             "invoice_header": self.extract_invoice_header(text),
-            "line_items": self.extract_line_items(raw_data.get("tables", []), text),
             "totals": self.extract_totals(text),
             "enhancement_method": "pattern_based",
         }
@@ -347,10 +346,20 @@ WICHTIG:
         """Extract line items from table data or fallback to pattern extraction"""
         items = []
 
+        logger.info(f"DEBUG: Tabellen-Extraktion startet mit {len(tables)} Tabellen")
+
         # First try to extract from Docling tables
-        for table in tables:
+        for idx, table in enumerate(tables):
             headers = table.get("headers", [])
             rows = table.get("rows", [])
+
+            logger.info(
+                f"DEBUG: Tabelle {idx}: {len(headers)} Headers, {len(rows)} Rows"
+            )
+            if headers:
+                logger.info(
+                    f"DEBUG: Headers: {headers[:3]}..."
+                )  # Ersten 3 Headers zeigen
 
             # Map common German invoice table headers
             header_map = self.map_table_headers(headers)
@@ -364,129 +373,346 @@ WICHTIG:
 
                     if item.get("description") or item.get("artikel"):
                         items.append(item)
+                        logger.info(
+                            f"DEBUG: Item aus Tabelle hinzugefügt: {item.get('description', 'N/A')[:30]}"
+                        )
+
+        logger.info(
+            f"DEBUG: Tabellen-Extraktion abgeschlossen. {len(items)} Items gefunden"
+        )
+        logger.info(f"DEBUG: Text verfügbar: {len(text) if text else 0} Zeichen")
 
         # If no table data found, try pattern-based extraction
         if not items and text:
+            logger.info("DEBUG: Keine Tabellen-Items gefunden - starte Text-Extraktion")
             items = self.extract_line_items_from_text(text)
+        elif not text:
+            logger.info("DEBUG: Kein Text verfügbar für Pattern-Extraktion")
+        else:
+            logger.info(
+                f"DEBUG: Überspringe Text-Extraktion - {len(items)} Tabellen-Items gefunden"
+            )
 
         return items
 
     def extract_line_items_from_text(self, text: str) -> list[dict[str, Any]]:
-        """Extract line items using regex patterns for German invoices"""
+        """
+        Extract line items using improved regex patterns for German invoices.
+
+        Supports multi-line invoice formats where data is spread across rows and columns.
+        Specifically optimized for Sonepar format: |pos|description|qty|pe|empty|unit_price|total|
+        """
         items = []
-        lines = text.split("\n")
 
-        logger.info(f"Trying to extract line items from {len(lines)} lines of text")
+        logger.info(f"Versuche robuste Extraktion aus {len(text)} Zeichen Text")
 
-        for i, line in enumerate(lines):
-            line = line.strip()
+        # SONEPAR-SPEZIFISCHES PATTERN (angepasst für Docling-Format)
+        # Docling Format: "GIRA Adapterrahmen rws-gl quadr. 50x50mm S.55 028203 |      10 |    "
+        # OCR File Format: "010889201 |GIRA Adapterrahmen rws-gl 10 |1 182 1820"
 
-            # Skip header lines and empty lines
-            if (
-                not line
-                or "Pos" in line
-                or "Artikel-Nr" in line
-                or "Bestellposition" in line
-            ):
-                continue
+        # Pattern für Docling-Ausgabe: Marke + Beschreibung + Artikelnummer + Pipe + Menge + Pipe
+        sonepar_docling_pattern = re.compile(
+            r"((?:GIRA|SIEMENS|ABB|SCHNEIDER|LEGRAND|HAGER|Spelsberg|Striebel)[^|]*?(\d{6})[^|]*?)\|\s*(\d+)\s*\|",
+            re.IGNORECASE,
+        )
 
-            # Skip unwanted lines (bank details, addresses, etc.)
-            if any(
-                skip in line.lower()
-                for skip in [
-                    "iban:",
-                    "swift",
-                    "commerzbank",
-                    "erfüllungsort",
-                    "amtsgericht",
-                    "hannover",
-                ]
-            ):
-                continue
+        # Fallback Pattern für OCR-Format (falls verfügbar)
+        sonepar_ocr_pattern = re.compile(
+            r"(\d{2})(\d{7})\s*\|([^|]*(?:GIRA|SIEMENS|ABB|SCHNEIDER|LEGRAND|HAGER|Spelsberg|Striebel)[^|]*?)\s*(\d+)\s*\|\s*(\d+)\s*(\d+)\s*(\d+)",
+            re.IGNORECASE,
+        )
 
-            # Debug: log lines that contain potential product info
-            if (
-                any(brand in line.upper() for brand in ["GIRA", "SIEMENS"])
-                or "|" in line
-            ):
+        # Allgemeine Fallback-Pattern für andere Rechnungsformate
+        patterns = [
+            # Pattern 1: Sonepar Docling-Format (PRIORITÄT für echte PDF-Extraktion)
+            sonepar_docling_pattern,
+            # Pattern 2: Sonepar OCR-Format (Fallback für OCR-Dateien)
+            sonepar_ocr_pattern,
+            # Pattern 3: Standard Docling pipe-separated Format
+            re.compile(
+                r"(\d{6,})\s*\|\s*([^|]*(?:GIRA|SIEMENS|ABB|SCHNEIDER|LEGRAND|HAGER)[^|]*)\s*\|\s*(\d+)\s*\|\s*(\d+[,.]?\d*)\s*\|\s*(\d+[,.]?\d*)",
+                re.IGNORECASE,
+            ),
+            # Pattern 4: Whitespace-separated Format mit Marken-Keywords
+            re.compile(
+                r"(\d{6,})\s+([^0-9]*(?:GIRA|SIEMENS|ABB|SCHNEIDER|LEGRAND|HAGER)[^0-9]*?)\s+(\d+)\s+(\d+[,.]?\d*)\s+(\d+[,.]?\d*)",
+                re.IGNORECASE,
+            ),
+        ]
+
+        for pattern_idx, pattern in enumerate(patterns):
+            logger.info(
+                f"Verwende Pattern {pattern_idx + 1}: {pattern.pattern[:80]}..."
+            )
+
+            # DEBUG: Test das Sonepar Pattern extra
+            if pattern_idx == 0:
+                gira_test = re.search(r"GIRA.*Adapterrahmen", text, re.IGNORECASE)
                 logger.info(
-                    f"Analyzing line {i}: '{line[:100]}{'...' if len(line) > 100 else ''}'"
+                    f"DEBUG: GIRA Adapterrahmen Test erfolgreich: {'JA' if gira_test else 'NEIN'}"
                 )
 
-            # Handle Docling table format: fields separated by pipes
-            if "|" in line and any(
-                brand in line.upper()
-                for brand in ["GIRA", "SIEMENS", "ABB", "SCHNEIDER", "LEGRAND", "HAGER"]
-            ):
-                parts = [p.strip() for p in line.split("|")]
-
-                # Find the article number (usually first numeric field with 6+ digits)
-                article_no = None
-                for part in parts:
-                    if re.match(r"^\d{6,}$", part.strip()):
-                        article_no = part.strip()
-                        break
-
-                # Find description (contains brand name)
-                description = None
-                for part in parts:
-                    if any(
-                        brand in part.upper()
-                        for brand in [
-                            "GIRA",
-                            "SIEMENS",
-                            "ABB",
-                            "SCHNEIDER",
-                            "LEGRAND",
-                            "HAGER",
-                        ]
-                    ):
-                        # Extract just the product part
-                        desc_match = re.search(
-                            r"(GIRA|SIEMENS|ABB|SCHNEIDER|LEGRAND|HAGER)[^|]*",
-                            part,
-                            re.IGNORECASE,
-                        )
-                        if desc_match:
-                            description = desc_match.group(0).strip()
-                            # Clean up description - take only the product name part
-                            if "GIRA" in description.upper():
-                                gira_match = re.search(
-                                    r"GIRA\s+[^|]+?(?=\s+\w+\.|$)",
-                                    description,
-                                    re.IGNORECASE,
-                                )
-                                if gira_match:
-                                    description = gira_match.group(0).strip()
-                        break
-
-                # Find numeric values (quantity, unit price, total price)
-                numeric_parts = []
-                for part in parts:
-                    if re.match(r"^\d+$", part.strip()) and len(part.strip()) <= 6:
-                        numeric_parts.append(part.strip())
-
-                # Extract values if we have enough data
-                if article_no and description and len(numeric_parts) >= 3:
-                    quantity = numeric_parts[0]
-                    unit_price = numeric_parts[-2]  # Second to last number
-                    total_price = numeric_parts[-1]  # Last number
-
+                if gira_test:
                     logger.info(
-                        f"Extracted: {article_no} | {description} | {quantity} | {unit_price} | {total_price}"
+                        f"DEBUG: GIRA Context: '{text[gira_test.start()-50:gira_test.end()+50]}'"
                     )
 
-                    item = {
-                        "article_number": article_no,
-                        "description": description,
-                        "quantity": quantity,
-                        "unit_price": unit_price,
-                        "total_price": total_price,
-                    }
-                    items.append(item)
+            matches = pattern.findall(text)
+            logger.info(f"Pattern {pattern_idx + 1} gefunden: {len(matches)} Matches")
 
-        logger.info(f"Extracted {len(items)} line items using pattern matching")
-        return items
+            for match in matches:
+                if pattern_idx == 0:  # Sonepar Docling-Format
+                    full_description, article_no, quantity = match
+
+                    # Extrahiere saubere Produktbeschreibung
+                    description_clean = self._extract_product_description(
+                        full_description
+                    )
+
+                    # Für Docling-Format fehlen die Preise, setze Platzhalter
+                    pos_nr = "01"  # Platzhalter da Position im Docling-Text fehlt
+                    unit_price = "0"  # Nicht verfügbar in diesem Format
+                    total_price = "0"  # Nicht verfügbar in diesem Format
+
+                    logger.info(
+                        f"Sonepar Docling Pattern extrahiert: Art={article_no} | {description_clean[:30]}... | Qty={quantity}"
+                    )
+
+                    logger.info(
+                        f"DEBUG: Validierung für Art={article_no}, Pos={pos_nr}, Desc='{description_clean[:50]}', Qty={quantity}"
+                    )
+
+                    if self._validate_sonepar_line_item(
+                        pos_nr, description_clean, article_no, quantity
+                    ):
+                        item = {
+                            "position_number": pos_nr,
+                            "article_number": article_no.strip(),
+                            "description": description_clean.strip(),
+                            "quantity": quantity.strip(),
+                            "unit_price": unit_price,
+                            "total_price": total_price,
+                        }
+                        items.append(item)
+                        logger.info(f"✅ Item validiert und hinzugefügt: {article_no}")
+                    else:
+                        logger.warning(
+                            f"❌ Item Validierung fehlgeschlagen: {article_no}"
+                        )
+
+                elif pattern_idx == 1:  # Sonepar OCR-Format
+                    (
+                        pos_nr,
+                        sonepar_nr,
+                        description,
+                        quantity,
+                        pe_value,
+                        unit_price,
+                        total_price,
+                    ) = match
+
+                    # Suche die Artikelnummer in den nächsten Zeilen nach diesem Match
+                    position_text = f"{pos_nr}{sonepar_nr}"
+                    pos_index = text.find(position_text)
+
+                    article_no = ""
+                    if pos_index >= 0:
+                        # Schaue in den nächsten 200 Zeichen nach einer 6-stelligen Artikelnummer
+                        search_area = text[pos_index : pos_index + 200]
+                        article_match = re.search(r"\b(\d{6})\b", search_area)
+                        if article_match:
+                            article_no = article_match.group(1)
+
+                    # Extrahiere saubere Produktbeschreibung ohne Lieferdetails
+                    description_clean = self._extract_product_description(description)
+
+                    logger.info(
+                        f"Sonepar OCR Pattern extrahiert: Pos={pos_nr} | Sonepar={sonepar_nr} | Art={article_no} | {description_clean[:30]}... | Qty={quantity} | Unit={unit_price} | Total={total_price}"
+                    )
+
+                    if self._validate_sonepar_line_item(
+                        pos_nr, description_clean, article_no, quantity
+                    ):
+                        item = {
+                            "position_number": pos_nr.strip(),
+                            "sonepar_number": sonepar_nr.strip(),  # Sonepar interne Nummer
+                            "article_number": article_no.strip(),  # GIRA Artikelnummer
+                            "description": description_clean.strip(),
+                            "quantity": quantity.strip(),
+                            "unit_price": unit_price.strip(),
+                            "total_price": total_price.strip(),
+                        }
+                        items.append(item)
+
+                elif len(match) >= 5:  # Standard patterns (Index 2+)
+                    article_no, description, quantity, unit_price, total_price = match[
+                        :5
+                    ]
+
+                    # Bereinige Beschreibung von Pipe-Zeichen und Extra-Leerzeichen
+                    description = re.sub(r"\|+", " ", description).strip()
+                    description = re.sub(r"\s+", " ", description)
+
+                    # Validiere dass es ein echtes Produkt ist (nicht Kopfzeile/Footer)
+                    if self._validate_line_item(article_no, description, quantity):
+                        logger.info(
+                            f"Pattern {pattern_idx + 1} extrahiert: {article_no} | {description[:30]}... | {quantity} | {unit_price} | {total_price}"
+                        )
+
+                        item = {
+                            "article_number": article_no.strip(),
+                            "description": description.strip(),
+                            "quantity": quantity.strip(),
+                            "unit_price": unit_price.strip(),
+                            "total_price": total_price.strip(),
+                        }
+                        items.append(item)
+
+        # Deduplizierung basierend auf Artikelnummer
+        seen_articles = set()
+        unique_items = []
+        for item in items:
+            key = item.get("article_number", "") + item.get("position_number", "")
+            if key not in seen_articles:
+                seen_articles.add(key)
+                unique_items.append(item)
+
+        logger.info(
+            f"Robuste Extraktion: {len(unique_items)} eindeutige Positionen gefunden"
+        )
+        return unique_items
+
+    def _extract_product_description(self, full_description: str) -> str:
+        """Extrahiert saubere Produktbeschreibung aus Sonepar-Text"""
+
+        # Entferne Lieferdetails am Anfang
+        desc = re.sub(r"^.*?Lieferung.*?Scharmbeck\s*", "", full_description)
+
+        # Extrahiere Produktteil bis zur Artikelnummer am Ende
+        # Format: "GIRA Produktname ... Artikelnummer"
+        product_match = re.search(
+            r"(GIRA|SIEMENS|ABB|SCHNEIDER|LEGRAND|HAGER|Spelsberg|Striebel)([^0-9]+)",
+            desc,
+            re.IGNORECASE,
+        )
+
+        if product_match:
+            brand = product_match.group(1)
+            product_text = product_match.group(2).strip()
+
+            # Bereinige Produkttext
+            product_text = re.sub(r"\s+", " ", product_text)
+            product_text = re.sub(r"[^a-zA-ZäöüÄÖÜß0-9.\s\-/]", "", product_text)
+
+            return f"{brand} {product_text}".strip()
+
+        # Fallback: Nutze ersten aussagekräftigen Teil
+        desc_clean = re.sub(r"Bestellposition Kunde:.*", "", desc)
+        desc_clean = re.sub(r"\s+", " ", desc_clean).strip()
+
+        return desc_clean[:100] if desc_clean else full_description[:50]
+
+    def _validate_sonepar_line_item(
+        self, pos_nr: str, description: str, article_no: str, quantity: str
+    ) -> bool:
+        """Validierung speziell für Sonepar-Format"""
+
+        # Positionsnummer muss 2 Ziffern haben (01, 02, 03, etc.)
+        if not re.match(r"^\d{2}$", pos_nr.strip()):
+            return False
+
+        # Artikelnummer muss mindestens 6 Ziffern haben
+        if not re.match(r"^\d{6,}$", article_no.strip()):
+            return False
+
+        # Beschreibung muss Elektro-Marke enthalten
+        elektro_brands = [
+            "GIRA",
+            "SIEMENS",
+            "ABB",
+            "SCHNEIDER",
+            "LEGRAND",
+            "HAGER",
+            "Spelsberg",
+            "Striebel",
+        ]
+        if not any(brand.lower() in description.lower() for brand in elektro_brands):
+            return False
+
+        # Menge muss numerisch und realistisch sein (1-999)
+        try:
+            qty = int(quantity.strip())
+            if not 1 <= qty <= 999:
+                return False
+        except ValueError:
+            return False
+
+        return True
+
+    def _validate_line_item(
+        self, article_no: str, description: str, quantity: str
+    ) -> bool:
+        """Validiert ob es sich um eine echte Rechnungsposition handelt"""
+
+        # Artikelnummer muss mindestens 6 Ziffern haben
+        if not re.match(r"^\d{6,}$", article_no.strip()):
+            return False
+
+        # Beschreibung muss mindestens eine Elektro-Marke enthalten
+        elektro_keywords = [
+            "GIRA",
+            "SIEMENS",
+            "ABB",
+            "SCHNEIDER",
+            "LEGRAND",
+            "HAGER",
+            "WAGO",
+            "PHOENIX",
+            "Klingeltaster",
+            "Abdeckrahmen",
+            "Dimmer",
+            "Schalter",
+            "Steckdose",
+            "Schutzschalter",
+            "Kabel",
+            "Rohr",
+            "Dose",
+            "Sicherung",
+        ]
+
+        if not any(
+            keyword.lower() in description.lower() for keyword in elektro_keywords
+        ):
+            return False
+
+        # Menge muss numerisch und realistisch sein (1-999)
+        try:
+            qty = int(quantity.strip())
+            if not 1 <= qty <= 999:
+                return False
+        except ValueError:
+            return False
+
+        # Keine Kopfzeilen oder Footer-Texte
+        invalid_terms = [
+            "artikel-nr",
+            "pos",
+            "bestellposition",
+            "menge",
+            "preis",
+            "gesamt",
+            "summe",
+            "total",
+            "iban",
+            "swift",
+            "commerzbank",
+            "hannover",
+        ]
+
+        if any(term in description.lower() for term in invalid_terms):
+            return False
+
+        return True
 
     def map_table_headers(self, headers: list[str]) -> dict[str, str]:
         """Map German table headers to standard fields"""

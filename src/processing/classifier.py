@@ -139,7 +139,9 @@ class DataClassifier:
         """
         # Suche ähnliche validierte Buchungsbeispiele
         similar_bookings = self.find_similar_bookings(
-            description=description, n_results=5, similarity_threshold=0.6
+            description=description,
+            n_results=5,
+            similarity_threshold=0.3,  # Lower threshold for better recall
         )
 
         if not similar_bookings:
@@ -313,23 +315,26 @@ class DataClassifier:
         Verwendet saubere Trennung von Regeln (YAML) und Konten (CSV).
         """
         # Verwende den neuen Manager falls verfügbar
-        if hasattr(self, "skr03_manager") and self.skr03_manager:
-            kategorie, konto, konfidenz, keywords = (
-                self.skr03_manager.klassifiziere_artikel(description)
+        if not self.skr03_manager or not self.skr03_manager.ist_bereit():
+            logger.error(
+                "SKR03Manager nicht verfügbar. Regelbasierte Klassifizierung stark eingeschränkt."
             )
+            # Fallback zu alter Logik, aber mit klarer Fehlermeldung
+            return self.find_best_skr03_match_fallback(description)
 
-            # Konvertiere Manager-Ergebnis zu erwartetem Format für Kompatibilität
-            return {
-                "category": kategorie,
-                "konto": konto,  # Verwende "konto" statt "account" für Kompatibilität
-                "confidence": konfidenz,
-                "matched_keywords": keywords,
-                "method": "skr03_manager_v2",
-                "reasoning": f"SKR03Manager Klassifizierung basierend auf Keywords: {keywords}",
-            }
+        kategorie, konto, konfidenz, keywords = (
+            self.skr03_manager.klassifiziere_artikel(description)
+        )
 
-        # Fallback zu alter Logik
-        return self.find_best_skr03_match_fallback(description)
+        # Konvertiere Manager-Ergebnis zu erwartetem Format für Kompatibilität
+        return {
+            "category": kategorie,
+            "konto": konto,  # Verwende "konto" statt "account" für Kompatibilität
+            "confidence": konfidenz,
+            "matched_keywords": keywords,
+            "method": "skr03_manager_v2",
+            "reasoning": f"SKR03Manager Klassifizierung basierend auf Keywords: {keywords}",
+        }
 
     def find_best_skr03_match_fallback(self, description: str) -> dict[str, Any]:
         """
@@ -417,17 +422,18 @@ class DataClassifier:
         Returns:
             Validierungsergebnis oder None falls Kontenplan nicht verfügbar
         """
-        if hasattr(self, "skr03_manager") and self.skr03_manager:
-            ist_gueltig = self.skr03_manager.validiere_konto(kontonummer)
-            if ist_gueltig and self.skr03_manager.kontenplan_parser:
-                konto_info = self.skr03_manager.kontenplan_parser.get_konto_info(
-                    kontonummer
-                )
-                return {"ist_gueltig": True, "konto_info": konto_info}
-            else:
-                return {"ist_gueltig": False, "konto_info": None}
+        if not self.skr03_manager or not self.skr03_manager.ist_bereit():
+            logger.warning("SKR03Manager nicht verfügbar für Kontovalidierung")
+            return None
 
-        return None
+        ist_gueltig = self.skr03_manager.validiere_konto(kontonummer)
+        if ist_gueltig and self.skr03_manager.kontenplan_parser:
+            konto_info = self.skr03_manager.kontenplan_parser.get_konto_info(
+                kontonummer
+            )
+            return {"ist_gueltig": True, "konto_info": konto_info}
+        else:
+            return {"ist_gueltig": False, "konto_info": None}
 
     def find_similar_bookings(
         self, description: str, n_results: int = 5, similarity_threshold: float = 0.6
@@ -448,11 +454,12 @@ class DataClassifier:
             return []
 
         try:
-            # Suche ähnliche Dokumente in ChromaDB
+            # Suche ähnliche Dokumente in ChromaDB ohne confidence filter
+            # (since some old items don't have confidence field)
             results = self.vector_store.query(
                 query_texts=[description],
                 n_results=n_results,
-                where={"confidence": {"$gte": 0.5}},  # Nur validierte Buchungen
+                # Removed where clause due to mixed metadata formats
             )
 
             # Konvertiere ChromaDB-Ergebnisse zu einheitlichem Format
@@ -466,17 +473,35 @@ class DataClassifier:
                         strict=False,
                     )
                 ):
-                    similarity = 1.0 - distance  # Konvertiere Distanz zu Ähnlichkeit
+                    # Fix similarity calculation for different distance metrics
+                    if distance < 2.0:  # Euclidean distance
+                        similarity = max(0.0, 1.0 - (distance / 2.0))
+                    else:  # Cosine distance
+                        similarity = max(0.0, 1.0 - distance)
 
-                    if similarity >= similarity_threshold:
+                    # Check confidence threshold manually for filtering
+                    item_confidence = metadata.get("confidence", 0.0)
+                    if isinstance(item_confidence, str):
+                        try:
+                            item_confidence = float(item_confidence)
+                        except ValueError:
+                            item_confidence = 0.0
+
+                    # Apply similarity threshold and basic confidence check
+                    if similarity >= similarity_threshold and item_confidence >= 0.3:
+                        # Handle both old and new metadata formats
+                        skr03_account = metadata.get("skr03_account") or metadata.get(
+                            "skr03_konto", "3400"
+                        )
+
                         similar_bookings.append(
                             {
                                 "description": doc,
                                 "similarity": similarity,
-                                "skr03_account": metadata.get("skr03_account", "3400"),
+                                "skr03_account": skr03_account,
                                 "category": metadata.get("category", "Unbekannt"),
                                 "supplier": metadata.get("supplier", "Unknown"),
-                                "confidence": metadata.get("confidence", 0.5),
+                                "confidence": item_confidence,
                                 "amount": metadata.get("amount", 0),
                             }
                         )
