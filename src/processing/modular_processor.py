@@ -183,7 +183,7 @@ class ModularProcessor:
 
         try:
             # Basic PDF text extraction using PyMuPDF (faster and more reliable)
-            import fitz  # PyMuPDF
+            import fitz  # PyMuPDF  # type: ignore[import-untyped]
 
             text_content = ""
             with fitz.open(pdf_path) as pdf_doc:

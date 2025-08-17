@@ -105,7 +105,7 @@ class ChromaDBConnectionPool:
         self.stats = ConnectionStats()
 
         # Cleanup-Thread
-        self._cleanup_thread = None
+        self._cleanup_thread: threading.Thread | None = None
         self._shutdown_event = threading.Event()
 
         # ChromaDB Settings - Modern Configuration
@@ -341,7 +341,7 @@ class ChromaDBConnectionPool:
         """Context Manager Entry."""
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Context Manager Exit."""
         self.shutdown()
 
@@ -352,7 +352,7 @@ _pool_lock = threading.Lock()
 
 
 def get_chroma_pool(
-    db_path: Path, min_connections: int = 2, max_connections: int = 10, **kwargs
+    db_path: Path, min_connections: int = 2, max_connections: int = 10, **kwargs: Any
 ) -> ChromaDBConnectionPool:
     """
     Holt oder erstellt den globalen ChromaDB Connection Pool.

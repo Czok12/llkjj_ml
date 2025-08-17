@@ -43,6 +43,8 @@ pre-commit = ">=4.2.0,<5.0.0"
 types-pyyaml = "^6.0.12.20250809"
 bandit = "^1.8.6"
 safety = "^3.6.0"
+types-psutil = "^7.0.0.20250801"
+types-aiofiles = "^24.1.0.20250809"
 
 [tool.poetry.group.gpu]
 optional = true

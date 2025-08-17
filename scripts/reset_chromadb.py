@@ -11,7 +11,9 @@ sys.path.append(str(PROJECT_ROOT))
 
 try:
     # Lade die Konfiguration, um den ChromaDB-Pfad zu erhalten
-    from src.config import settings
+    from src.config import Config
+
+    config = Config()
 except ImportError as e:
     print(f"Fehler: Konnte das Konfigurationsmodul nicht importieren: {e}")
     print(
@@ -20,12 +22,12 @@ except ImportError as e:
     sys.exit(1)
 
 
-def reset_chromadb():
+def reset_chromadb() -> None:
     """
     Löscht das ChromaDB-Persistenzverzeichnis vollständig und erstellt es neu.
     """
     # Konstruiere den absoluten Pfad aus der Konfiguration
-    chroma_path = PROJECT_ROOT / settings.CHROMA_PERSIST_PATH
+    chroma_path = PROJECT_ROOT / config.vector_db_path
 
     print("--- ChromaDB Reset Skript ---")
     print(f"Zielverzeichnis: {chroma_path.resolve()}")

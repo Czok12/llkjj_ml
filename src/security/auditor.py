@@ -43,7 +43,7 @@ class SecurityAuditor:
         self.reports_dir.mkdir(exist_ok=True)
 
         # Security-Konfiguration
-        self.bandit_config = {
+        self.bandit_config: dict[str, Any] = {
             "exclude_dirs": [
                 "tests",
                 "__pycache__",
@@ -75,21 +75,23 @@ class SecurityAuditor:
         """
         logger.info("Starte Bandit Security Analysis...")
 
-        bandit_cmd = [
+        bandit_cmd: list[str] = [
             "bandit",
             "-r",
             str(self.project_root / "src"),
             "-f",
             "json",
             "--severity-level",
-            self.bandit_config["severity_level"],
+            str(self.bandit_config["severity_level"]),
             "--confidence-level",
-            self.bandit_config["confidence_level"],
+            str(self.bandit_config["confidence_level"]),
         ]
 
         # Exclude Directories
-        for exclude_dir in self.bandit_config["exclude_dirs"]:
-            bandit_cmd.extend(["--exclude", exclude_dir])
+        exclude_dirs: list[str] = self.bandit_config["exclude_dirs"]
+        for exclude_dir in exclude_dirs:
+            bandit_cmd.append("--exclude")
+            bandit_cmd.append(exclude_dir)
 
         try:
             result = subprocess.run(
@@ -203,7 +205,20 @@ class SecurityAuditor:
 
             logger.info("Safety Scan abgeschlossen: %s", report_file)
 
-            vulnerabilities = safety_report.get("vulnerabilities", [])
+            vulnerabilities: list[Any] = list(safety_report.get("vulnerabilities", []))
+
+            def count_vulnerabilities_by_severity(
+                vulns: list[Any], severity: str
+            ) -> int:
+                """Count vulnerabilities by severity level."""
+                return len(
+                    [
+                        v
+                        for v in vulns
+                        if isinstance(v, dict)
+                        and str(v.get("severity", "")).lower() == severity
+                    ]
+                )
 
             return {
                 "status": "success",
@@ -211,38 +226,14 @@ class SecurityAuditor:
                 "vulnerabilities": vulnerabilities,
                 "summary": {
                     "total_vulnerabilities": len(vulnerabilities),
-                    "critical": len(
-                        [
-                            v
-                            for v in vulnerabilities
-                            if isinstance(v, dict)
-                            and v.get("severity", "").lower() == "critical"
-                        ]
+                    "critical": count_vulnerabilities_by_severity(
+                        vulnerabilities, "critical"
                     ),
-                    "high": len(
-                        [
-                            v
-                            for v in vulnerabilities
-                            if isinstance(v, dict)
-                            and v.get("severity", "").lower() == "high"
-                        ]
+                    "high": count_vulnerabilities_by_severity(vulnerabilities, "high"),
+                    "medium": count_vulnerabilities_by_severity(
+                        vulnerabilities, "medium"
                     ),
-                    "medium": len(
-                        [
-                            v
-                            for v in vulnerabilities
-                            if isinstance(v, dict)
-                            and v.get("severity", "").lower() == "medium"
-                        ]
-                    ),
-                    "low": len(
-                        [
-                            v
-                            for v in vulnerabilities
-                            if isinstance(v, dict)
-                            and v.get("severity", "").lower() == "low"
-                        ]
-                    ),
+                    "low": count_vulnerabilities_by_severity(vulnerabilities, "low"),
                 },
             }
 

@@ -8,18 +8,20 @@ sys.path.append(str(PROJECT_ROOT))
 
 try:
     # Lade die Konfiguration, um die Liste der SpaCy-Modelle zu erhalten
-    from src.config import settings
+    from src.config import Config
+
+    config = Config()
 except ImportError as e:
     print(f"Fehler: Konnte das Konfigurationsmodul nicht importieren: {e}")
     print("Stelle sicher, dass das Skript vom Projekt-Root ausgeführt wird.")
     sys.exit(1)
 
 
-def setup_spacy_models():
+def setup_spacy_models() -> None:
     """
     Lädt alle in der Konfiguration spezifizierten SpaCy-Modelle herunter und installiert sie.
     """
-    models = settings.SPACY_MODELS
+    models = [config.spacy_model_name]
     if not models:
         print("Keine SpaCy-Modelle in der Konfiguration gefunden (SPACY_MODELS).")
         return

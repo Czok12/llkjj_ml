@@ -386,8 +386,8 @@ def run_workflow_4(args: argparse.Namespace) -> None:
 
     print("✅ Workflow 4 completed!")
     print(f"💾 Output: {result}")
-    if isinstance(result, dict) and "quality_score" in result:
-        print(f"🎯 Quality: {result['quality_score']}")
+    print(f"🎯 Confidence: {result.confidence_score}")
+    print(f"📊 Quality: {result.extraction_quality}")
 
 
 def init_database(args: argparse.Namespace) -> None:

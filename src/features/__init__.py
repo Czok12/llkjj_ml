@@ -95,7 +95,7 @@ class FeatureExtractor(ABC):
         """Gebe Liste aller von diesem Extraktor erzeugten Feature-Namen zurück"""
         pass
 
-    def validate_input(self, invoice_data: dict[str, Any]) -> bool:
+    def validate_input(self, invoice_data: Any) -> bool:
         """
         Validiere Eingabedaten für Feature-Extraktion.
 

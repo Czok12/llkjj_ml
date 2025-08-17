@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 class SecurityConfig:
     """Security-Konfiguration für die Pipeline."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.encryption_key_file = Path(".security/master.key")
         self.encrypted_secrets_file = Path(".security/secrets.enc")
         self.access_log_file = Path("logs/security_access.log")
@@ -69,6 +69,9 @@ class APIKeyManager:
 
     def _derive_encryption_key(self) -> None:
         """Leitet Encryption-Key vom Master-Passwort ab."""
+        if self.master_password is None:
+            raise ValueError("Master-Passwort ist erforderlich für Encryption")
+
         password = self.master_password.encode()
         salt = b"llkjj_ml_salt_2025"  # In Production: Zufälliges Salt verwenden
 
@@ -170,7 +173,7 @@ class APIKeyManager:
                 self._log_access(
                     f"API-Key für {service_name} abgerufen (unverschlüsselt)"
                 )
-                return secret_data["value"]
+                return str(secret_data["value"])
 
         except (OSError, ValueError, KeyError) as e:
             logger.error("Fehler beim Laden des API-Keys für %s: %s", service_name, e)
@@ -248,7 +251,8 @@ class APIKeyManager:
 
         try:
             with open(self.config.encrypted_secrets_file, encoding="utf-8") as f:
-                return json.load(f)
+                result: dict[str, Any] = json.load(f)
+                return result
         except (OSError, ValueError, KeyError) as e:
             logger.error("Fehler beim Laden der Secrets: %s", e)
             return {}
@@ -286,7 +290,7 @@ class EnvironmentManager:
     - Environment-spezifische Konfigurationen
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.required_vars = {
             "GOOGLE_API_KEY": "Google Gemini API Key",
             "LLKJJ_ENV": "Environment (development/production)",
@@ -306,7 +310,7 @@ class EnvironmentManager:
         Returns:
             Dict mit Validierungsergebnissen
         """
-        results = {
+        results: dict[str, Any] = {
             "valid": True,
             "missing_required": [],
             "missing_optional": [],
@@ -386,12 +390,12 @@ def validate_production_environment() -> bool:
     if not validation["valid"]:
         logger.error("Environment-Validierung fehlgeschlagen:")
         for missing in validation["missing_required"]:
-            logger.error(f"  - {missing['name']}: {missing['description']}")
+            logger.error("  - %s: %s", missing["name"], missing["description"])
         return False
 
     if validation["recommendations"]:
         logger.warning("Sicherheits-Empfehlungen:")
         for rec in validation["recommendations"]:
-            logger.warning(f"  - {rec}")
+            logger.warning("  - %s", rec)
 
     return True

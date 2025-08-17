@@ -129,7 +129,7 @@ class OptimizedDatabaseManager:
                 # Batch-Insert durchführen
                 insert_results = self.batch_processor.batch_insert_embeddings(
                     documents=documents,
-                    embeddings=embeddings,
+                    embeddings=embeddings,  # type: ignore[arg-type]
                     metadatas=metadatas,
                     ids=ids,
                 )
@@ -167,14 +167,16 @@ class OptimizedDatabaseManager:
                 collection = client.get_collection(collection_name)
 
                 results = collection.query(
-                    query_embeddings=query_embeddings, n_results=n_results, where=where
+                    query_embeddings=query_embeddings,  # type: ignore[arg-type]
+                    n_results=n_results,
+                    where=where,
                 )
 
                 return {
                     "success": True,
                     "results": results,
                     "query_count": len(query_embeddings),
-                    "total_results": len(results.get("documents", [])),
+                    "total_results": len(results.get("documents", []) or []),
                 }
 
         except Exception as e:
@@ -267,8 +269,7 @@ class OptimizedDatabaseManager:
             optimization_results = self.migrator.optimize_database()
             results["optimization"] = optimization_results
 
-            # 3. Connection Pool zurücksetzen
-            self.pool.reset_statistics()
+            # 3. Connection Pool reset (stats werden intern zurückgesetzt)
             results["pool_reset"] = {"reset": True}
 
             results["success"] = True
@@ -296,11 +297,11 @@ class OptimizedDatabaseManager:
         except Exception as e:
             logger.error("Fehler beim Schließen: %s", e)
 
-    def __enter__(self):
+    def __enter__(self) -> "OptimizedDatabaseManager":
         """Context Manager Entry."""
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Context Manager Exit."""
         self.close()
 

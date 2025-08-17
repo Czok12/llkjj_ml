@@ -7,12 +7,16 @@ Tools für:
 - Index-Optimierung
 - Performance-Tuning
 - Backup und Recovery
+
+ChromaDB type issues are handled with type: ignore as they involve complex
+internal types that change between versions.
 """
 
 import json
 import logging
 import shutil
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -73,7 +77,8 @@ class DatabaseMigrator:
         """Lädt das Migration-Log."""
         try:
             with open(self.migration_log_file, encoding="utf-8") as f:
-                return json.load(f)
+                loaded_data: dict[str, Any] = json.load(f)
+                return loaded_data  # Explicitly return loaded data
         except (FileNotFoundError, json.JSONDecodeError) as e:
             logger.error("Fehler beim Laden des Migration-Logs: %s", e)
             return {"migrations": []}
@@ -174,7 +179,7 @@ class DatabaseMigrator:
         logger.info("Starte Database-Optimierung")
 
         start_time = time.time()
-        optimization_results = {
+        optimization_results: dict[str, Any] = {
             "start_time": datetime.now().isoformat(),
             "optimizations_applied": [],
             "performance_improvements": {},
@@ -244,7 +249,7 @@ class DatabaseMigrator:
         """
         logger.info("Sammle Database-Statistiken")
 
-        stats = {
+        stats: dict[str, Any] = {
             "database_path": str(self.db_path),
             "timestamp": datetime.now().isoformat(),
             "collections": [],
@@ -290,13 +295,21 @@ class DatabaseMigrator:
                             if sample["documents"]:
                                 collection_stats["schema_sample"] = {
                                     "has_documents": True,
-                                    "has_embeddings": len(sample["embeddings"]) > 0,
+                                    "has_embeddings": (
+                                        len(sample["embeddings"]) > 0
+                                        if sample["embeddings"]
+                                        else False
+                                    ),
                                     "embedding_dimension": (
                                         len(sample["embeddings"][0])
                                         if sample["embeddings"]
                                         else 0
                                     ),
-                                    "has_metadatas": len(sample["metadatas"]) > 0,
+                                    "has_metadatas": (
+                                        len(sample["metadatas"]) > 0
+                                        if sample["metadatas"]
+                                        else False
+                                    ),
                                 }
                         except Exception:
                             collection_stats["schema_sample"] = {
@@ -322,7 +335,9 @@ class DatabaseMigrator:
 
         return stats
 
-    def apply_migration(self, migration_version: str, migration_func: callable) -> bool:
+    def apply_migration(
+        self, migration_version: str, migration_func: Callable[[Path], None]
+    ) -> bool:
         """
         Wendet eine Migration an.
 
@@ -391,7 +406,8 @@ class DatabaseMigrator:
     def get_migration_history(self) -> list[dict[str, Any]]:
         """Holt die Migration-History."""
         log_data = self._load_migration_log()
-        return log_data.get("migrations", [])
+        migration_list = log_data.get("migrations", [])
+        return list(migration_list)  # Typ-sicher: explizit als Liste von Dicts
 
     def cleanup_old_backups(self, keep_count: int = 10) -> int:
         """
@@ -454,13 +470,13 @@ def migration_v1_0_0_initial_setup(db_path: Path) -> None:
             logger.info("Standard-Collection existiert bereits")
 
 
-def migration_v1_1_0_add_metadata_indexes(db_path: Path) -> None:
+def migration_v1_1_0_add_metadata_indexes(db_path: Path) -> None:  # noqa: ARG001
     """Migration für erweiterte Metadata-Indexes."""
     logger.info("Migration v1.1.0: Erweiterte Metadata-Indexes")
 
     # ChromaDB macht automatische Index-Optimierung
     # Diese Migration ist hauptsächlich dokumentativ
-    pass
+    logger.info("ChromaDB auto-indexing active for %s", db_path)
 
 
 def migration_v1_2_0_optimize_embeddings(db_path: Path) -> None:
@@ -512,10 +528,10 @@ def run_all_migrations(db_path: Path) -> dict[str, Any]:
         success = migrator.apply_migration(version, migration_func)
 
         if success:
-            results["successful_migrations"] += 1
+            results["successful_migrations"] = results["successful_migrations"] + 1  # type: ignore[operator]
         else:
-            results["failed_migrations"] += 1
+            results["failed_migrations"] = results["failed_migrations"] + 1  # type: ignore[operator]
 
-        results["details"].append({"version": version, "success": success})
+        results["details"].append({"version": version, "success": success})  # type: ignore[attr-defined]
 
     return results

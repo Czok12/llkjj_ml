@@ -70,7 +70,7 @@ class ChromaDBBatchProcessor:
 
         logger.info(f"ChromaDB Batch Processor initialisiert: {collection_name}")
 
-    def _get_or_create_collection(self, client) -> Any:
+    def _get_or_create_collection(self, client: Any) -> Any:
         """Holt oder erstellt die ChromaDB-Collection."""
         try:
             # Versuche Collection zu holen
@@ -277,7 +277,7 @@ class ChromaDBBatchProcessor:
 
         # Durchschnittswerte berechnen
         if self._batch_times:
-            self.stats.average_batch_time = np.mean(self._batch_times)
+            self.stats.average_batch_time = float(np.mean(self._batch_times))
 
         if total_time > 0:
             self.stats.documents_per_second = successful_inserts / total_time
@@ -452,7 +452,7 @@ class ChromaDBBatchProcessor:
 
 
 def create_batch_processor(
-    db_path: Path, collection_name: str = "llkjj_embeddings", **kwargs
+    db_path: Path, collection_name: str = "llkjj_embeddings", **kwargs: Any
 ) -> ChromaDBBatchProcessor:
     """
     Factory-Funktion für ChromaDBBatchProcessor.

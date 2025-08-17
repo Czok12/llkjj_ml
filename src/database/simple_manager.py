@@ -34,10 +34,10 @@ class SimpleDatabaseManager:
         """
         self.db_path = Path(db_path)
         self.db_path.mkdir(parents=True, exist_ok=True)
-        self._client = None
+        self._client: Any = None
 
     @property
-    def client(self):
+    def client(self) -> Any:
         """Lazy-loaded ChromaDB client."""
         if self._client is None:
             self._client = chromadb.PersistentClient(path=str(self.db_path))

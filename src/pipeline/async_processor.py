@@ -32,7 +32,7 @@ from sentence_transformers import SentenceTransformer
 try:
     import google.genai as genai
 except ImportError:
-    genai = None  # type: ignore[assignment]  # Assign None to genai if import fails, so downstream code can check for its availability
+    genai = None  # type: ignore[assignment]
 
 from src.config import Config
 from src.extraction import DataExtractor
@@ -112,12 +112,12 @@ class AsyncUnifiedProcessor:
             format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         )
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> "AsyncUnifiedProcessor":
         """Async context manager entry - setup resources"""
         await self._setup_async_resources()
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Async context manager exit - cleanup resources"""
         await self._cleanup_async_resources()
 
@@ -187,18 +187,21 @@ class AsyncUnifiedProcessor:
     async def _setup_gemini_model(self) -> None:
         """Setup Gemini model for AI enhancement (async)"""
         try:
-            if genai is None:
+            # Check for genai availability
+            has_genai = genai is not None
+            if not has_genai:
                 logger.warning("⚠️ Gemini not available - API enhancement disabled")
+                self.gemini_model = None
                 return
 
             api_key = os.getenv("GEMINI_API_KEY")
             if not api_key:
                 logger.warning("⚠️ GEMINI_API_KEY not set - API enhancement disabled")
+                self.gemini_model = None
                 return
 
             # Configure Gemini async - set to None as placeholder for real implementation
             self.gemini_model = None  # Placeholder for real implementation
-
             logger.info("✅ Async Gemini model configured (mock)")
 
         except Exception as e:
@@ -476,7 +479,9 @@ class AsyncUnifiedProcessor:
         except Exception as e:
             logger.warning("⚠️ Async Vektorisierung fehlgeschlagen: %s", e)
 
-    def _store_embeddings_sync(self, embeddings, texts, metadata_list):
+    def _store_embeddings_sync(
+        self, embeddings: Any, texts: Any, metadata_list: Any
+    ) -> None:
         """Synchrone ChromaDB-Speicherung (für Executor)"""
         if self.invoice_collection:
             ids = [f"doc_{i}_{int(time.time())}" for i in range(len(embeddings))]
