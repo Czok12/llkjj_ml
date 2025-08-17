@@ -18,6 +18,9 @@ import sys
 from pathlib import Path
 
 from src.config import Config
+
+# Feature Engineering Integration
+from src.features.ml_integration import create_feature_pipeline
 from src.pipeline.processor import UnifiedProcessor
 
 # Import consolidated services
@@ -506,6 +509,179 @@ def optimize_database(args: argparse.Namespace) -> None:
         print(f"❌ Optimization failed: {results.get('error', 'Unknown error')}")
 
 
+# FEATURE ENGINEERING COMMANDS
+def extract_features(args: argparse.Namespace) -> None:
+    """Extract features for single document"""
+    input_path = Path(args.input)
+
+    print(f"🔧 Extracting features from: {input_path}")
+
+    # Load invoice data
+    if input_path.suffix.lower() == ".json":
+        with open(input_path, encoding="utf-8") as f:
+            invoice_data = json.load(f)
+    else:
+        print("❌ Only JSON files supported for feature extraction")
+        return
+
+    # Create feature pipeline
+    feature_pipeline = create_feature_pipeline()
+
+    # Extract features
+    result = feature_pipeline.extract_features_for_document(invoice_data)
+
+    if result["success"]:
+        print("✅ Feature extraction completed!")
+        print(f"🎯 Features extracted: {result['feature_count']}")
+
+        # Show pipeline stats
+        print("\n📊 Pipeline Statistics:")
+        for extractor, stats in result["extraction_results"].items():
+            status = "✅" if stats["success"] else "❌"
+            print(
+                f"  {status} {extractor}: {stats['feature_count']} features ({stats['computation_time']:.3f}s)"
+            )
+
+        # Save features if output specified
+        if args.output:
+            output_path = Path(args.output)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+
+            with open(output_path, "w", encoding="utf-8") as f:
+                json.dump(result, f, ensure_ascii=False, indent=2)
+
+            print(f"💾 Features saved to: {output_path}")
+    else:
+        print(f"❌ Feature extraction failed: {result.get('error', 'Unknown error')}")
+
+
+def extract_features_batch(args: argparse.Namespace) -> None:
+    """Extract features for multiple documents"""
+    input_dir = Path(args.input)
+    output_dir = Path(args.output) if args.output else Path("data/features")
+
+    print(f"🔧 Batch feature extraction from: {input_dir}")
+    print(f"📁 Output directory: {output_dir}")
+
+    # Find JSON files
+    json_files = list(input_dir.glob("*.json"))
+    if not json_files:
+        print(f"❌ No JSON files found in {input_dir}")
+        return
+
+    print(f"📦 Found {len(json_files)} JSON files")
+
+    # Load invoice data
+    invoice_data_list = []
+    for json_file in json_files:
+        try:
+            with open(json_file, encoding="utf-8") as f:
+                invoice_data = json.load(f)
+                invoice_data_list.append(invoice_data)
+        except Exception as e:
+            print(f"⚠️  Error loading {json_file.name}: {e}")
+            continue
+
+    if not invoice_data_list:
+        print("❌ No valid invoice data loaded")
+        return
+
+    # Create feature pipeline
+    feature_pipeline = create_feature_pipeline()
+
+    # Extract features batch
+    results = feature_pipeline.extract_features_batch(invoice_data_list)
+
+    # Analysis
+    analysis = feature_pipeline.analyze_feature_extraction(results)
+
+    print("\n📊 Batch Feature Extraction Results:")
+    print(f"   Documents processed: {analysis['total_documents']}")
+    print(f"   Successful extractions: {analysis['successful_extractions']}")
+    print(f"   Success rate: {analysis['success_rate']:.1%}")
+
+    if analysis["successful_extractions"] > 0:
+        feature_stats = analysis["feature_count_stats"]
+        print(
+            f"   Feature count - Min: {feature_stats['min']}, Max: {feature_stats['max']}, Avg: {feature_stats['avg']:.1f}"
+        )
+        print(f"   Unique features: {feature_stats['total_unique_features']}")
+
+        print("\n📈 Extractor Performance:")
+        for extractor, stats in analysis["extractor_performance"].items():
+            print(
+                f"   {extractor}: {stats['success_rate']:.1%} success, {stats['avg_features']:.1f} avg features, {stats['avg_time']:.3f}s avg time"
+            )
+
+    # Save results
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Save individual results
+    for _i, (result, json_file) in enumerate(zip(results, json_files, strict=False)):
+        if result["success"]:
+            feature_file = output_dir / f"{json_file.stem}_features.json"
+            with open(feature_file, "w", encoding="utf-8") as f:
+                json.dump(result, f, ensure_ascii=False, indent=2)
+
+    # Save analysis
+    analysis_file = output_dir / "feature_analysis.json"
+    with open(analysis_file, "w", encoding="utf-8") as f:
+        json.dump(analysis, f, ensure_ascii=False, indent=2)
+
+    print(f"💾 Results saved to: {output_dir}")
+
+
+def analyze_feature_pipeline(args: argparse.Namespace) -> None:
+    """Analyze feature pipeline capabilities"""
+
+    print("🔍 Analyzing Feature Engineering Pipeline")
+
+    # Create feature pipeline
+    feature_pipeline = create_feature_pipeline()
+
+    # Get pipeline info
+    info = feature_pipeline.get_pipeline_info()
+
+    print("\n📊 Pipeline Information:")
+    stats = info["pipeline_stats"]
+    print(f"   Total extractors: {stats['total_extractors']}")
+    print(f"   Enabled extractors: {stats['enabled_extractors']}")
+    print(f"   Cache size: {stats['cache_size']}")
+
+    print("\n🎯 Performance Targets:")
+    print(f"   Baseline accuracy: {info['baseline_accuracy']:.1%}")
+    print(f"   Target accuracy: {info['target_accuracy']:.1%}")
+    print(f"   Accuracy gap: {info['accuracy_gap']:.1%}")
+
+    print("\n📋 Available Extractors:")
+    for extractor_name in stats["extractor_names"]:
+        print(f"   ✅ {extractor_name}")
+
+    print(f"\n🔧 Total Available Features: {len(info['all_feature_names'])}")
+
+    # Group features by category
+    categories: dict[str, list[str]] = {}
+    for feature_name in info["all_feature_names"]:
+        if "_" in feature_name:
+            category = feature_name.split("_")[0]
+            if category not in categories:
+                categories[category] = []
+            categories[category].append(feature_name)
+
+    print("\n📈 Feature Categories:")
+    for category, features in categories.items():
+        print(f"   {category}: {len(features)} features")
+
+    if args.output:
+        output_path = Path(args.output)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        with open(output_path, "w", encoding="utf-8") as f:
+            json.dump(info, f, ensure_ascii=False, indent=2)
+
+        print(f"💾 Analysis saved to: {output_path}")
+
+
 def create_arg_parser() -> argparse.ArgumentParser:
     """Create and configure argument parser"""
     parser = argparse.ArgumentParser(
@@ -673,6 +849,73 @@ Beispiele:
         "--service", help="Service-Name (z.B. gemini, openai)"
     )
     security_keys_parser.add_argument("--key", help="API-Key Wert")
+
+    # Feature Engineering Commands
+    parser_extract = subparsers.add_parser(
+        "extract-features",
+        help="Extract features from single document",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description="""Extract features from a single invoice document.
+
+This command extracts features using the complete feature engineering pipeline
+for improved SKR03 classification accuracy.
+
+Examples:
+    poetry run python main.py extract-features data/processed/invoice.json
+    poetry run python main.py extract-features data/processed/invoice.json --output features/invoice_features.json
+""",
+    )
+    parser_extract.add_argument(
+        "input", help="Input JSON file (processed invoice data)"
+    )
+    parser_extract.add_argument(
+        "--output", "-o", help="Output file for extracted features (JSON format)"
+    )
+    parser_extract.set_defaults(func=extract_features)
+
+    parser_extract_batch = subparsers.add_parser(
+        "extract-features-batch",
+        help="Extract features from multiple documents",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description="""Extract features from multiple invoice documents in batch.
+
+This command processes all JSON files in the input directory and extracts
+features using the complete feature engineering pipeline.
+
+Examples:
+    poetry run python main.py extract-features-batch data/processed/
+    poetry run python main.py extract-features-batch data/processed/ --output data/features/
+""",
+    )
+    parser_extract_batch.add_argument(
+        "input", help="Input directory with JSON files (processed invoice data)"
+    )
+    parser_extract_batch.add_argument(
+        "--output",
+        "-o",
+        help="Output directory for extracted features",
+        default="data/features",
+    )
+    parser_extract_batch.set_defaults(func=extract_features_batch)
+
+    parser_analyze_features = subparsers.add_parser(
+        "analyze-features",
+        help="Analyze feature engineering pipeline",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description="""Analyze the feature engineering pipeline capabilities.
+
+This command provides detailed information about available extractors,
+feature categories, and pipeline performance targets.
+
+Examples:
+    poetry run python main.py analyze-features
+    poetry run python main.py analyze-features --output pipeline_analysis.json
+""",
+    )
+    parser_analyze_features.add_argument(
+        "--output", "-o", help="Output file for analysis results (JSON format)"
+    )
+    parser_analyze_features.set_defaults(func=analyze_feature_pipeline)
 
     return parser
 
