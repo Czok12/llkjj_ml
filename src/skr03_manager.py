@@ -54,11 +54,11 @@ class KontenplanParser:
                         }
 
                         # Kategorien sammeln
-                        kat = row.get("Kontenkategorie", "")
-                        if kat:
-                            if kat not in self.kategorien:
-                                self.kategorien[kat] = []
-                            self.kategorien[kat].append(konto_nr)
+                        kategorie_name = row.get("Kontenkategorie", "")
+                        if kategorie_name:
+                            if kategorie_name not in self.kategorien:
+                                self.kategorien[kategorie_name] = []
+                            self.kategorien[kategorie_name].append(konto_nr)
 
             logger.info(
                 "✅ Kontenplan geladen: %d Konten, %d Kategorien",
@@ -112,7 +112,7 @@ class SKR03Manager:
         """Lädt SKR03-Klassifizierungsregeln aus YAML"""
         try:
             if not self.regeln_pfad.exists():
-                logger.error(f"❌ SKR03-Regeln nicht gefunden: {self.regeln_pfad}")
+                logger.error("❌ SKR03-Regeln nicht gefunden: %s", self.regeln_pfad)
                 return
 
             with open(self.regeln_pfad, encoding="utf-8") as f:
@@ -123,7 +123,8 @@ class SKR03Manager:
 
             if self._regeln_geladen:
                 logger.info(
-                    f"✅ SKR03-Regeln geladen: {len(self.klassifizierungsregeln)} Kategorien"
+                    "✅ SKR03-Regeln geladen: %d Kategorien",
+                    len(self.klassifizierungsregeln),
                 )
 
                 # Statistiken loggen
@@ -131,16 +132,16 @@ class SKR03Manager:
                     len(kategorie.get("schlüsselwörter", []))
                     for kategorie in self.klassifizierungsregeln.values()
                 )
-                logger.info(f"   📊 Gesamt Keywords: {total_keywords}")
+                logger.info("   📊 Gesamt Keywords: %d", total_keywords)
 
                 # Beispiele der Kategorien
                 kategorien_liste = list(self.klassifizierungsregeln.keys())[:5]
-                logger.debug(f"   📂 Kategorien (Beispiele): {kategorien_liste}")
+                logger.debug("   📂 Kategorien (Beispiele): %s", kategorien_liste)
             else:
                 logger.warning("⚠️ Keine Kategorien in SKR03-Regeln gefunden")
 
-        except Exception as e:
-            logger.error(f"❌ Fehler beim Laden der SKR03-Regeln: {e}")
+        except (OSError, yaml.YAMLError) as e:
+            logger.error("❌ Fehler beim Laden der SKR03-Regeln: %s", e)
             self._regeln_geladen = False
 
     def _lade_kontenplan(self) -> None:
@@ -154,8 +155,8 @@ class SKR03Manager:
             else:
                 logger.warning("⚠️ Kontenplan konnte nicht geladen werden")
 
-        except Exception as e:
-            logger.error(f"❌ Fehler beim Laden des Kontenplans: {e}")
+        except (OSError, csv.Error, KeyError) as e:
+            logger.error("❌ Fehler beim Laden des Kontenplans: %s", e)
             self._kontenplan_geladen = False
 
     def ist_bereit(self) -> bool:
@@ -254,14 +255,19 @@ class SKR03Manager:
             standard_konto
         ):
             logger.warning(
-                f"⚠️ Ungültiges Konto {standard_konto} für Kategorie {best_category}"
+                "⚠️ Ungültiges Konto %s für Kategorie %s", standard_konto, best_category
             )
             standard_konto = "3400"  # Fallback auf sicheres Elektromaterial-Konto
 
         logger.debug(
-            f"SKR03-Klassifizierung: '{beschreibung}' → {best_category} "
-            f"(Konto: {standard_konto}, Konfidenz: {konfidenz:.3f}, "
-            f"Keywords: {matched_keywords[:3]})"
+            "SKR03-Klassifizierung: '%s' → %s "
+            "(Konto: %s, Konfidenz: %.3f, "
+            "Keywords: %s)",
+            beschreibung,
+            best_category,
+            standard_konto,
+            konfidenz,
+            matched_keywords[:3],
         )
 
         return best_category, standard_konto, konfidenz, matched_keywords
@@ -300,7 +306,10 @@ if __name__ == "__main__":
     # Test des SKR03Managers
     import sys
 
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
 
     # Test-Initialisierung
     manager = lade_skr03_manager()
@@ -319,11 +328,11 @@ if __name__ == "__main__":
         ]
 
         print("\n🧪 Test-Klassifizierungen:")
-        for beschreibung, lieferant in test_artikel:
-            kategorie, konto, konfidenz, keywords = manager.klassifiziere_artikel(
-                beschreibung, lieferant
+        for artikel_desc, artikel_lieferant in test_artikel:
+            kat, konto, konf, keywords = manager.klassifiziere_artikel(
+                artikel_desc, artikel_lieferant
             )
-            print(f"   {beschreibung} → {kategorie} (Konto: {konto}, {konfidenz:.2f})")
+            print(f"   {artikel_desc} → {kat} (Konto: {konto}, {konf:.2f})")
             if keywords:
                 print(f"      Keywords: {keywords[:3]}")
     else:

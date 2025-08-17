@@ -182,14 +182,14 @@ class ModularProcessor:
             )
 
         try:
-            # Basic PDF text extraction (fallback method)
-            import PyPDF2
+            # Basic PDF text extraction using PyMuPDF (faster and more reliable)
+            import fitz  # PyMuPDF
 
             text_content = ""
-            with open(pdf_path, "rb") as file:
-                pdf_reader = PyPDF2.PdfReader(file)
-                for page in pdf_reader.pages:
-                    text_content += page.extract_text() + "\n"
+            with fitz.open(pdf_path) as pdf_doc:
+                for page_num in range(pdf_doc.page_count):
+                    page = pdf_doc[page_num]
+                    text_content += page.get_text("text") + "\n"
 
             if not text_content.strip():
                 raise ValueError("No text extracted from PDF")

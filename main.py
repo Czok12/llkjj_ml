@@ -81,8 +81,17 @@ def process_pdfs(args: argparse.Namespace) -> None:
                     f"  ✅ {pdf_file.name}: {len(result.skr03_classifications)} SKR03, {result.extraction_quality} quality"
                 )
 
+            except (ValueError, FileNotFoundError) as e:
+                print(f"  ❌ {pdf_file.name}: Eingabefehler - {e}")
+                continue
+            except (MemoryError, OSError) as e:
+                print(f"  ❌ {pdf_file.name}: Systemfehler - {e}")
+                continue
             except Exception as e:
-                print(f"  ❌ {pdf_file.name}: {e}")
+                print(f"  ❌ {pdf_file.name}: Unerwarteter Fehler - {e}")
+                logging.error(
+                    "Unerwarteter Fehler bei PDF-Verarbeitung: %s", e, exc_info=True
+                )
                 continue
 
         # Summary
@@ -269,8 +278,15 @@ def analyze_results(args: argparse.Namespace) -> None:
             if "confidence_score" in data:
                 quality_scores.append(data["confidence_score"])
 
+        except (FileNotFoundError, PermissionError) as e:
+            print(f"⚠️  Dateizugriff fehlgeschlagen für {json_file.name}: {e}")
+            continue
+        except (json.JSONDecodeError, KeyError) as e:
+            print(f"⚠️  Ungültiges JSON-Format in {json_file.name}: {e}")
+            continue
         except Exception as e:
-            print(f"⚠️  Failed to analyze {json_file.name}: {e}")
+            print(f"⚠️  Unerwarteter Fehler bei Analyse von {json_file.name}: {e}")
+            logging.error("Unerwarteter Fehler bei Datei-Analyse: %s", e, exc_info=True)
             continue
 
     # Calculate statistics
@@ -538,9 +554,17 @@ Examples:
     except KeyboardInterrupt:
         print("\n⚠️  Operation cancelled by user")
         sys.exit(1)
+    except (ImportError, ModuleNotFoundError) as e:
+        logging.error("Modul-Import-Fehler: %s", e, exc_info=True)
+        print(f"❌ Abhängigkeitsfehler: {e}")
+        sys.exit(1)
+    except (ValueError, TypeError) as e:
+        logging.error("Konfigurationsfehler: %s", e, exc_info=True)
+        print(f"❌ Konfigurationsfehler: {e}")
+        sys.exit(1)
     except Exception as e:
-        logging.error(f"Pipeline error: {e}", exc_info=True)
-        print(f"❌ Error: {e}")
+        logging.error("Pipeline-Fehler: %s", e, exc_info=True)
+        print(f"❌ Unerwarteter Pipeline-Fehler: {e}")
         sys.exit(1)
 
 
