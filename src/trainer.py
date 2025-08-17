@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any, cast
 
 import spacy
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, ValidationInfo, field_validator
 from spacy.pipeline import TextCategorizer
 from spacy.training import Example
 from spacy.util import minibatch
@@ -57,7 +57,7 @@ class TrainingMetrics(BaseModel):
 
     @field_validator("training_examples", "validation_examples")
     @classmethod
-    def validate_example_counts(cls, v: int, info) -> int:
+    def validate_example_counts(cls, v: int, info: ValidationInfo) -> int:
         """Validiere dass Trainings-/Validierungsbeispiele <= total_examples"""
         if info.data.get("total_examples") is not None:
             total = info.data["total_examples"]
@@ -117,7 +117,7 @@ class ExportResult(BaseModel):
 
     @field_validator("skr03_classifications")
     @classmethod
-    def validate_skr03_count(cls, v: int, info) -> int:
+    def validate_skr03_count(cls, v: int, info: ValidationInfo) -> int:
         """Validiere dass SKR03-Klassifizierungen <= total_records"""
         if info.data.get("total_records") is not None:
             total = info.data["total_records"]
@@ -383,7 +383,7 @@ class NERTrainer(BaseTrainer):
             random.shuffle(train_data)
 
             # Training in batches
-            batches = minibatch(train_data, size=8)  # type: ignore[no-untyped-call]
+            batches = minibatch(train_data, size=8)
             for batch in batches:
                 examples = []
                 for text, annotations in batch:
@@ -548,7 +548,7 @@ class TextCatTrainer(BaseTrainer):
             random.shuffle(train_data)
 
             # Training in batches
-            batches = minibatch(train_data, size=16)  # type: ignore[no-untyped-call]
+            batches = minibatch(train_data, size=16)
             for batch in batches:
                 examples = []
                 for doc in batch:

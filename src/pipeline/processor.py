@@ -27,7 +27,7 @@ from pydantic import BaseModel, Field, field_validator
 from sentence_transformers import SentenceTransformer
 
 try:
-    from google import genai
+    import google.genai as genai
 except ImportError:
     genai = None  # type: ignore[assignment]
 
@@ -210,14 +210,11 @@ class UnifiedProcessor:
                 logger.warning("⚠️ Keine Google API Key gefunden - Gemini deaktiviert")
                 return None
 
-            # Configure API Key
-            genai.configure(api_key=self.config.google_api_key)
+            # Create Gemini client with API key
+            client = genai.Client(api_key=self.config.google_api_key)
 
-            # Initialize the generative model
-            model = genai.GenerativeModel(self.config.gemini_model)
-
-            logger.info("✅ Gemini Model initialisiert: %s", self.config.gemini_model)
-            return model
+            logger.info("✅ Gemini Client initialisiert: %s", self.config.gemini_model)
+            return client
 
         except Exception as e:
             logger.warning("⚠️ Gemini-Setup fehlgeschlagen: %s", e)
@@ -350,7 +347,7 @@ class UnifiedProcessor:
 
         try:
             # Prüfe auf existierende IDs um Warnungen zu vermeiden
-            existing_ids = []
+            existing_ids: list[str] = []
             if ids_to_add:
                 try:
                     existing_items = self.invoice_collection.get(ids=ids_to_add)

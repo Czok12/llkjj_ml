@@ -25,9 +25,7 @@ class Address(BaseModel):
     strasse: str = Field(
         ..., min_length=5, max_length=100, description="Straße und Hausnummer"
     )
-    plz: str = Field(
-        ..., pattern=r"^\d{5}$", description="Deutsche Postleitzahl (5-stellig)"
-    )
+    plz: str = Field(..., description="Deutsche Postleitzahl (5-stellig)")
     ort: str = Field(..., min_length=2, max_length=100, description="Ortsname")
     land: str = Field(default="Deutschland", description="Land")
 

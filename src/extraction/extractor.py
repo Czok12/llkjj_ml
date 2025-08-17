@@ -252,9 +252,9 @@ WICHTIG:
             try:
                 if not response_text or response_text.strip() == "":
                     logger.warning("Gemini returned empty response")
-                    enhanced_data = {}
+                    enhanced_data: dict[str, Any] = {}
                 else:
-                    enhanced_data: dict[str, Any] = json.loads(response_text)
+                    enhanced_data = json.loads(response_text)
             except json.JSONDecodeError as json_error:
                 logger.warning(
                     f"Gemini JSON decode error: {json_error}, using fallback"

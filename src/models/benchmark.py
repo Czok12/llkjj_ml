@@ -19,6 +19,9 @@ from typing import Any
 
 from src.models.invoice import (
     Invoice,
+    InvoiceFooter,
+    InvoiceHeader,
+    LineItem,
 )
 
 
@@ -211,7 +214,7 @@ def benchmark_validation() -> dict[str, Any]:
     """Benchmark Validierungsfeatures."""
 
     # Invalid data for validation testing
-    invalid_data = {
+    invalid_data: dict[str, Any] = {
         "header": {
             "rechnung_nummer": "123",  # Too short
             "rechnungs_datum": date(2025, 1, 16),
@@ -248,8 +251,20 @@ def benchmark_validation() -> dict[str, Any]:
     # Pydantic: Automatic validation
     pydantic_validation_errors = 0
     try:
-        Invoice(**invalid_data)
-    except Exception:
+        # Create invoice from invalid data dict
+        from typing import cast
+
+        Invoice(
+            header=InvoiceHeader(**cast(dict[str, Any], invalid_data["header"])),
+            line_items=[
+                LineItem(**item)
+                for item in cast(list[dict[str, Any]], invalid_data["line_items"])
+            ],
+            footer=InvoiceFooter(**cast(dict[str, Any], invalid_data["footer"])),
+            confidence_score=cast(float, invalid_data["confidence_score"]),
+            extraction_source=cast(str, invalid_data["extraction_source"]),
+        )
+    except (ValueError, TypeError):
         pydantic_validation_errors = 1
 
     return {

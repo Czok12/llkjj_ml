@@ -27,7 +27,7 @@ import logging
 import re
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, TypedDict
 
 from docling.datamodel.base_models import InputFormat
 from docling.datamodel.pipeline_options import (
@@ -41,6 +41,13 @@ from docling.datamodel.pipeline_options import (
 from docling.document_converter import DocumentConverter, PdfFormatOption
 
 logger = logging.getLogger(__name__)
+
+
+class OcrEngineConfig(TypedDict):
+    """Type definition for OCR engine configuration."""
+
+    name: str
+    options: TesseractCliOcrOptions | RapidOcrOptions | EasyOcrOptions
 
 
 class AdvancedDoclingProcessor:
@@ -141,7 +148,9 @@ class AdvancedDoclingProcessor:
 
         return pipeline_options
 
-    def _get_ocr_options(self):
+    def _get_ocr_options(
+        self,
+    ) -> TesseractCliOcrOptions | RapidOcrOptions | EasyOcrOptions:
         """
         Bestimmt OCR-Optionen basierend auf optimierter 2025-Strategie.
 
@@ -204,7 +213,7 @@ class AdvancedDoclingProcessor:
             "payment_terms": r"(?:Zahlungsziel|Payment\s*Terms)\s*:?\s*(\d+\s*Tage?)",
         }
 
-    def _select_ocr_engines_by_quality(self) -> list[dict]:
+    def _select_ocr_engines_by_quality(self) -> list[OcrEngineConfig]:
         """
         Optimierte OCR-Engine-Auswahl basierend auf 2025 Research.
 
@@ -247,9 +256,9 @@ class AdvancedDoclingProcessor:
             }
         )
 
-        return engines
+        return engines  # type: ignore[return-value]
 
-    def process(self, pdf_path: str) -> tuple[dict, float]:
+    def process(self, pdf_path: str) -> tuple[dict[str, Any], float]:
         """
         Verarbeitet PDF mit intelligenter OCR-Fallback-Logik.
 
@@ -276,9 +285,12 @@ class AdvancedDoclingProcessor:
                 )
 
                 # Neue Pipeline-Optionen für diesen Versuch
-                pipeline_options = self._create_pipeline_options_for_engine(
-                    engine_config["options"]
+                ocr_options = engine_config["options"]
+                assert isinstance(
+                    ocr_options,
+                    TesseractCliOcrOptions | RapidOcrOptions | EasyOcrOptions,
                 )
+                pipeline_options = self._create_pipeline_options_for_engine(ocr_options)
                 pdf_format_options = PdfFormatOption(pipeline_options=pipeline_options)
 
                 # Neuen Converter mit Engine-spezifischen Optionen
@@ -349,7 +361,9 @@ class AdvancedDoclingProcessor:
             f"Alle OCR-Engines versagten. Letzter Fehler: {str(last_error)}"
         )
 
-    def _create_pipeline_options_for_engine(self, ocr_options) -> PdfPipelineOptions:
+    def _create_pipeline_options_for_engine(
+        self, ocr_options: TesseractCliOcrOptions | RapidOcrOptions | EasyOcrOptions
+    ) -> PdfPipelineOptions:
         """Erstellt Pipeline-Optionen für spezifische OCR-Engine."""
         pipeline_options = PdfPipelineOptions(
             # OCR aktivieren
@@ -491,7 +505,7 @@ class AdvancedDoclingProcessor:
 
         return score / max_score if max_score > 0 else 0.0
 
-    def _extract_structured_data(self, document) -> dict[str, Any]:
+    def _extract_structured_data(self, document: Any) -> dict[str, Any]:
         """
         Extrahiert strukturierte Daten aus Docling-Dokument.
 
@@ -523,7 +537,7 @@ class AdvancedDoclingProcessor:
             "extraction_method": "docling_optimized",
         }
 
-    def _extract_tables(self, document) -> list[dict[str, Any]]:
+    def _extract_tables(self, document: Any) -> list[dict[str, Any]]:
         """
         Extrahiert und parst Tabellen aus Docling-Dokument.
 
@@ -599,7 +613,7 @@ class AdvancedDoclingProcessor:
         return tables
 
     def _parse_docling_table(
-        self, table, table_idx: int, page_number: int = 1
+        self, table: Any, table_idx: int, page_number: int = 1
     ) -> dict[str, Any] | None:
         """
         Parst eine Docling-Tabelle korrekt basierend auf der offiziellen API.
@@ -657,7 +671,7 @@ class AdvancedDoclingProcessor:
             logger.warning(f"Fehler beim Parsen von Tabelle {table_idx}: {e}")
             return None
 
-    def _extract_pattern_tables_from_text(self, document) -> list[dict[str, Any]]:
+    def _extract_pattern_tables_from_text(self, document: Any) -> list[dict[str, Any]]:
         """
         Extrahiert Tabellen über Pattern-Matching aus dem Dokument-Text.
 
@@ -667,7 +681,7 @@ class AdvancedDoclingProcessor:
         Returns:
             Liste von erkannten Tabellen
         """
-        tables = []
+        tables: list[dict[str, Any]] = []
 
         try:
             # Volltext aus Dokument extrahieren
@@ -734,7 +748,7 @@ class AdvancedDoclingProcessor:
         return tables
 
     def _parse_table_data(
-        self, table, page_idx: int, table_idx: int
+        self, table: Any, page_idx: int, table_idx: int
     ) -> dict[str, Any] | None:
         """
         Parst eine einzelne Tabelle aus Docling-Format.
@@ -863,7 +877,7 @@ class AdvancedDoclingProcessor:
 
         return normalized
 
-    def _extract_pattern_tables(self, page, page_idx: int) -> list[dict[str, Any]]:
+    def _extract_pattern_tables(self, page: Any, page_idx: int) -> list[dict[str, Any]]:
         """
         Fallback-Tabellenerkennung über Text-Pattern.
 
@@ -874,7 +888,7 @@ class AdvancedDoclingProcessor:
         Returns:
             Liste von erkannten Tabellen
         """
-        tables = []
+        tables: list[dict[str, Any]] = []
 
         try:
             # Seitentext extrahieren
@@ -962,7 +976,7 @@ class AdvancedDoclingProcessor:
         }
 
 
-def create_advanced_docling_processor(**kwargs) -> AdvancedDoclingProcessor:
+def create_advanced_docling_processor(**kwargs: Any) -> AdvancedDoclingProcessor:
     """
     Factory-Funktion für Advanced Docling Processor.
 
@@ -976,7 +990,7 @@ def create_advanced_docling_processor(**kwargs) -> AdvancedDoclingProcessor:
 
 
 # Rückwärtskompatibilität mit alter API
-def create_optimized_docling_processor(**kwargs) -> AdvancedDoclingProcessor:
+def create_optimized_docling_processor(**kwargs: Any) -> AdvancedDoclingProcessor:
     """Rückwärtskompatibilität - verwendet jetzt AdvancedDoclingProcessor."""
     return AdvancedDoclingProcessor(**kwargs)
 
