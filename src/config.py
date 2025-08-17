@@ -39,47 +39,85 @@ class Config(BaseSettings):
     gemini_prompt_file: str = "src/config/gemini_extraction_prompt.txt"
 
     # ML Configuration
-    spacy_model_name: str = "de_core_news_sm"
-    sentence_transformer_model: str = (
-        "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    spacy_model_name: str = Field(default="de_core_news_sm")
+    sentence_transformer_model: str = Field(
+        default="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
     )
-    training_iterations: int = 30
-    batch_size: int = 8
+    training_iterations: int = Field(default=100)
+    batch_size: int = Field(default=8)
 
     # Vector Database
-    chroma_collection_name: str = "llkjj_invoices"
-    embedding_dimension: int = 384
+    chroma_collection_name: str = Field(default="llkjj_invoices")
+    embedding_dimension: int = Field(default=384)
 
     # Processing Configuration
-    max_pdf_pages: int = 50
-    ocr_language: str = "deu"
+    max_pdf_pages: int = Field(default=50)
+    max_pdf_size_mb: int = Field(default=50)
+    ocr_language: str = Field(default="deu")
 
     # Logging
-    log_level: str = "INFO"
-    log_file: str = "logs/llkjj_ml.log"
+    log_level: str = Field(default="INFO")
+    log_file: str = Field(default="logs/llkjj_ml.log")
 
-    # Business Rules für Elektrotechnik
-    umsatzsteuer_regulaer: float = 0.19
-    umsatzsteuer_ermaessigt: float = 0.07
-    gwg_grenze: float = 800.0  # GWG-Grenze für Anlagegüter
+    # Business Rules für Elektrotechnik (konfigurierbar via .env)
+    umsatzsteuer_regulaer: float = Field(default=0.19)
+    umsatzsteuer_ermaessigt: float = Field(default=0.07)
+    gwg_grenze: float = Field(default=800.0)  # GWG-Grenze für Anlagegüter
 
-    # Bekannte Elektro-Lieferanten
-    elektro_lieferanten: list[str] = [
-        "Rexel",
-        "Conrad",
-        "ELV",
-        "Wago",
-        "Phoenix Contact",
-        "Siemens",
-        "ABB",
-        "Schneider Electric",
-        "Legrand",
-        "Hager",
-        "Gira",
-        "Jung",
-        "Busch-Jaeger",
-        "Berker",
-    ]
+    # Default SKR03 Accounts (konfigurierbar via .env)
+    default_account_elektro: str = Field(default="4830")
+    default_account_office: str = Field(default="4935")
+    default_account_tools: str = Field(default="4600")
+    default_account_assets: str = Field(default="0490")
+
+    # External Data Files
+    elektro_lieferanten_file: str = Field(default="src/config/elektro_lieferanten.txt")
+
+    @property
+    def elektro_lieferanten(self) -> list[str]:
+        """Lade Elektro-Lieferanten aus externer Datei"""
+        try:
+            lieferanten_path = Path(self.elektro_lieferanten_file)
+            if not lieferanten_path.exists():
+                # Fallback zur hartcodierten Liste wenn Datei nicht existiert
+                return [
+                    "Rexel",
+                    "Conrad",
+                    "ELV",
+                    "Wago",
+                    "Phoenix Contact",
+                    "Siemens",
+                    "ABB",
+                    "Schneider Electric",
+                    "Legrand",
+                    "Hager",
+                    "Gira",
+                    "Jung",
+                    "Busch-Jaeger",
+                    "Berker",
+                ]
+
+            with open(lieferanten_path, encoding="utf-8") as f:
+                lieferanten = []
+                for line in f:
+                    line = line.strip()
+                    # Ignoriere Kommentare und leere Zeilen
+                    if line and not line.startswith("#"):
+                        lieferanten.append(line)
+                return lieferanten
+        except Exception:
+            # Fallback bei Fehlern
+            return ["Rexel", "Conrad", "ELV", "Wago", "Phoenix Contact"]
+
+    @property
+    def default_accounts(self) -> dict[str, str]:
+        """SKR03 Standard-Konten basierend auf Konfiguration"""
+        return {
+            "elektromaterial": self.default_account_elektro,
+            "office": self.default_account_office,
+            "tools": self.default_account_tools,
+            "assets": self.default_account_assets,
+        }
 
     def __post_init__(self) -> None:
         """Erstelle notwendige Verzeichnisse"""
@@ -94,15 +132,8 @@ class Config(BaseSettings):
             path.mkdir(parents=True, exist_ok=True)
 
 
-# Default SKR03 accounts from skr03_regeln.yaml
-# These are fallback values - actual mapping is in skr03_regeln.yaml
-DEFAULT_ACCOUNTS = {
-    "elektromaterial": "3400",  # Wareneingang 19% Vorsteuer
-    "office": "4935",  # Büromaterial
-    "tools": "4985",  # Werkzeuge und Kleingeräte
-    "services": "4400",  # Fremdleistungen
-}
-
+# SpaCy Entitäten für NER-Training
+# Diese sind Pipeline-spezifisch und können global bleiben
 SPACY_ENTITIES = [
     "INVOICE_NUMBER",  # Rechnungsnummer
     "INVOICE_DATE",  # Rechnungsdatum

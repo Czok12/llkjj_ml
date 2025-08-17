@@ -1,0 +1,25 @@
+# Bekannte Elektrotechnik-Lieferanten für LLKJJ ML Pipeline
+# Eine Lieferantenfirma pro Zeile - wird für Pattern-Matching verwendet
+
+# Großhändler
+Rexel
+Conrad
+ELV
+
+# Hersteller - Automation & Steuerung
+Wago
+Phoenix Contact
+Siemens
+ABB
+Schneider Electric
+
+# Hersteller - Installations-/Schaltgeräte
+Legrand
+Hager
+Gira
+Jung
+Busch-Jaeger
+Berker
+
+# Weitere können hier ergänzt werden...
+# Format: Ein Firmenname pro Zeile, Kommentare mit #
