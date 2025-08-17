@@ -71,8 +71,15 @@ notebooks/
 # Output
 output/
 
+# Security-sensitive Verzeichnisse und Dateien
+.security/
+security_reports/
+*.key
+*.pem
+*.p12
+secrets.enc
+
 # Docs
-*.md
 
 # Ignore Mac system files
 .DS_Store

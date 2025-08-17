@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 """
-LLKJJ ML Pipeline - Unified CLI (KISS Architecture)
-==================================================
+LLKJJ ML Pipeline - Hauptmodul
+=============================
 
-Post-consolidation main entry point using simplified, consolidated services.
-Follows KISS principles: Keep It Simple, Stupid.
-
-Replaces 4 redundant entry points with single, streamlined CLI interface.
-
-Author: LLKJJ ML Pipeline
-Version: 2.0.0 (Post-Consolidation)
+Zentrale CLI-Schnittstelle für alle ML-Operationen:
+- PDF-Verarbeitung mit KI-Pipeline
+- Training und Modell-Management
+- Batch-Verarbeitung und Export
+- Security & Production-Readiness
+- Performance-Monitoring
 """
 
 import argparse
@@ -18,10 +17,13 @@ import logging
 import sys
 from pathlib import Path
 
-# Import consolidated services
 from src.config import Config
 from src.pipeline.processor import UnifiedProcessor
+
+# Import consolidated services
 from src.processing.modular_processor import ModularProcessor
+from src.security.auditor import run_security_audit
+from src.security.manager import APIKeyManager, validate_production_environment
 from src.trainer import TrainingService
 
 
@@ -367,21 +369,22 @@ def run_workflow_3(args: argparse.Namespace) -> None:
 
 def run_workflow_4(args: argparse.Namespace) -> None:
     """Run Workflow 4: Complete pipeline"""
-    config = Config()
-    processor = ModularProcessor(config)
+    Config()
+    processor = UnifiedProcessor()
 
     pdf_path = Path(args.input)
-    output_path = Path(args.output) if args.output else None
+    Path(args.output) if args.output else None
 
     print("🔄 Workflow 4: Complete pipeline")
     print(f"📄 Input: {pdf_path}")
 
     # Verwende existierenden Workflow
-    result = processor.workflow_2_gemini_direct(pdf_path, output_path)
+    result = processor.process_pdf(str(pdf_path))
 
     print("✅ Workflow 4 completed!")
-    print(f"💾 Output JSON: {result['output_json']}")
-    print(f"🎯 Quality: {result['quality_score']}")
+    print(f"💾 Output: {result}")
+    if isinstance(result, dict) and "quality_score" in result:
+        print(f"🎯 Quality: {result['quality_score']}")
 
 
 def init_database(args: argparse.Namespace) -> None:
@@ -645,7 +648,104 @@ Beispiele:
     w4_parser.add_argument("input", help="PDF file to process")
     w4_parser.add_argument("--output", "-o", help="Output JSON file path (optional)")
 
+    # Security Commands
+    # Security Audit
+    security_audit_parser = subparsers.add_parser(
+        "security-audit", help="Führt umfassenden Security Audit durch"
+    )
+    security_audit_parser.add_argument(
+        "--verbose", "-v", action="store_true", help="Detaillierte Ausgabe"
+    )
+
+    # Production Validation
+    subparsers.add_parser("security-validate", help="Validiert Production-Readiness")
+
+    # API Key Management
+    security_keys_parser = subparsers.add_parser(
+        "security-keys", help="API Key Management"
+    )
+    security_keys_parser.add_argument(
+        "security_action",
+        choices=["list", "store", "rotate", "delete"],
+        help="Aktion für API-Keys",
+    )
+    security_keys_parser.add_argument(
+        "--service", help="Service-Name (z.B. gemini, openai)"
+    )
+    security_keys_parser.add_argument("--key", help="API-Key Wert")
+
     return parser
+
+
+def command_security_audit(args: argparse.Namespace) -> None:
+    """Führt umfassenden Security Audit durch."""
+    print("🔒 Starte Security Audit...")
+
+    report = run_security_audit(project_root=Path.cwd(), verbose=args.verbose)
+
+    # Zusätzliche Ausgabe für CLI
+    if not report["overall_summary"]["production_ready"]:
+        print("\n⚠️  WARNUNG: Pipeline ist NICHT production-ready!")
+        print("Beheben Sie die kritischen Security-Issues vor Deployment.")
+        sys.exit(1)
+    else:
+        print("\n✅ Pipeline ist production-ready!")
+
+
+def command_security_validate(args: argparse.Namespace) -> None:
+    """Validiert Production-Readiness."""
+    print("🔍 Validiere Production Environment...")
+
+    if validate_production_environment():
+        print("✅ Environment ist production-ready!")
+    else:
+        print("❌ Environment ist NICHT production-ready!")
+        print("Setzen Sie die erforderlichen Environment-Variables.")
+        sys.exit(1)
+
+
+def command_security_key_manager(args: argparse.Namespace) -> None:
+    """API Key Management."""
+    manager = APIKeyManager()
+
+    if args.security_action == "list":
+        services = manager.list_stored_keys()
+        print(f"📋 Gespeicherte API-Keys: {len(services)}")
+        for service in services:
+            print(f"  - {service}")
+
+    elif args.security_action == "store":
+        if not args.service or not args.key:
+            print("❌ --service und --key sind erforderlich für 'store'")
+            sys.exit(1)
+
+        if manager.store_api_key(args.service, args.key):
+            print(f"✅ API-Key für {args.service} gespeichert")
+        else:
+            print(f"❌ Fehler beim Speichern des API-Keys für {args.service}")
+            sys.exit(1)
+
+    elif args.security_action == "rotate":
+        if not args.service or not args.key:
+            print("❌ --service und --key sind erforderlich für 'rotate'")
+            sys.exit(1)
+
+        if manager.rotate_api_key(args.service, args.key):
+            print(f"✅ API-Key für {args.service} rotiert")
+        else:
+            print(f"❌ Fehler beim Rotieren des API-Keys für {args.service}")
+            sys.exit(1)
+
+    elif args.security_action == "delete":
+        if not args.service:
+            print("❌ --service ist erforderlich für 'delete'")
+            sys.exit(1)
+
+        if manager.delete_api_key(args.service):
+            print(f"✅ API-Key für {args.service} gelöscht")
+        else:
+            print(f"❌ API-Key für {args.service} nicht gefunden")
+            sys.exit(1)
 
 
 def main() -> None:
@@ -697,6 +797,13 @@ def main() -> None:
             run_workflow_3(args)
         elif args.command == "workflow4":
             run_workflow_4(args)
+        # Security Commands
+        elif args.command == "security-audit":
+            command_security_audit(args)
+        elif args.command == "security-validate":
+            command_security_validate(args)
+        elif args.command == "security-keys":
+            command_security_key_manager(args)
 
     except KeyboardInterrupt:
         print("\n⚠️  Operation cancelled by user")

@@ -124,7 +124,7 @@ class SKR03Cache:
             Eindeutiger Cache-Schlüssel
         """
         cache_input = f"{beschreibung.lower().strip()}|{lieferant.lower().strip()}"
-        return hashlib.md5(cache_input.encode("utf-8")).hexdigest()
+        return hashlib.sha256(cache_input.encode("utf-8")).hexdigest()
 
     def _manage_memory_cache(self, key: str) -> None:
         """Verwaltet Memory Cache mit LRU-Policy."""
@@ -377,7 +377,7 @@ class EmbeddingCache:
     def generate_key(self, text: str, model_name: str = "default") -> str:
         """Generiert Cache-Schlüssel für Embedding."""
         content = f"{model_name}|{text.strip()}"
-        return hashlib.md5(content.encode("utf-8")).hexdigest()
+        return hashlib.sha256(content.encode("utf-8")).hexdigest()
 
     def get_embedding(
         self, text: str, model_name: str = "default"
