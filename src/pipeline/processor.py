@@ -26,9 +26,9 @@ import chromadb
 from sentence_transformers import SentenceTransformer
 
 try:
-    from google import genai  # type: ignore[import-untyped]
+    from google import genai
 except ImportError:
-    genai = None
+    genai = None  # type: ignore[assignment]
 
 from src.config import Config
 from src.extraction import DataExtractor

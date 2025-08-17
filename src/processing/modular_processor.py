@@ -50,9 +50,9 @@ class ModularProcessor:
         self.skr03_manager = lade_skr03_manager()
 
         # Initialize components as needed
-        self._gemini_model = None
-        self._extractor = None
-        self._classifier = None
+        self._gemini_model: Any | None = None
+        self._extractor: DataExtractor | None = None
+        self._classifier: DataClassifier | None = None
 
         logger.info(
             "ModularProcessor initialized with SKR03Manager and 4 separate workflows"
@@ -63,7 +63,7 @@ class ModularProcessor:
         """Lazy load Gemini model when needed"""
         if self._gemini_model is None:
             try:
-                from google import genai  # type: ignore[import-untyped]
+                from google import genai
 
                 if self.config.google_api_key:
                     client = genai.Client(api_key=self.config.google_api_key)
@@ -466,7 +466,7 @@ WICHTIG: Nur valides JSON zurückgeben.
 
             # Parse JSON response
             try:
-                enhanced_data = json.loads(response_text)
+                enhanced_data: dict[str, Any] = json.loads(response_text)
                 enhanced_data["enhancement_method"] = "gemini_direct"
                 enhanced_data["model_used"] = self.config.gemini_model
                 return enhanced_data
