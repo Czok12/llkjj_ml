@@ -1,0 +1,9 @@
+{
+  "enhancement_method": "gemini_direct_failed",
+  "error": "'\\n  \"lieferant\"'",
+  "fallback_data": {
+    "rechnung": {},
+    "lieferant": {},
+    "positionen": []
+  }
+}

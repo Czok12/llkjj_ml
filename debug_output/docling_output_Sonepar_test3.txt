@@ -1,0 +1,109 @@
+Sonepar D./Region Nord-Ost GmbH - Postfach 91 02 35 - 30422 Hannover
+
+Elektro Czok UG (haftungsbeschränkt)
+
+Garteler Weiden 9
+
+27711 Osterholz-Scharmbeck
+
+<!-- image -->
+
+Rechnung in Euro  Seite:  01
+
+031938   56981199 22.01.25  0
+
+Kunden-Nr.
+
+Rechnungs-Nr.
+
+Datum
+
+Bitte geben Sie bei Zahlungen und evtl. Rückfragen immer Kunden-Nr. und Rechnungs-Nr. an!
+
+Wir lieferten durch unsere Niederlassung:
+
+LOG.-ZENTRUM GARBSEN      28
+
+|   Pos Artikel-Nr. | Artikelbezeichnung                                                                                                                                                                                                                |   Menge |   PE | Bruttopreis   |   Nettopreis |   Gesamt |
+|-------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|------|---------------|--------------|----------|
+|         010889201 | 1015795298 Czok Lieferung am: 21.01.2025 LS 57121591 vom 21.01.2025 Lieferung erfolgte an: Elektro Czok UG (haftungsbeschränkt) Garteler Weiden 9 27711 Osterholz-Scharmbeck GIRA Adapterrahmen rws-gl quadr. 50x50mm S.55 028203 |      10 |    1 |               |          182 |     1820 |
+|         020888240 | Bestellposition Kunde: 1 GIRA Abdeckrahmen 1f. rws-gl bruchsicher 021103                                                                                                                                                          |      30 |    1 |               |          164 |     4920 |
+|         030889178 | Bestellposition Kunde: 2 GIRA Blindabdeckung rws-gl mit Tragring 026803                                                                                                                                                           |       5 |    1 |               |          674 |     3370 |
+|         040888248 | Bestellposition Kunde: 3 GIRA Abdeckrahmen 2f. rws-gl bruchsicher 021203                                                                                                                                                          |      20 |    1 |               |          280 |     5600 |
+|         050888304 | Bestellposition Kunde: 4 GIRA Abdeckhaube Datentech. rws System55 087027                                                                                                                                                          |       8 |    1 |               |          972 |     7776 |
+|         060646881 | Bestellposition Kunde: 5 Siemens Blindabdeckstreifen                                                                                                                                                                              |      10 |    1 |               |          144 |     1440 |
+
+## Übertrag                           249,26 Die Lieferung erfolgte aufgrund der Ihnen bekannten allgemeinen Lieferbedingungen.
+
+*Metallzuschläge und Reparaturkosten sind nicht skontierfähig. PE: 1 = Stück, 2 = per %
+
+Sonepar Deutschland Region Nord-Ost GmbH
+
+Elektro-Großhandelshaus Vahrenwalder Straße 238, 30179 Hannover T: +49 511 21588-0 | F: +49 511 21588-264
+
+Commerzbank AG (BLZ 250 800 20)
+
+Konto 107 008 300
+
+IBAN: DE64 2508 0020 0107 0083 00
+
+SWIFT-BIC: DRES DE FF 250
+
+Erfüllungsort Hannover - Amtsgericht Hannover
+
+Reg.-Gericht HRB 50975
+
+Steuernummer Unternehmen:
+
+105/5843/2799 Finanzamt Düsseldorf - Nord 105/5843/2733 Finanzamt Düsseldorf - Nord
+
+Steuernummer Organträger:
+
+Ust-ID-Nr.: DE 811 251 715
+
+Geschäftsführer: Manuel Haber, Ulf Böing, Johannes Kuschel
+
+Sonepar D./Region Nord-Ost GmbH - Postfach 91 02 35 - 30422 Hannover
+
+Elektro Czok UG (haftungsbeschränkt)
+
+Garteler Weiden 9
+
+<!-- image -->
+
+Rechnung in Euro  Seite:  02
+
+031938   56981199 22.01.25  0
+
+Kunden-Nr.
+
+Rechnungs-Nr.
+
+Datum
+
+27711 Osterholz-Scharmbeck
+
+Bitte geben Sie bei Zahlungen und evtl. Rückfragen immer Kunden-Nr. und Rechnungs-Nr. an! Wir lieferten durch unsere Niederlassung:
+
+LOG.-ZENTRUM GARBSEN      28
+
+Steuernummer Organträger:
+
+| Pos                                                                                                                                      | Artikel-Nr.                                                                                                                              | Artikelbezeichnung                                                                                                                       | Menge                         | PE                            | Bruttopreis                   | Nettopreis    | Gesamt     |
+|------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------|-------------------------------|-------------------------------|---------------|------------|
+|                                                                                                                                          | 075600553                                                                                                                                | Übertrag Spelsberg Abdeckstreifen AK AS Bestellposition Kunde: 7 Lieferung am: 21.01.2025                                                | 10                            | 1                             |                               | 122           | 24926 1220 |
+| 080602180                                                                                                                                |                                                                                                                                          | LS 57121591 vom 21.01.2025 Hager Abdeckstreifen RAL9010 brechbar,219mm S35S                                                              | 1                             | 1                             |                               | 217           | 217        |
+|                                                                                                                                          | 090606504                                                                                                                                | Bestellposition Kunde: 8 Striebel&J Verschlußstreifen f.12Einheit.abbrec ZA1P5 (VE5) Bestellposition Kunde: 9                            | 1                             | 1                             |                               | 835           | 835        |
+|                                                                                                                                          | 101742594                                                                                                                                | CIMCO Überziehschuhe einfach (paar) 140235                                                                                               | 2                             | 1                             |                               | 217           | 434        |
+| Die Lieferung erfolgte aufgrund der Ihnen bekannten allgemeinen Lieferbedingungen.                                                       | Die Lieferung erfolgte aufgrund der Ihnen bekannten allgemeinen Lieferbedingungen.                                                       | Die Lieferung erfolgte aufgrund der Ihnen bekannten allgemeinen Lieferbedingungen.                                                       | Warenwert                     | Warenwert                     |                               |               | 276,32     |
+| PE: 1 =                                                                                                                                  | Stück, 2 = per                                                                                                                           | %                                                                                                                                        | Mwst 19,0%                    | Mwst 19,0%                    |                               |               | 52,50      |
+| Sonepar Deutschland Region Nord-Ost GmbH                                                                                                 | Sonepar Deutschland Region Nord-Ost GmbH                                                                                                 | Sonepar Deutschland Region Nord-Ost GmbH                                                                                                 |                               |                               |                               |               |            |
+| Elektro-Großhandelshaus Vahrenwalder Straße 238, 30179 Hannover T: +49 511 21588-0 | F: +49 511 21588-264                                | Elektro-Großhandelshaus Vahrenwalder Straße 238, 30179 Hannover T: +49 511 21588-0 | F: +49 511 21588-264                                | Elektro-Großhandelshaus Vahrenwalder Straße 238, 30179 Hannover T: +49 511 21588-0 | F: +49 511 21588-264                                | Endbetrag                     |                               |                               |               | 328,82     |
+| Commerzbank AG (BLZ 250 800 20) Konto 107 008 300 IBAN: DE64 2508 0020 0107 0083 00 SWIFT-BIC: DRES DE FF 250                            | Commerzbank AG (BLZ 250 800 20) Konto 107 008 300 IBAN: DE64 2508 0020 0107 0083 00 SWIFT-BIC: DRES DE FF 250                            | Commerzbank AG (BLZ 250 800 20) Konto 107 008 300 IBAN: DE64 2508 0020 0107 0083 00 SWIFT-BIC: DRES DE FF 250                            | Skontofälligkeit Skontobetrag | Skontofälligkeit Skontobetrag | Skontofälligkeit Skontobetrag | 05.02.25 0,00 |            |
+| Erfüllungsort Hannover - Amtsgericht Hannover Reg.-Gericht HRB 50975 Steuernummer Unternehmen: 105/5843/2799 Finanzamt Düsseldorf - Nord | Erfüllungsort Hannover - Amtsgericht Hannover Reg.-Gericht HRB 50975 Steuernummer Unternehmen: 105/5843/2799 Finanzamt Düsseldorf - Nord | Erfüllungsort Hannover - Amtsgericht Hannover Reg.-Gericht HRB 50975 Steuernummer Unternehmen: 105/5843/2799 Finanzamt Düsseldorf - Nord | Nettofälligkeit               | Nettofälligkeit               | Nettofälligkeit               | 05.02.25      |            |
+
+105/5843/2733 Finanzamt Düsseldorf - Nord
+
+Ust-ID-Nr.: DE 811 251 715
+
+Geschäftsführer: Manuel Haber, Ulf Böing, Johannes Kuschel

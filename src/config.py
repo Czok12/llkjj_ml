@@ -218,17 +218,35 @@ class Config(BaseSettings):
 # SpaCy Entitäten für NER-Training
 # Diese sind Pipeline-spezifisch und können global bleiben
 SPACY_ENTITIES = [
-    "INVOICE_NUMBER",  # Rechnungsnummer
-    "INVOICE_DATE",  # Rechnungsdatum
-    "SUPPLIER",  # Lieferant
-    "NET_AMOUNT",  # Nettobetrag
-    "VAT_AMOUNT",  # Umsatzsteuer
-    "GROSS_AMOUNT",  # Bruttobetrag
-    "ITEM_DESCRIPTION",  # Artikelbezeichnung
-    "ITEM_NUMBER",  # Artikelnummer
-    "QUANTITY",  # Menge
-    "UNIT_PRICE",  # Einzelpreis
-    "TOTAL_PRICE",  # Gesamtpreis
+    # Deutsche NER-Labels für Elektrohandwerk-Rechnungen
+    # Artikel- und Positionsdaten
+    "ARTIKEL",  # Produktbezeichnungen
+    "ARTIKELNUMMER",  # Hersteller-/Bestellnummern
+    "RECHNUNGSPOSITION",  # Position auf Rechnung
+    "MENGE",  # Anzahl/Stückzahl
+    "EINZELPREIS",  # Preise pro Einheit
+    "GESAMTPREIS",  # Gesamtbetrag
+    "MWST_SATZ",  # Mehrwertsteuersatz
+    # Rechnungsinformationen
+    "RECHNUNGSNUMMER",  # Rechnungs-ID
+    "RECHNUNGSDATUM",  # Ausstellungsdatum
+    "LIEFERDATUM",  # Liefertermin
+    # Parteien und Kundendaten
+    "HÄNDLER",  # Lieferant/Verkäufer
+    "KUNDE",  # Käufer/Empfänger
+    "KUNDENNUMMER",  # Kundennummer
+    # Legacy-Support (English labels für internationale Kompatibilität)
+    "INVOICE_NUMBER",  # -> RECHNUNGSNUMMER
+    "INVOICE_DATE",  # -> RECHNUNGSDATUM
+    "SUPPLIER",  # -> HÄNDLER
+    "NET_AMOUNT",  # -> GESAMTPREIS
+    "VAT_AMOUNT",  # -> MWST_SATZ
+    "GROSS_AMOUNT",  # -> GESAMTPREIS
+    "ITEM_DESCRIPTION",  # -> ARTIKEL
+    "ITEM_NUMBER",  # -> ARTIKELNUMMER
+    "QUANTITY",  # -> MENGE
+    "UNIT_PRICE",  # -> EINZELPREIS
+    "TOTAL_PRICE",  # -> GESAMTPREIS
     "SKR03_ACCOUNT",  # SKR03 Konto
     "PRODUCT_CATEGORY",  # Produktkategorie
 ]

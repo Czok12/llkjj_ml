@@ -1,0 +1,733 @@
+{
+  "pdf_path": "test_pdfs/Sonepar_test3.pdf",
+  "processing_timestamp": "2025-08-18T00:23:57.482097",
+  "confidence_score": 0.6366666666666666,
+  "extraction_quality": "medium",
+  "processing_time_ms": 13666,
+  "ocr_time_ms": 10313,
+  "classification_time_ms": 1084,
+  "skr03_classifications": [
+    {
+      "position": 1,
+      "description": "1015795298 Czok Lieferung am: 21.01.2025 LS 57121591 vom 21.01.2025 Lieferung erfolgte an: Elektro Czok UG (haftungsbeschränkt) Garteler Weiden 9 27711 Osterholz-Scharmbeck GIRA Adapterrahmen rws-gl quadr. 50x50mm S.55 028203",
+      "skr03_konto": "3400",
+      "category": "wareneingang_elektro_allgemein",
+      "confidence": 0.95,
+      "reasoning": "RAG-System überzeugt: RAG: 5 ähnliche Artikel, stärkste Übereinstimmung mit wareneingang_elektro_allgemein",
+      "amount": "0",
+      "quantity": "10",
+      "rule_based_confidence": 0.42500000000000004,
+      "rag_based_confidence": 0.95,
+      "similar_articles": [
+        {
+          "description": "Lieferant:  | Artikel: 1015795298 Czok Lieferung am: 21.01.2025 LS 57121591 vom 21.01.2025 Lieferung erfolgte an: Elektro Czok UG (haftungsbeschränkt) Garteler Weiden 9 27711 Osterholz-Scharmbeck GIRA Adapterrahmen rws-gl quadr. 50x50mm S.55 028203",
+          "similarity": 0.873074859380722,
+          "skr03_account": "3400",
+          "category": "wareneingang_elektro_allgemein",
+          "supplier": "Unknown",
+          "confidence": 0.95,
+          "amount": 0.0
+        },
+        {
+          "description": "Lieferant:  | Artikel: LS 57121591 vom 21.01.2025 Hager Abdeckstreifen RAL9010 brechbar,219mm S35S",
+          "similarity": 0.5262075744471972,
+          "skr03_account": "3400",
+          "category": "wareneingang_elektro_allgemein",
+          "supplier": "Unknown",
+          "confidence": 0.95,
+          "amount": 0.0
+        },
+        {
+          "description": "Lieferant:  | Artikel: Bestellposition Kunde: 4 GIRA Abdeckhaube Datentech. rws System55 087027",
+          "similarity": 0.4382073510829564,
+          "skr03_account": "3400",
+          "category": "wareneingang_elektro_allgemein",
+          "supplier": "Unknown",
+          "confidence": 0.95,
+          "amount": 0.0
+        }
+      ],
+      "classification_method": "rag_dominant",
+      "supplier_detected": "Unknown"
+    },
+    {
+      "position": 2,
+      "description": "Bestellposition Kunde: 1 GIRA Abdeckrahmen 1f. rws-gl bruchsicher 021103",
+      "skr03_konto": "3400",
+      "category": "wareneingang_elektro_allgemein",
+      "confidence": 0.95,
+      "reasoning": "RAG-System überzeugt: RAG: 5 ähnliche Artikel, stärkste Übereinstimmung mit wareneingang_elektro_allgemein",
+      "amount": "0",
+      "quantity": "30",
+      "rule_based_confidence": 0.42500000000000004,
+      "rag_based_confidence": 0.95,
+      "similar_articles": [
+        {
+          "description": "Lieferant:  | Artikel: Bestellposition Kunde: 3 GIRA Abdeckrahmen 2f. rws-gl bruchsicher 021203",
+          "similarity": 0.7797489015664819,
+          "skr03_account": "3400",
+          "category": "wareneingang_elektro_allgemein",
+          "supplier": "Unknown",
+          "confidence": 0.95,
+          "amount": 0.0
+        },
+        {
+          "description": "Lieferant:  | Artikel: Bestellposition Kunde: 1 GIRA Abdeckrahmen 1f. rws-gl bruchsicher 021103",
+          "similarity": 0.769343752049639,
+          "skr03_account": "3400",
+          "category": "wareneingang_elektro_allgemein",
+          "supplier": "Unknown",
+          "confidence": 0.95,
+          "amount": 0.0
+        },
+        {
+          "description": "Lieferant:  | Artikel: Bestellposition Kunde: 2 GIRA Blindabdeckung rws-gl mit Tragring 026803",
+          "similarity": 0.7307866509203704,
+          "skr03_account": "3400",
+          "category": "wareneingang_elektro_allgemein",
+          "supplier": "Unknown",
+          "confidence": 0.95,
+          "amount": 0.0
+        }
+      ],
+      "classification_method": "rag_dominant",
+      "supplier_detected": "Unknown"
+    },
+    {
+      "position": 3,
+      "description": "Bestellposition Kunde: 2 GIRA Blindabdeckung rws-gl mit Tragring 026803",
+      "skr03_konto": "3400",
+      "category": "wareneingang_elektro_allgemein",
+      "confidence": 0.95,
+      "reasoning": "RAG-System überzeugt: RAG: 5 ähnliche Artikel, stärkste Übereinstimmung mit wareneingang_elektro_allgemein",
+      "amount": "0",
+      "quantity": "5",
+      "rule_based_confidence": 0.42500000000000004,
+      "rag_based_confidence": 0.95,
+      "similar_articles": [
+        {
+          "description": "Lieferant:  | Artikel: Bestellposition Kunde: 2 GIRA Blindabdeckung rws-gl mit Tragring 026803",
+          "similarity": 0.8426249955610698,
+          "skr03_account": "3400",
+          "category": "wareneingang_elektro_allgemein",
+          "supplier": "Unknown",
+          "confidence": 0.95,
+          "amount": 0.0
+        },
+        {
+          "description": "Lieferant:  | Artikel: Bestellposition Kunde: 5 Siemens Blindabdeckstreifen",
+          "similarity": 0.7139371995377053,
+          "skr03_account": "3400",
+          "category": "wareneingang_elektro_allgemein",
+          "supplier": "Unknown",
+          "confidence": 0.95,
+          "amount": 0.0
+        },
+        {
+          "description": "Lieferant:  | Artikel: Bestellposition Kunde: 4 GIRA Abdeckhaube Datentech. rws System55 087027",
+          "similarity": 0.6936560610894527,
+          "skr03_account": "3400",
+          "category": "wareneingang_elektro_allgemein",
+          "supplier": "Unknown",
+          "confidence": 0.95,
+          "amount": 0.0
+        }
+      ],
+      "classification_method": "rag_dominant",
+      "supplier_detected": "Unknown"
+    },
+    {
+      "position": 4,
+      "description": "Bestellposition Kunde: 3 GIRA Abdeckrahmen 2f. rws-gl bruchsicher 021203",
+      "skr03_konto": "3400",
+      "category": "wareneingang_elektro_allgemein",
+      "confidence": 0.95,
+      "reasoning": "RAG-System überzeugt: RAG: 5 ähnliche Artikel, stärkste Übereinstimmung mit wareneingang_elektro_allgemein",
+      "amount": "0",
+      "quantity": "20",
+      "rule_based_confidence": 0.42500000000000004,
+      "rag_based_confidence": 0.95,
+      "similar_articles": [
+        {
+          "description": "Lieferant:  | Artikel: Bestellposition Kunde: 3 GIRA Abdeckrahmen 2f. rws-gl bruchsicher 021203",
+          "similarity": 0.7830777397399962,
+          "skr03_account": "3400",
+          "category": "wareneingang_elektro_allgemein",
+          "supplier": "Unknown",
+          "confidence": 0.95,
+          "amount": 0.0
+        },
+        {
+          "description": "Lieferant:  | Artikel: Bestellposition Kunde: 1 GIRA Abdeckrahmen 1f. rws-gl bruchsicher 021103",
+          "similarity": 0.7606882016946681,
+          "skr03_account": "3400",
+          "category": "wareneingang_elektro_allgemein",
+          "supplier": "Unknown",
+          "confidence": 0.95,
+          "amount": 0.0
+        },
+        {
+          "description": "Lieferant:  | Artikel: Bestellposition Kunde: 2 GIRA Blindabdeckung rws-gl mit Tragring 026803",
+          "similarity": 0.7384532117450175,
+          "skr03_account": "3400",
+          "category": "wareneingang_elektro_allgemein",
+          "supplier": "Unknown",
+          "confidence": 0.95,
+          "amount": 0.0
+        }
+      ],
+      "classification_method": "rag_dominant",
+      "supplier_detected": "Unknown"
+    },
+    {
+      "position": 5,
+      "description": "Bestellposition Kunde: 4 GIRA Abdeckhaube Datentech. rws System55 087027",
+      "skr03_konto": "3400",
+      "category": "wareneingang_elektro_allgemein",
+      "confidence": 0.95,
+      "reasoning": "RAG-System überzeugt: RAG: 5 ähnliche Artikel, stärkste Übereinstimmung mit wareneingang_elektro_allgemein",
+      "amount": "0",
+      "quantity": "8",
+      "rule_based_confidence": 0.42500000000000004,
+      "rag_based_confidence": 0.95,
+      "similar_articles": [
+        {
+          "description": "Lieferant:  | Artikel: Bestellposition Kunde: 4 GIRA Abdeckhaube Datentech. rws System55 087027",
+          "similarity": 0.8403076355041155,
+          "skr03_account": "3400",
+          "category": "wareneingang_elektro_allgemein",
+          "supplier": "Unknown",
+          "confidence": 0.95,
+          "amount": 0.0
+        },
+        {
+          "description": "Lieferant:  | Artikel: Bestellposition Kunde: 2 GIRA Blindabdeckung rws-gl mit Tragring 026803",
+          "similarity": 0.5848919197478588,
+          "skr03_account": "3400",
+          "category": "wareneingang_elektro_allgemein",
+          "supplier": "Unknown",
+          "confidence": 0.95,
+          "amount": 0.0
+        },
+        {
+          "description": "Lieferant:  | Artikel: Bestellposition Kunde: 3 GIRA Abdeckrahmen 2f. rws-gl bruchsicher 021203",
+          "similarity": 0.5438635431131986,
+          "skr03_account": "3400",
+          "category": "wareneingang_elektro_allgemein",
+          "supplier": "Unknown",
+          "confidence": 0.95,
+          "amount": 0.0
+        }
+      ],
+      "classification_method": "rag_dominant",
+      "supplier_detected": "Unknown"
+    },
+    {
+      "position": 6,
+      "description": "Bestellposition Kunde: 5 Siemens Blindabdeckstreifen",
+      "skr03_konto": "3400",
+      "category": "wareneingang_elektro_allgemein",
+      "confidence": 0.95,
+      "reasoning": "RAG-System überzeugt: RAG: 5 ähnliche Artikel, stärkste Übereinstimmung mit wareneingang_elektro_allgemein",
+      "amount": "0",
+      "quantity": "10",
+      "rule_based_confidence": 0.44000000000000006,
+      "rag_based_confidence": 0.95,
+      "similar_articles": [
+        {
+          "description": "Lieferant:  | Artikel: Bestellposition Kunde: 5 Siemens Blindabdeckstreifen",
+          "similarity": 0.868881781989453,
+          "skr03_account": "3400",
+          "category": "wareneingang_elektro_allgemein",
+          "supplier": "Unknown",
+          "confidence": 0.95,
+          "amount": 0.0
+        },
+        {
+          "description": "Lieferant:  | Artikel: Bestellposition Kunde: 2 GIRA Blindabdeckung rws-gl mit Tragring 026803",
+          "similarity": 0.6709782424743841,
+          "skr03_account": "3400",
+          "category": "wareneingang_elektro_allgemein",
+          "supplier": "Unknown",
+          "confidence": 0.95,
+          "amount": 0.0
+        },
+        {
+          "description": "Lieferant:  | Artikel: Bestellposition Kunde: 8 Striebel&J Verschlußstreifen f.12Einheit.abbrec ZA1P5 (VE5) Bestellposition Kunde: 9",
+          "similarity": 0.6375440530638022,
+          "skr03_account": "3400",
+          "category": "wareneingang_elektro_allgemein",
+          "supplier": "Unknown",
+          "confidence": 0.95,
+          "amount": 0.0
+        }
+      ],
+      "classification_method": "rag_dominant",
+      "supplier_detected": "Unknown"
+    },
+    {
+      "position": 7,
+      "description": "Übertrag Spelsberg Abdeckstreifen AK AS Bestellposition Kunde: 7 Lieferung am: 21.01.2025",
+      "skr03_konto": "3400",
+      "category": "wareneingang_elektro_allgemein",
+      "confidence": 0.95,
+      "reasoning": "RAG-System überzeugt: RAG: 5 ähnliche Artikel, stärkste Übereinstimmung mit wareneingang_elektro_allgemein",
+      "amount": "0",
+      "quantity": "10",
+      "rule_based_confidence": 0.2,
+      "rag_based_confidence": 0.95,
+      "similar_articles": [
+        {
+          "description": "Lieferant:  | Artikel: Übertrag Spelsberg Abdeckstreifen AK AS Bestellposition Kunde: 7 Lieferung am: 21.01.2025",
+          "similarity": 0.9158235129959681,
+          "skr03_account": "3400",
+          "category": "wareneingang_elektro_allgemein",
+          "supplier": "Unknown",
+          "confidence": 0.95,
+          "amount": 0.0
+        },
+        {
+          "description": "Lieferant:  | Artikel: Bestellposition Kunde: 1 GIRA Abdeckrahmen 1f. rws-gl bruchsicher 021103",
+          "similarity": 0.6568553378703881,
+          "skr03_account": "3400",
+          "category": "wareneingang_elektro_allgemein",
+          "supplier": "Unknown",
+          "confidence": 0.95,
+          "amount": 0.0
+        },
+        {
+          "description": "Lieferant:  | Artikel: Bestellposition Kunde: 2 GIRA Blindabdeckung rws-gl mit Tragring 026803",
+          "similarity": 0.6557409420474332,
+          "skr03_account": "3400",
+          "category": "wareneingang_elektro_allgemein",
+          "supplier": "Unknown",
+          "confidence": 0.95,
+          "amount": 0.0
+        }
+      ],
+      "classification_method": "rag_dominant",
+      "supplier_detected": "Unknown"
+    },
+    {
+      "position": 8,
+      "description": "LS 57121591 vom 21.01.2025 Hager Abdeckstreifen RAL9010 brechbar,219mm S35S",
+      "skr03_konto": "3400",
+      "category": "wareneingang_elektro_allgemein",
+      "confidence": 0.95,
+      "reasoning": "RAG-System überzeugt: RAG: 4 ähnliche Artikel, stärkste Übereinstimmung mit wareneingang_elektro_allgemein",
+      "amount": "0",
+      "quantity": "1",
+      "rule_based_confidence": 0.43000000000000005,
+      "rag_based_confidence": 0.95,
+      "similar_articles": [
+        {
+          "description": "Lieferant:  | Artikel: LS 57121591 vom 21.01.2025 Hager Abdeckstreifen RAL9010 brechbar,219mm S35S",
+          "similarity": 0.7535668771609494,
+          "skr03_account": "3400",
+          "category": "wareneingang_elektro_allgemein",
+          "supplier": "Unknown",
+          "confidence": 0.95,
+          "amount": 0.0
+        },
+        {
+          "description": "Lieferant:  | Artikel: 1015795298 Czok Lieferung am: 21.01.2025 LS 57121591 vom 21.01.2025 Lieferung erfolgte an: Elektro Czok UG (haftungsbeschränkt) Garteler Weiden 9 27711 Osterholz-Scharmbeck GIRA Adapterrahmen rws-gl quadr. 50x50mm S.55 028203",
+          "similarity": 0.4688161015510559,
+          "skr03_account": "3400",
+          "category": "wareneingang_elektro_allgemein",
+          "supplier": "Unknown",
+          "confidence": 0.95,
+          "amount": 0.0
+        },
+        {
+          "description": "Lieferant:  | Artikel: Bestellposition Kunde: 4 GIRA Abdeckhaube Datentech. rws System55 087027",
+          "similarity": 0.3048061643030483,
+          "skr03_account": "3400",
+          "category": "wareneingang_elektro_allgemein",
+          "supplier": "Unknown",
+          "confidence": 0.95,
+          "amount": 0.0
+        }
+      ],
+      "classification_method": "rag_dominant",
+      "supplier_detected": "Unknown"
+    },
+    {
+      "position": 9,
+      "description": "Bestellposition Kunde: 8 Striebel&J Verschlußstreifen f.12Einheit.abbrec ZA1P5 (VE5) Bestellposition Kunde: 9",
+      "skr03_konto": "3400",
+      "category": "wareneingang_elektro_allgemein",
+      "confidence": 0.95,
+      "reasoning": "RAG-System überzeugt: RAG: 5 ähnliche Artikel, stärkste Übereinstimmung mit wareneingang_elektro_allgemein",
+      "amount": "0",
+      "quantity": "1",
+      "rule_based_confidence": 0.395,
+      "rag_based_confidence": 0.95,
+      "similar_articles": [
+        {
+          "description": "Lieferant:  | Artikel: Bestellposition Kunde: 8 Striebel&J Verschlußstreifen f.12Einheit.abbrec ZA1P5 (VE5) Bestellposition Kunde: 9",
+          "similarity": 0.8753225386013761,
+          "skr03_account": "3400",
+          "category": "wareneingang_elektro_allgemein",
+          "supplier": "Unknown",
+          "confidence": 0.95,
+          "amount": 0.0
+        },
+        {
+          "description": "Lieferant:  | Artikel: Bestellposition Kunde: 2 GIRA Blindabdeckung rws-gl mit Tragring 026803",
+          "similarity": 0.6359118748973325,
+          "skr03_account": "3400",
+          "category": "wareneingang_elektro_allgemein",
+          "supplier": "Unknown",
+          "confidence": 0.95,
+          "amount": 0.0
+        },
+        {
+          "description": "Lieferant:  | Artikel: Bestellposition Kunde: 3 GIRA Abdeckrahmen 2f. rws-gl bruchsicher 021203",
+          "similarity": 0.5795300533977263,
+          "skr03_account": "3400",
+          "category": "wareneingang_elektro_allgemein",
+          "supplier": "Unknown",
+          "confidence": 0.95,
+          "amount": 0.0
+        }
+      ],
+      "classification_method": "rag_dominant",
+      "supplier_detected": "Unknown"
+    },
+    {
+      "position": 10,
+      "description": "CIMCO Überziehschuhe einfach (paar) 140235",
+      "skr03_konto": "3400",
+      "category": "wareneingang_elektro_allgemein",
+      "confidence": 0.95,
+      "reasoning": "RAG-System überzeugt: RAG: 2 ähnliche Artikel, stärkste Übereinstimmung mit wareneingang_elektro_allgemein",
+      "amount": "0",
+      "quantity": "2",
+      "rule_based_confidence": 0.2,
+      "rag_based_confidence": 0.95,
+      "similar_articles": [
+        {
+          "description": "Lieferant:  | Artikel: CIMCO Überziehschuhe einfach (paar) 140235",
+          "similarity": 0.7449119553440599,
+          "skr03_account": "3400",
+          "category": "wareneingang_elektro_allgemein",
+          "supplier": "Unknown",
+          "confidence": 0.95,
+          "amount": 0.0
+        },
+        {
+          "description": "Lieferant:  | Artikel: LS 57121591 vom 21.01.2025 Hager Abdeckstreifen RAL9010 brechbar,219mm S35S",
+          "similarity": 0.30238944298452675,
+          "skr03_account": "3400",
+          "category": "wareneingang_elektro_allgemein",
+          "supplier": "Unknown",
+          "confidence": 0.95,
+          "amount": 0.0
+        }
+      ],
+      "classification_method": "rag_dominant",
+      "supplier_detected": "Unknown"
+    }
+  ],
+  "structured_data": {
+    "raw_text": "Sonepar D./Region Nord-Ost GmbH - Postfach 91 02 35 - 30422 Hannover\n\nElektro Czok UG (haftungsbeschränkt)\n\nGarteler Weiden 9\n\n27711 Osterholz-Scharmbeck\n\nRechnung in Euro  Seite:  01\n\n031938   56981199 22.01.25  0\n\nKunden-Nr.\n\nRechnungs-Nr.\n\nDatum\n\nBitte geben Sie bei Zahlungen und evtl. Rückfragen immer Kunden-Nr. und Rechnungs-Nr. an!\n\nWir lieferten durch unsere Niederlassung:\n\nLOG.-ZENTRUM GARBSEN      28\n\n|   Pos Artikel-Nr. | Artikelbezeichnung                                                                                                                                                                                                                |   Menge |   PE | Bruttopreis   |   Nettopreis |   Gesamt |\n|-------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|------|---------------|--------------|----------|\n|         010889201 | 1015795298 Czok Lieferung am: 21.01.2025 LS 57121591 vom 21.01.2025 Lieferung erfolgte an: Elektro Czok UG (haftungsbeschränkt) Garteler Weiden 9 27711 Osterholz-Scharmbeck GIRA Adapterrahmen rws-gl quadr. 50x50mm S.55 028203 |      10 |    1 |               |          182 |     1820 |\n|         020888240 | Bestellposition Kunde: 1 GIRA Abdeckrahmen 1f. rws-gl bruchsicher 021103                                                                                                                                                          |      30 |    1 |               |          164 |     4920 |\n|         030889178 | Bestellposition Kunde: 2 GIRA Blindabdeckung rws-gl mit Tragring 026803                                                                                                                                                           |       5 |    1 |               |          674 |     3370 |\n|         040888248 | Bestellposition Kunde: 3 GIRA Abdeckrahmen 2f. rws-gl bruchsicher 021203                                                                                                                                                          |      20 |    1 |               |          280 |     5600 |\n|         050888304 | Bestellposition Kunde: 4 GIRA Abdeckhaube Datentech. rws System55 087027                                                                                                                                                          |       8 |    1 |               |          972 |     7776 |\n|         060646881 | Bestellposition Kunde: 5 Siemens Blindabdeckstreifen                                                                                                                                                                              |      10 |    1 |               |          144 |     1440 |\n\n## Übertrag                           249,26 Die Lieferung erfolgte aufgrund der Ihnen bekannten allgemeinen Lieferbedingungen.\n\n*Metallzuschläge und Reparaturkosten sind nicht skontierfähig. PE: 1 = Stück, 2 = per %\n\nSonepar Deutschland Region Nord-Ost GmbH\n\nElektro-Großhandelshaus Vahrenwalder Straße 238, 30179 Hannover T: +49 511 21588-0 | F: +49 511 21588-264\n\nCommerzbank AG (BLZ 250 800 20)\n\nKonto 107 008 300\n\nIBAN: DE64 2508 0020 0107 0083 00\n\nSWIFT-BIC: DRES DE FF 250\n\nErfüllungsort Hannover - Amtsgericht Hannover\n\nReg.-Gericht HRB 50975\n\nSteuernummer Unternehmen:\n\n105/5843/2799 Finanzamt Düsseldorf - Nord 105/5843/2733 Finanzamt Düsseldorf - Nord\n\nSteuernummer Organträger:\n\nUst-ID-Nr.: DE 811 251 715\n\nGeschäftsführer: Manuel Haber, Ulf Böing, Johannes Kuschel\n\nSonepar D./Region Nord-Ost GmbH - Postfach 91 02 35 - 30422 Hannover\n\nElektro Czok UG (haftungsbeschränkt)\n\nGarteler Weiden 9\n\nRechnung in Euro  Seite:  02\n\n031938   56981199 22.01.25  0\n\nKunden-Nr.\n\nRechnungs-Nr.\n\nDatum\n\n27711 Osterholz-Scharmbeck\n\nBitte geben Sie bei Zahlungen und evtl. Rückfragen immer Kunden-Nr. und Rechnungs-Nr. an! Wir lieferten durch unsere Niederlassung:\n\nLOG.-ZENTRUM GARBSEN      28\n\nSteuernummer Organträger:\n\n| Pos                                                                                                                                      | Artikel-Nr.                                                                                                                              | Artikelbezeichnung                                                                                                                       | Menge                         | PE                            | Bruttopreis                   | Nettopreis    | Gesamt     |\n|------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------|-------------------------------|-------------------------------|---------------|------------|\n|                                                                                                                                          | 075600553                                                                                                                                | Übertrag Spelsberg Abdeckstreifen AK AS Bestellposition Kunde: 7 Lieferung am: 21.01.2025                                                | 10                            | 1                             |                               | 122           | 24926 1220 |\n| 080602180                                                                                                                                |                                                                                                                                          | LS 57121591 vom 21.01.2025 Hager Abdeckstreifen RAL9010 brechbar,219mm S35S                                                              | 1                             | 1                             |                               | 217           | 217        |\n|                                                                                                                                          | 090606504                                                                                                                                | Bestellposition Kunde: 8 Striebel&J Verschlußstreifen f.12Einheit.abbrec ZA1P5 (VE5) Bestellposition Kunde: 9                            | 1                             | 1                             |                               | 835           | 835        |\n|                                                                                                                                          | 101742594                                                                                                                                | CIMCO Überziehschuhe einfach (paar) 140235                                                                                               | 2                             | 1                             |                               | 217           | 434        |\n| Die Lieferung erfolgte aufgrund der Ihnen bekannten allgemeinen Lieferbedingungen.                                                       | Die Lieferung erfolgte aufgrund der Ihnen bekannten allgemeinen Lieferbedingungen.                                                       | Die Lieferung erfolgte aufgrund der Ihnen bekannten allgemeinen Lieferbedingungen.                                                       | Warenwert                     | Warenwert                     |                               |               | 276,32     |\n| PE: 1 =                                                                                                                                  | Stück, 2 = per                                                                                                                           | %                                                                                                                                        | Mwst 19,0%                    | Mwst 19,0%                    |                               |               | 52,50      |\n| Sonepar Deutschland Region Nord-Ost GmbH                                                                                                 | Sonepar Deutschland Region Nord-Ost GmbH                                                                                                 | Sonepar Deutschland Region Nord-Ost GmbH                                                                                                 |                               |                               |                               |               |            |\n| Elektro-Großhandelshaus Vahrenwalder Straße 238, 30179 Hannover T: +49 511 21588-0 | F: +49 511 21588-264                                | Elektro-Großhandelshaus Vahrenwalder Straße 238, 30179 Hannover T: +49 511 21588-0 | F: +49 511 21588-264                                | Elektro-Großhandelshaus Vahrenwalder Straße 238, 30179 Hannover T: +49 511 21588-0 | F: +49 511 21588-264                                | Endbetrag                     |                               |                               |               | 328,82     |\n| Commerzbank AG (BLZ 250 800 20) Konto 107 008 300 IBAN: DE64 2508 0020 0107 0083 00 SWIFT-BIC: DRES DE FF 250                            | Commerzbank AG (BLZ 250 800 20) Konto 107 008 300 IBAN: DE64 2508 0020 0107 0083 00 SWIFT-BIC: DRES DE FF 250                            | Commerzbank AG (BLZ 250 800 20) Konto 107 008 300 IBAN: DE64 2508 0020 0107 0083 00 SWIFT-BIC: DRES DE FF 250                            | Skontofälligkeit Skontobetrag | Skontofälligkeit Skontobetrag | Skontofälligkeit Skontobetrag | 05.02.25 0,00 |            |\n| Erfüllungsort Hannover - Amtsgericht Hannover Reg.-Gericht HRB 50975 Steuernummer Unternehmen: 105/5843/2799 Finanzamt Düsseldorf - Nord | Erfüllungsort Hannover - Amtsgericht Hannover Reg.-Gericht HRB 50975 Steuernummer Unternehmen: 105/5843/2799 Finanzamt Düsseldorf - Nord | Erfüllungsort Hannover - Amtsgericht Hannover Reg.-Gericht HRB 50975 Steuernummer Unternehmen: 105/5843/2799 Finanzamt Düsseldorf - Nord | Nettofälligkeit               | Nettofälligkeit               | Nettofälligkeit               | 05.02.25      |            |\n\n105/5843/2733 Finanzamt Düsseldorf - Nord\n\nUst-ID-Nr.: DE 811 251 715\n\nGeschäftsführer: Manuel Haber, Ulf Böing, Johannes Kuschel",
+    "structured_data": {
+      "invoice_number": "",
+      "invoice_date": "",
+      "supplier": "| Sonepar Deutschland Region Nord-Ost GmbH                                                                                                 | Sonepar Deutschland Region Nord-Ost GmbH                                                                                                 | Sonepar Deutschland Region Nord-Ost GmbH                                                                                                 |                               |                               |                               |               |            |",
+      "customer": "Elektro Czok UG (haftungsbeschränkt)",
+      "line_items": [
+        {
+          "position": "010889201",
+          "description": "1015795298 Czok Lieferung am: 21.01.2025 LS 57121591 vom 21.01.2025 Lieferung erfolgte an: Elektro Czok UG (haftungsbeschränkt) Garteler Weiden 9 27711 Osterholz-Scharmbeck GIRA Adapterrahmen rws-gl quadr. 50x50mm S.55 028203",
+          "quantity": "10",
+          "price": "",
+          "total": "1820"
+        },
+        {
+          "position": "020888240",
+          "description": "Bestellposition Kunde: 1 GIRA Abdeckrahmen 1f. rws-gl bruchsicher 021103",
+          "quantity": "30",
+          "price": "",
+          "total": "4920"
+        },
+        {
+          "position": "030889178",
+          "description": "Bestellposition Kunde: 2 GIRA Blindabdeckung rws-gl mit Tragring 026803",
+          "quantity": "5",
+          "price": "",
+          "total": "3370"
+        },
+        {
+          "position": "040888248",
+          "description": "Bestellposition Kunde: 3 GIRA Abdeckrahmen 2f. rws-gl bruchsicher 021203",
+          "quantity": "20",
+          "price": "",
+          "total": "5600"
+        },
+        {
+          "position": "050888304",
+          "description": "Bestellposition Kunde: 4 GIRA Abdeckhaube Datentech. rws System55 087027",
+          "quantity": "8",
+          "price": "",
+          "total": "7776"
+        },
+        {
+          "position": "060646881",
+          "description": "Bestellposition Kunde: 5 Siemens Blindabdeckstreifen",
+          "quantity": "10",
+          "price": "",
+          "total": "1440"
+        },
+        {
+          "position": "075600553",
+          "description": "Übertrag Spelsberg Abdeckstreifen AK AS Bestellposition Kunde: 7 Lieferung am: 21.01.2025",
+          "quantity": "10",
+          "price": "",
+          "total": "24926 1220"
+        },
+        {
+          "position": "080602180",
+          "description": "LS 57121591 vom 21.01.2025 Hager Abdeckstreifen RAL9010 brechbar,219mm S35S",
+          "quantity": "1",
+          "price": "",
+          "total": "217"
+        },
+        {
+          "position": "090606504",
+          "description": "Bestellposition Kunde: 8 Striebel&J Verschlußstreifen f.12Einheit.abbrec ZA1P5 (VE5) Bestellposition Kunde: 9",
+          "quantity": "1",
+          "price": "",
+          "total": "835"
+        },
+        {
+          "position": "101742594",
+          "description": "CIMCO Überziehschuhe einfach (paar) 140235",
+          "quantity": "2",
+          "price": "",
+          "total": "434"
+        }
+      ],
+      "total_amount": "",
+      "tables": [
+        {
+          "rows": 7,
+          "cols": 7,
+          "data": [
+            [
+              "Pos Artikel-Nr.",
+              "Artikelbezeichnung",
+              "Menge",
+              "PE",
+              "Bruttopreis",
+              "Nettopreis",
+              "Gesamt"
+            ],
+            [
+              "010889201",
+              "1015795298 Czok Lieferung am: 21.01.2025 LS 57121591 vom 21.01.2025 Lieferung erfolgte an: Elektro Czok UG (haftungsbeschränkt) Garteler Weiden 9 27711 Osterholz-Scharmbeck GIRA Adapterrahmen rws-gl quadr. 50x50mm S.55 028203",
+              "10",
+              "1",
+              "182",
+              "1820"
+            ],
+            [
+              "020888240",
+              "Bestellposition Kunde: 1 GIRA Abdeckrahmen 1f. rws-gl bruchsicher 021103",
+              "30",
+              "1",
+              "164",
+              "4920"
+            ],
+            [
+              "030889178",
+              "Bestellposition Kunde: 2 GIRA Blindabdeckung rws-gl mit Tragring 026803",
+              "5",
+              "1",
+              "674",
+              "3370"
+            ],
+            [
+              "040888248",
+              "Bestellposition Kunde: 3 GIRA Abdeckrahmen 2f. rws-gl bruchsicher 021203",
+              "20",
+              "1",
+              "280",
+              "5600"
+            ],
+            [
+              "050888304",
+              "Bestellposition Kunde: 4 GIRA Abdeckhaube Datentech. rws System55 087027",
+              "8",
+              "1",
+              "972",
+              "7776"
+            ],
+            [
+              "060646881",
+              "Bestellposition Kunde: 5 Siemens Blindabdeckstreifen",
+              "10",
+              "1",
+              "144",
+              "1440"
+            ]
+          ]
+        },
+        {
+          "rows": 11,
+          "cols": 8,
+          "data": [
+            [
+              "Pos",
+              "Artikel-Nr.",
+              "Artikelbezeichnung",
+              "Menge",
+              "PE",
+              "Bruttopreis",
+              "Nettopreis",
+              "Gesamt"
+            ],
+            [
+              "075600553",
+              "Übertrag Spelsberg Abdeckstreifen AK AS Bestellposition Kunde: 7 Lieferung am: 21.01.2025",
+              "10",
+              "1",
+              "122",
+              "24926 1220"
+            ],
+            [
+              "080602180",
+              "LS 57121591 vom 21.01.2025 Hager Abdeckstreifen RAL9010 brechbar,219mm S35S",
+              "1",
+              "1",
+              "217",
+              "217"
+            ],
+            [
+              "090606504",
+              "Bestellposition Kunde: 8 Striebel&J Verschlußstreifen f.12Einheit.abbrec ZA1P5 (VE5) Bestellposition Kunde: 9",
+              "1",
+              "1",
+              "835",
+              "835"
+            ],
+            [
+              "101742594",
+              "CIMCO Überziehschuhe einfach (paar) 140235",
+              "2",
+              "1",
+              "217",
+              "434"
+            ],
+            [
+              "Die Lieferung erfolgte aufgrund der Ihnen bekannten allgemeinen Lieferbedingungen.",
+              "Warenwert",
+              "276,32"
+            ],
+            [
+              "PE: 1 =",
+              "Stück, 2 = per",
+              "%",
+              "Mwst 19,0%",
+              "52,50"
+            ],
+            [
+              "Sonepar Deutschland Region Nord-Ost GmbH"
+            ],
+            [
+              "Elektro-Großhandelshaus Vahrenwalder Straße 238, 30179 Hannover T: +49 511 21588-0 | F: +49 511 21588-264",
+              "Endbetrag",
+              "328,82"
+            ],
+            [
+              "Commerzbank AG (BLZ 250 800 20) Konto 107 008 300 IBAN: DE64 2508 0020 0107 0083 00 SWIFT-BIC: DRES DE FF 250",
+              "Skontofälligkeit Skontobetrag",
+              "05.02.25 0,00"
+            ]
+          ]
+        }
+      ],
+      "raw_text": "Sonepar D./Region Nord-Ost GmbH - Postfach 91 02 35 - 30422 Hannover\n\nElektro Czok UG (haftungsbeschränkt)\n\nGarteler Weiden 9\n\n27711 Osterholz-Scharmbeck\n\nRechnung in Euro  Seite:  01\n\n031938   56981199 22.01.25  0\n\nKunden-Nr.\n\nRechnungs-Nr.\n\nDatum\n\nBitte geben Sie bei Zahlungen und evtl. Rückfragen immer Kunden-Nr. und Rechnungs-Nr. an!\n\nWir lieferten durch unsere Niederlassung:\n\nLOG.-ZENTRUM GARBSEN      28\n\n|   Pos Artikel-Nr. | Artikelbezeichnung                                                                                                                                                                                                                |   Menge |   PE | Bruttopreis   |   Nettopreis |   Gesamt |\n|-------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|------|---------------|--------------|----------|\n|         010889201 | 1015795298 Czok Lieferung am: 21.01.2025 LS 57121591 vom 21.01.2025 Lieferung erfolgte an: Elektro Czok UG (haftungsbeschränkt) Garteler Weiden 9 27711 Osterholz-Scharmbeck GIRA Adapterrahmen rws-gl quadr. 50x50mm S.55 028203 |      10 |    1 |               |          182 |     1820 |\n|         020888240 | Bestellposition Kunde: 1 GIRA Abdeckrahmen 1f. rws-gl bruchsicher 021103                                                                                                                                                          |      30 |    1 |               |          164 |     4920 |\n|         030889178 | Bestellposition Kunde: 2 GIRA Blindabdeckung rws-gl mit Tragring 026803                                                                                                                                                           |       5 |    1 |               |          674 |     3370 |\n|         040888248 | Bestellposition Kun"
+    },
+    "line_items": [
+      {
+        "position": "010889201",
+        "description": "1015795298 Czok Lieferung am: 21.01.2025 LS 57121591 vom 21.01.2025 Lieferung erfolgte an: Elektro Czok UG (haftungsbeschränkt) Garteler Weiden 9 27711 Osterholz-Scharmbeck GIRA Adapterrahmen rws-gl quadr. 50x50mm S.55 028203",
+        "quantity": "10",
+        "price": "",
+        "total": "1820"
+      },
+      {
+        "position": "020888240",
+        "description": "Bestellposition Kunde: 1 GIRA Abdeckrahmen 1f. rws-gl bruchsicher 021103",
+        "quantity": "30",
+        "price": "",
+        "total": "4920"
+      },
+      {
+        "position": "030889178",
+        "description": "Bestellposition Kunde: 2 GIRA Blindabdeckung rws-gl mit Tragring 026803",
+        "quantity": "5",
+        "price": "",
+        "total": "3370"
+      },
+      {
+        "position": "040888248",
+        "description": "Bestellposition Kunde: 3 GIRA Abdeckrahmen 2f. rws-gl bruchsicher 021203",
+        "quantity": "20",
+        "price": "",
+        "total": "5600"
+      },
+      {
+        "position": "050888304",
+        "description": "Bestellposition Kunde: 4 GIRA Abdeckhaube Datentech. rws System55 087027",
+        "quantity": "8",
+        "price": "",
+        "total": "7776"
+      },
+      {
+        "position": "060646881",
+        "description": "Bestellposition Kunde: 5 Siemens Blindabdeckstreifen",
+        "quantity": "10",
+        "price": "",
+        "total": "1440"
+      },
+      {
+        "position": "075600553",
+        "description": "Übertrag Spelsberg Abdeckstreifen AK AS Bestellposition Kunde: 7 Lieferung am: 21.01.2025",
+        "quantity": "10",
+        "price": "",
+        "total": "24926 1220"
+      },
+      {
+        "position": "080602180",
+        "description": "LS 57121591 vom 21.01.2025 Hager Abdeckstreifen RAL9010 brechbar,219mm S35S",
+        "quantity": "1",
+        "price": "",
+        "total": "217"
+      },
+      {
+        "position": "090606504",
+        "description": "Bestellposition Kunde: 8 Striebel&J Verschlußstreifen f.12Einheit.abbrec ZA1P5 (VE5) Bestellposition Kunde: 9",
+        "quantity": "1",
+        "price": "",
+        "total": "835"
+      },
+      {
+        "position": "101742594",
+        "description": "CIMCO Überziehschuhe einfach (paar) 140235",
+        "quantity": "2",
+        "price": "",
+        "total": "434"
+      }
+    ],
+    "metadata": {
+      "file_size": 86017,
+      "file_name": "Sonepar_test3.pdf",
+      "extraction_method": "docling"
+    },
+    "success": true
+  },
+  "invoice_data": {},
+  "raw_text_length": 10764
+}

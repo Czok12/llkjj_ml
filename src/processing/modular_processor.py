@@ -471,19 +471,27 @@ WICHTIG: Nur valides JSON zurückgeben.
 
             # Parse JSON response
             try:
-                enhanced_data: dict[str, Any] = json.loads(response_text)
+                # Clean response text (remove markdown if present)
+                clean_text = response_text.strip()
+                if clean_text.startswith("```json"):
+                    clean_text = clean_text[7:]  # Remove ```json
+                if clean_text.endswith("```"):
+                    clean_text = clean_text[:-3]  # Remove ```
+                clean_text = clean_text.strip()
+
+                enhanced_data: dict[str, Any] = json.loads(clean_text)
                 enhanced_data["enhancement_method"] = "gemini_direct"
                 enhanced_data["model_used"] = self.config.gemini_model
                 return enhanced_data
-            except json.JSONDecodeError:
+            except json.JSONDecodeError as jde:
                 logger.warning(
-                    "⚠️ Gemini response is not valid JSON, returning raw response"
+                    "⚠️ Gemini response is not valid JSON: %s", str(jde)[:100]
                 )
                 return {
                     "enhancement_method": "gemini_direct_raw",
                     "model_used": self.config.gemini_model,
-                    "raw_response": response_text,
-                    "error": "Invalid JSON response",
+                    "raw_response": response_text[:1000],  # Limit size
+                    "error": f"Invalid JSON response: {str(jde)[:100]}",
                 }
 
         except Exception as e:

@@ -17,6 +17,8 @@ import logging
 import sys
 from pathlib import Path
 
+# Refactored Training Services
+from spacy_training.pipeline import TrainingPipeline
 from src.config import Config
 
 # Feature Engineering Integration
@@ -29,7 +31,7 @@ from src.pipeline.processor import UnifiedProcessor
 from src.processing.modular_processor import ModularProcessor
 from src.security.auditor import run_security_audit
 from src.security.manager import APIKeyManager, validate_production_environment
-from src.trainer import TrainingService
+from src.trainer import TrainingService  # Backwards compatibility
 
 
 def setup_logging(verbose: bool = False, production: bool = False) -> None:
@@ -135,27 +137,55 @@ def export_training_data(args: argparse.Namespace) -> None:
 
 
 def train_model(args: argparse.Namespace) -> None:
-    """Train spaCy NER model for German electrical invoices"""
+    """Train spaCy models for German electrical invoices using new training pipeline"""
     config = Config()
-    training_service = TrainingService(config)
+
+    # Use new training pipeline for better modularity
+    training_pipeline = TrainingPipeline(config)
 
     training_data = Path(args.input)
     model_output = Path(args.output) if args.output else Path("output_model")
     epochs = args.epochs
+    model_type = getattr(args, "model_type", "ner")
 
-    print(f"🚀 Training model with: {training_data}")
+    print(f"🚀 Training {model_type} model with: {training_data}")
     print(f"⚙️  Epochs: {epochs}")
 
-    result = training_service.train_model(training_data, model_output, epochs)
+    # Use specific trainer based on model type
+    if model_type == "ner":
+        result = training_pipeline.train_ner_model(training_data, model_output, epochs)
+        print("✅ NER Training complete!")
+    elif model_type == "textcat":
+        result = training_pipeline.train_textcat_model(
+            training_data, model_output, epochs
+        )
+        print("✅ TextCat Training complete!")
+    elif model_type == "both":
+        # Run full pipeline for both models
+        pipeline_results = training_pipeline.run_full_pipeline(
+            training_data.parent,  # Assume JSONL is in training data folder
+            model_output,
+            epochs,
+            train_both_models=True,
+        )
+        result = pipeline_results["training_results"]["ner"]  # Show NER metrics
+        print("✅ Full Pipeline complete!")
+        print(f"📊 Models trained: {len(pipeline_results['training_results'])}")
+    else:
+        # Fallback to old training service for backwards compatibility
+        training_service = TrainingService(config)
+        result = training_service.train_model(
+            training_data, model_output, epochs, model_type
+        )
+        print("✅ Training complete!")
 
-    print("✅ Training complete!")
     print(f"🎯 F1 Score: {result.f1_score:.3f}")
     print(f"📊 Precision: {result.precision:.3f}")
     print(f"📊 Recall: {result.recall:.3f}")
     print(f"⏱️  Training time: {result.training_time_seconds:.1f}s")
-    print(f"� Model saved to: {model_output}")
+    print(f"💾 Model saved to: {model_output}")
 
-    print(f"� Metrics saved to: {model_output}/training_metrics.json")
+    print(f"📈 Metrics saved to: {model_output}/training_metrics.json")
 
 
 def export_textcat_data(args: argparse.Namespace) -> None:
@@ -827,6 +857,12 @@ Beispiele:
     )
     train_parser.add_argument(
         "--epochs", type=int, default=20, help="Training epochs (default: 20)"
+    )
+    train_parser.add_argument(
+        "--model-type",
+        choices=["ner", "textcat", "both"],
+        default="ner",
+        help="Model type to train (ner, textcat, or both)",
     )
 
     # Export textcat command

@@ -285,14 +285,51 @@ class DataExporter(BaseTrainer):
         entities = []
 
         entity_mapping = {
+            # Artikel- und Positionsdaten
             "artikel": "ARTIKEL",
-            "einzelpreis": "EINZELPREIS",
+            "artikelnummer": "ARTIKELNUMMER",
+            "artikel_nummer": "ARTIKELNUMMER",
+            "art_nr": "ARTIKELNUMMER",
+            "rechnungsposition": "RECHNUNGSPOSITION",
+            "position": "RECHNUNGSPOSITION",
+            "pos": "RECHNUNGSPOSITION",
             "menge": "MENGE",
+            "einzelpreis": "EINZELPREIS",
+            "preis": "EINZELPREIS",
             "gesamtpreis": "GESAMTPREIS",
+            "betrag": "GESAMTPREIS",
+            "mwst_satz": "MWST_SATZ",
+            "mwst": "MWST_SATZ",
+            "mehrwertsteuer": "MWST_SATZ",
+            "ust_satz": "MWST_SATZ",
+            # Rechnungsinformationen
             "rechnungsnummer": "RECHNUNGSNUMMER",
-            "datum": "DATUM",
-            "kreditor": "KREDITOR",
-            "debitor": "DEBITOR",
+            "rechnung_nr": "RECHNUNGSNUMMER",
+            "invoice_number": "RECHNUNGSNUMMER",
+            "rechnungsdatum": "RECHNUNGSDATUM",
+            "rechnung_datum": "RECHNUNGSDATUM",
+            "rg_datum": "RECHNUNGSDATUM",
+            "lieferdatum": "LIEFERDATUM",
+            "liefer_datum": "LIEFERDATUM",
+            "lieferung": "LIEFERDATUM",
+            # Parteien und Kundendaten
+            "händler": "HÄNDLER",
+            "haendler": "HÄNDLER",
+            "lieferant": "HÄNDLER",
+            "verkäufer": "HÄNDLER",
+            "verkaeufer": "HÄNDLER",
+            "kunde": "KUNDE",
+            "käufer": "KUNDE",
+            "kaeufer": "KUNDE",
+            "empfänger": "KUNDE",
+            "empfaenger": "KUNDE",
+            "kundennummer": "KUNDENNUMMER",
+            "kunden_nr": "KUNDENNUMMER",
+            "kd_nr": "KUNDENNUMMER",
+            # Legacy-Support für Rückwärtskompatibilität
+            "datum": "RECHNUNGSDATUM",  # Fallback
+            "kreditor": "HÄNDLER",  # Alt -> Neu
+            "debitor": "KUNDE",  # Alt -> Neu
         }
 
         for field, label in entity_mapping.items():
