@@ -12,9 +12,12 @@ Zentrale CLI-Schnittstelle für alle ML-Operationen:
 """
 
 import argparse
+import asyncio
 import json
 import logging
 import sys
+import time
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -177,6 +180,364 @@ def process_pdfs(args: argparse.Namespace) -> None:
             json.dump(batch_data, f, ensure_ascii=False, indent=2)
 
         print(f"💾 Batch results saved: {batch_output}")
+
+    else:
+        print(f"❌ Invalid input: {input_path} (must be PDF file or directory)")
+
+
+def process_pdfs_async_batch(args: argparse.Namespace) -> None:
+    """
+    🚀 A3: HIGH-PERFORMANCE ASYNC BATCH PROCESSING (Strategic TODO)
+
+    Performance-optimierte Verarbeitung mit:
+    - Async Gemini API-Calls (3x parallel)
+    - PDF-Hash-Caching (0ms für Duplikate)
+    - Rate-Limiting für API-Schutz
+    - Batch-Processing für multiple PDFs
+    """
+    config = Config()
+
+    # 🎯 A3: AsyncGeminiDirectProcessor mit Performance-Optimierungen
+    from src.pipeline.async_gemini_processor import AsyncGeminiDirectProcessor
+
+    processor = AsyncGeminiDirectProcessor(config)
+    input_path = Path(args.input)
+    output_dir = Path(args.output) if args.output else Path("data/output")
+    max_concurrent = getattr(args, "concurrent", 3)
+
+    print("🚀 ASYNC BATCH PROCESSING (A3 Performance Optimization)")
+    print(f"🔄 Processing: {input_path}")
+    print(f"📁 Output: {output_dir}")
+    print(f"⚡ Max concurrent: {max_concurrent}")
+
+    async def _process_async():
+        if input_path.is_file() and input_path.suffix.lower() == ".pdf":
+            # Single PDF with async processing
+            print(f"📄 Processing single PDF: {input_path.name}")
+
+            start_time = time.time()
+            result = await processor.process_pdf_async(input_path)
+            processing_time = (time.time() - start_time) * 1000
+
+            if result:
+                print(f"✅ ASYNC Processing complete in {processing_time:.0f}ms!")
+                print(f"📄 Processed: {Path(result.pdf_path).name}")
+                print(f"🎯 SKR03 matches: {len(result.skr03_classifications)}")
+                print(f"💾 Quality: {result.extraction_quality}")
+                print(f"📊 Confidence: {result.confidence_score:.1%}")
+
+                # Save result
+                output_file = output_dir / f"{input_path.stem}_async_result.json"
+                output_dir.mkdir(parents=True, exist_ok=True)
+
+                with open(output_file, "w", encoding="utf-8") as f:
+                    json.dump(result.to_dict(), f, ensure_ascii=False, indent=2)
+
+                print(f"💾 Result saved: {output_file}")
+            else:
+                print("❌ Processing failed")
+
+        elif input_path.is_dir():
+            # Batch process directory with async optimization
+            pdf_files = list(input_path.glob("*.pdf"))
+
+            if not pdf_files:
+                print(f"❌ No PDF files found in {input_path}")
+                return
+
+            print(f"📊 Found {len(pdf_files)} PDF files for ASYNC BATCH processing")
+            print(
+                f"⚡ Processing {min(max_concurrent, len(pdf_files))} files in parallel..."
+            )
+
+            start_time = time.time()
+            results = await processor.process_batch_async(
+                pdf_files, max_concurrent=max_concurrent
+            )
+            total_time = (time.time() - start_time) * 1000
+
+            # Statistics
+            successful_results = [r for r in results if r is not None]
+            failed_count = len(results) - len(successful_results)
+
+            if successful_results:
+                avg_confidence = sum(
+                    r.confidence_score for r in successful_results
+                ) / len(successful_results)
+                total_skr03 = sum(
+                    len(r.skr03_classifications) for r in successful_results
+                )
+                avg_processing_time = sum(
+                    r.processing_time_ms for r in successful_results
+                ) / len(successful_results)
+
+                print("\n🎉 ASYNC BATCH PROCESSING COMPLETE!")
+                print(
+                    f"📊 Results: {len(successful_results)}/{len(pdf_files)} successful"
+                )
+                print(
+                    f"⚡ Total time: {total_time:.0f}ms ({total_time/len(pdf_files):.0f}ms/file)"
+                )
+                print(f"💫 Avg processing: {avg_processing_time:.0f}ms/file")
+                print(f"🎯 Total SKR03 matches: {total_skr03}")
+                print(f"📊 Average confidence: {avg_confidence:.1%}")
+
+                if failed_count > 0:
+                    print(f"⚠️ Failed files: {failed_count}")
+
+                # Save batch results
+                batch_output = (
+                    output_dir
+                    / f"async_batch_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+                )
+                output_dir.mkdir(parents=True, exist_ok=True)
+
+                batch_data = {
+                    "metadata": {
+                        "timestamp": datetime.now().isoformat(),
+                        "method": "async_gemini_batch",
+                        "total_files": len(pdf_files),
+                        "successful": len(successful_results),
+                        "failed": failed_count,
+                        "total_time_ms": total_time,
+                        "avg_time_ms": avg_processing_time,
+                        "max_concurrent": max_concurrent,
+                    },
+                    "results": [r.to_dict() if r else None for r in results],
+                    "statistics": {
+                        "total_skr03_matches": total_skr03,
+                        "avg_confidence": avg_confidence,
+                        "performance_gain": (
+                            f"{(5000 - avg_processing_time) / 5000 * 100:.1f}%"
+                            if avg_processing_time < 5000
+                            else "N/A"
+                        ),
+                    },
+                }
+
+                with open(batch_output, "w", encoding="utf-8") as f:
+                    json.dump(batch_data, f, ensure_ascii=False, indent=2)
+
+                print(f"💾 Async batch results saved: {batch_output}")
+            else:
+                print("❌ All files failed to process")
+
+        else:
+            print(f"❌ Invalid input: {input_path} (must be PDF file or directory)")
+
+    # Run async processing
+    try:
+        asyncio.run(_process_async())
+    except KeyboardInterrupt:
+        print("\n⚠️ Async processing cancelled by user")
+    except Exception as e:
+        print(f"❌ Async processing error: {e}")
+        logging.error("Async processing failed", exc_info=True)
+
+
+def process_pdfs_unified_strategy(args: argparse.Namespace) -> None:
+    """
+    🔧 B1: UNIFIED STRATEGY PROCESSING (Strategic TODO)
+
+    Strategy-Pattern-basierte Verarbeitung mit:
+    - Automatische Engine-Auswahl (Gemini/spaCy/Hybrid)
+    - Explizite Strategy-Auswahl für Tests
+    - Strategy-Vergleich für Benchmarking
+    - Nahtlose Transition zwischen Engines
+    """
+    config = Config()
+
+    # 🎯 B1: UnifiedProcessor mit Strategy Pattern
+    from src.pipeline.unified_processor import UnifiedProcessor
+
+    processor = UnifiedProcessor(config)
+    input_path = Path(args.input)
+    output_dir = Path(args.output) if args.output else Path("data/output")
+    strategy = getattr(args, "strategy", "auto")
+    compare_strategies = getattr(args, "compare", False)
+
+    print("🔧 UNIFIED STRATEGY PROCESSING (B1 Strategy Pattern)")
+    print(f"🔄 Processing: {input_path}")
+    print(f"📁 Output: {output_dir}")
+    print(f"🎯 Strategy: {strategy}")
+
+    # Show available strategies
+    available = processor.get_available_strategies()
+    print(f"📊 Available strategies: {available}")
+
+    if compare_strategies:
+        # Strategy comparison mode
+        if not input_path.is_file() or not input_path.suffix.lower() == ".pdf":
+            print("❌ Strategy comparison requires a single PDF file")
+            return
+
+        print(f"\n🔍 STRATEGY COMPARISON on {input_path.name}")
+        print("=" * 60)
+
+        try:
+            comparison = processor.compare_strategies(input_path)
+
+            if "error" in comparison:
+                print(f"❌ Comparison failed: {comparison['error']}")
+                return
+
+            # Display comparison results
+            for strategy_name, result in comparison["comparison_results"].items():
+                if result["success"]:
+                    print(f"\n✅ {strategy_name.upper()} STRATEGY:")
+                    print(f"   ⏱️  Processing time: {result['processing_time_ms']}ms")
+                    print(f"   📊 Confidence: {result['confidence_score']:.1%}")
+                    print(f"   💎 Quality: {result['extraction_quality']}")
+                    print(
+                        f"   🎯 SKR03 classifications: {result['skr03_classifications']}"
+                    )
+                    print(f"   📋 Line items: {result['total_line_items']}")
+                else:
+                    print(f"\n❌ {strategy_name.upper()} STRATEGY: {result['error']}")
+
+            # Summary
+            summary = comparison["summary"]
+            if summary["successful_strategies"] > 1:
+                print("\n🏆 COMPARISON SUMMARY:")
+                print(f"   ⚡ Fastest: {summary['fastest_strategy']}")
+                print(f"   🎯 Highest confidence: {summary['highest_confidence']}")
+                print(f"   📊 Most classifications: {summary['most_classifications']}")
+
+            # Save comparison results
+            comparison_file = output_dir / f"strategy_comparison_{input_path.stem}.json"
+            output_dir.mkdir(parents=True, exist_ok=True)
+
+            with open(comparison_file, "w", encoding="utf-8") as f:
+                json.dump(comparison, f, ensure_ascii=False, indent=2)
+
+            print(f"\n💾 Comparison results saved: {comparison_file}")
+
+        except Exception as e:
+            print(f"❌ Strategy comparison failed: {e}")
+            logging.error("Strategy comparison failed", exc_info=True)
+
+        return
+
+    # Normal processing mode
+    if input_path.is_file() and input_path.suffix.lower() == ".pdf":
+        # Single PDF processing
+        print(f"📄 Processing single PDF with {strategy} strategy...")
+
+        try:
+            start_time = time.time()
+            result = processor.process_pdf(input_path, strategy)
+            processing_time = (time.time() - start_time) * 1000
+
+            print(f"✅ UNIFIED Processing complete in {processing_time:.0f}ms!")
+            print(f"📄 Strategy used: {result.processing_method}")
+            print(f"📄 Processed: {Path(result.pdf_path).name}")
+            print(f"🎯 SKR03 matches: {len(result.skr03_classifications)}")
+            print(f"💾 Quality: {result.extraction_quality}")
+            print(f"📊 Confidence: {result.confidence_score:.1%}")
+
+            # Save result
+            output_file = (
+                output_dir / f"{input_path.stem}_unified_{strategy}_result.json"
+            )
+            output_dir.mkdir(parents=True, exist_ok=True)
+
+            result_data = result.to_dict()
+            result_data["unified_processor_info"] = {
+                "strategy_used": strategy,
+                "strategy_pattern": "enabled",
+                "available_strategies": available,
+            }
+
+            with open(output_file, "w", encoding="utf-8") as f:
+                json.dump(result_data, f, ensure_ascii=False, indent=2)
+
+            print(f"💾 Result saved: {output_file}")
+
+        except Exception as e:
+            print(f"❌ Unified processing failed: {e}")
+            logging.error("Unified processing failed", exc_info=True)
+
+    elif input_path.is_dir():
+        # Batch processing with strategy
+        pdf_files = list(input_path.glob("*.pdf"))
+
+        if not pdf_files:
+            print(f"❌ No PDF files found in {input_path}")
+            return
+
+        print(f"📊 Found {len(pdf_files)} PDF files for unified batch processing")
+        print(f"🎯 Using {strategy} strategy for all files...")
+
+        successful_results = []
+        failed_files = []
+
+        for pdf_file in pdf_files:
+            try:
+                result = processor.process_pdf(pdf_file, strategy)
+                successful_results.append(result)
+
+                print(
+                    f"  ✅ {pdf_file.name}: {len(result.skr03_classifications)} SKR03, "
+                    f"{result.confidence_score:.1%} confidence, {result.extraction_quality} quality"
+                )
+
+            except Exception as e:
+                failed_files.append((pdf_file.name, str(e)))
+                print(f"  ❌ {pdf_file.name}: {e}")
+
+        # Batch summary
+        if successful_results:
+            avg_confidence = sum(r.confidence_score for r in successful_results) / len(
+                successful_results
+            )
+            total_skr03 = sum(len(r.skr03_classifications) for r in successful_results)
+            avg_processing_time = sum(
+                r.processing_time_ms for r in successful_results
+            ) / len(successful_results)
+
+            print("\n🎉 UNIFIED BATCH PROCESSING COMPLETE!")
+            print(f"📊 Results: {len(successful_results)}/{len(pdf_files)} successful")
+            print(f"🎯 Strategy used: {strategy}")
+            print(f"⚡ Avg processing time: {avg_processing_time:.0f}ms/file")
+            print(f"🎯 Total SKR03 matches: {total_skr03}")
+            print(f"📊 Average confidence: {avg_confidence:.1%}")
+
+            if failed_files:
+                print(f"⚠️ Failed files: {len(failed_files)}")
+
+            # Save batch results
+            batch_output = (
+                output_dir
+                / f"unified_batch_{strategy}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            )
+            output_dir.mkdir(parents=True, exist_ok=True)
+
+            batch_data = {
+                "metadata": {
+                    "timestamp": datetime.now().isoformat(),
+                    "method": f"unified_{strategy}",
+                    "strategy_pattern": True,
+                    "total_files": len(pdf_files),
+                    "successful": len(successful_results),
+                    "failed": len(failed_files),
+                    "avg_time_ms": avg_processing_time,
+                    "available_strategies": available,
+                },
+                "results": [r.to_dict() for r in successful_results],
+                "failed_files": failed_files,
+                "statistics": {
+                    "total_skr03_matches": total_skr03,
+                    "avg_confidence": avg_confidence,
+                    "strategy_used": strategy,
+                },
+            }
+
+            with open(batch_output, "w", encoding="utf-8") as f:
+                json.dump(batch_data, f, ensure_ascii=False, indent=2)
+
+            print(f"💾 Unified batch results saved: {batch_output}")
+        else:
+            print("❌ All files failed to process")
 
     else:
         print(f"❌ Invalid input: {input_path} (must be PDF file or directory)")
@@ -1034,6 +1395,41 @@ Beispiele:
     docling_parser.add_argument("input", help="PDF file or directory to process")
     docling_parser.add_argument("--output", "-o", help="Output directory (optional)")
 
+    # NEW: A3 Async Batch Processing (Performance Optimization)
+    async_parser = subparsers.add_parser(
+        "process-async",
+        help="🚀 A3: High-Performance Async Batch Processing (Strategic TODO)",
+    )
+    async_parser.add_argument("input", help="PDF file or directory to process")
+    async_parser.add_argument("--output", "-o", help="Output directory (optional)")
+    async_parser.add_argument(
+        "--concurrent",
+        "-c",
+        type=int,
+        default=3,
+        help="Max concurrent processing (default: 3)",
+    )
+
+    # NEW: B1 Unified Strategy Processing (Strategy Pattern)
+    unified_parser = subparsers.add_parser(
+        "process-unified",
+        help="🔧 B1: Unified Strategy Processing (Strategy Pattern)",
+    )
+    unified_parser.add_argument("input", help="PDF file or directory to process")
+    unified_parser.add_argument("--output", "-o", help="Output directory (optional)")
+    unified_parser.add_argument(
+        "--strategy",
+        "-s",
+        choices=["auto", "gemini", "spacy_rag"],
+        default="auto",
+        help="Processing strategy (default: auto)",
+    )
+    unified_parser.add_argument(
+        "--compare",
+        action="store_true",
+        help="Compare all available strategies on the same PDF",
+    )
+
     # Export command
     export_parser = subparsers.add_parser("export", help="Export training data")
     export_parser.add_argument(
@@ -1372,6 +1768,10 @@ def main() -> None:
             process_pdfs(args)  # NEUE GEMINI-FIRST Standard Pipeline
         elif args.command == "process-docling":
             process_pdfs_docling_alternative(args)  # Alternative Docling Pipeline
+        elif args.command == "process-async":
+            process_pdfs_async_batch(args)  # 🚀 A3: High-Performance Async Processing
+        elif args.command == "process-unified":
+            process_pdfs_unified_strategy(args)  # 🔧 B1: Unified Strategy Processing
         elif args.command == "export":
             export_training_data(args)
         elif args.command == "train":

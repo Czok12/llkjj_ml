@@ -10,39 +10,39 @@
 ### **Sofort-Umsetzung (A-Priorität)**
 
 #### **A1: Pydantic-Validierung für Gemini-Antworten (KRITISCH)**
-- [ ] **Schema-Definition**: `src/models/gemini_schemas.py` erstellen
-  - [ ] `GeminiInvoiceHeader(BaseModel)` - Rechnungskopf-Schema
-  - [ ] `GeminiLineItem(BaseModel)` - Rechnungspositions-Schema
-  - [ ] `GeminiExtractionResult(BaseModel)` - Vollständiges Response-Schema
-- [ ] **Integration in GeminiDirectProcessor**: Sofortige Validierung nach API-Response
-  - [ ] `validated_data = GeminiExtractionResult(**json.loads(response_text))`
-  - [ ] Fehlerbehandlung für ungültige Gemini-Responses
-- [ ] **Qualitätssicherung**: Nur validierte Daten in ProcessingResult
+- [x] **Schema-Definition**: `src/models/gemini_schemas.py` erstellen ✅
+  - [x] `GeminiInvoiceHeader(BaseModel)` - Rechnungskopf-Schema ✅
+  - [x] `GeminiLineItem(BaseModel)` - Rechnungspositions-Schema ✅
+  - [x] `GeminiExtractionResult(BaseModel)` - Vollständiges Response-Schema ✅
+- [x] **Integration in GeminiDirectProcessor**: Sofortige Validierung nach API-Response ✅
+  - [x] `validated_data = GeminiExtractionResult(**json.loads(response_text))` ✅
+  - [x] Fehlerbehandlung für ungültige Gemini-Responses ✅
+- [x] **Qualitätssicherung**: Nur validierte Daten in ProcessingResult ✅
 
 #### **A2: Trainingsdaten-Persistierung (DATENSCHATZ)**
-- [ ] **spaCy-Training-Export**: Nach jeder erfolgreichen Verarbeitung
-  - [ ] JSONL-Format: `data/training/gemini_spacy_annotations.jsonl`
-  - [ ] Annotationen + raw_text für zukünftiges NER/TextCat-Training
-- [ ] **RAG-System-Population**: ChromaDB mit Gemini-Klassifizierungen
-  - [ ] Jede Position → ChromaDB-Dokument mit Metadatum `"source": "gemini_validated"`
-  - [ ] Embedding-Vektor für Ähnlichkeitssuche
-- [ ] **Audit-Trail**: GoBD-konforme Speicherung in `logs/audit_gemini.jsonl`
+- [x] **spaCy-Training-Export**: Nach jeder erfolgreichen Verarbeitung ✅
+  - [x] JSONL-Format: `data/training/gemini_spacy_annotations.jsonl` ✅
+  - [x] Annotationen + raw_text für zukünftiges NER/TextCat-Training ✅
+- [x] **RAG-System-Population**: ChromaDB mit Gemini-Klassifizierungen ✅
+  - [x] Jede Position → ChromaDB-Dokument mit Metadatum `"source": "gemini_validated"` ✅
+  - [x] Embedding-Vektor für Ähnlichkeitssuche ✅
+- [x] **Audit-Trail**: GoBD-konforme Speicherung in `logs/audit_gemini.jsonl` ✅
 
 #### **A3: Performance-Optimierung**
-- [ ] **Async Gemini-Processing**: `AsyncGeminiDirectProcessor`
-  - [ ] `asyncio.gather()` für Batch-Verarbeitung
-  - [ ] `asyncio.Semaphore(3)` für API-Rate-Limiting
-- [ ] **PDF-Hash-Caching**: SQLite-Cache gegen Duplikate
-  - [ ] SHA256-Hash vor API-Call
-  - [ ] Cache-Hit → sofortiges Ergebnis (0ms statt 5000ms)
+- [x] **Async Gemini-Processing**: `AsyncGeminiDirectProcessor` ✅
+  - [x] `asyncio.gather()` für Batch-Verarbeitung ✅
+  - [x] `asyncio.Semaphore(3)` für API-Rate-Limiting ✅
+- [x] **PDF-Hash-Caching**: SQLite-Cache gegen Duplikate ✅
+  - [x] SHA256-Hash vor API-Call ✅
+  - [x] Cache-Hit → sofortiges Ergebnis (0ms statt 5000ms) ✅
 
 ### **Architektur-Vorbereitung für Phase 2 (B-Priorität)**
 
 #### **B1: Strategy-Pattern für nahtlose Transition**
-- [ ] **Abstrakte ProcessingStrategy**: Interface für alle Engines
-- [ ] **GeminiStrategy**: Aktueller GeminiDirectProcessor
-- [ ] **UnifiedProcessor**: Engine-Auswahl zur Laufzeit
-- [ ] **Vorbereitung SpacyRagStrategy**: Platzhalter für Phase 2
+- [x] **Abstrakte ProcessingStrategy**: Interface für alle Engines ✅
+- [x] **GeminiStrategy**: Aktueller GeminiDirectProcessor ✅
+- [x] **UnifiedProcessor**: Engine-Auswahl zur Laufzeit ✅
+- [x] **Vorbereitung SpacyRagStrategy**: Platzhalter für Phase 2 ✅
 
 #### **B2: spaCy-Training-Pipeline**
 - [ ] **Automated Training**: Trigger bei X gesammelten Beispielen

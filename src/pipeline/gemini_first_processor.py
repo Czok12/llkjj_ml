@@ -33,9 +33,11 @@ except ImportError:
     genai = None
 
 from src.config import Config
+from src.models.gemini_schemas import create_validation_report, validate_gemini_response
 from src.models.processing_result import ProcessingResult
 from src.processing.spacy_corrector import SpacyAnnotationCorrector
 from src.skr03_manager import lade_skr03_manager
+from src.training_data_persistence import TrainingDataPersistence
 from src.utils.resource_manager import get_resource_manager
 
 logger = logging.getLogger(__name__)
@@ -74,7 +76,12 @@ class GeminiDirectProcessor:
         # Quality Assessor
         self._quality_assessor = None
 
-        logger.info("GeminiDirectProcessor initialisiert (Gemini-First Pipeline)")
+        # 🎯 A2: Training Data Persistence (Strategic TODO)
+        self.training_persistence = TrainingDataPersistence(self.config)
+
+        logger.info(
+            "✅ GeminiDirectProcessor initialisiert (v4.0.0 + Training Data Collection)"
+        )
 
     @property
     def gemini_client(self) -> Any:
@@ -314,6 +321,19 @@ class GeminiDirectProcessor:
                 confidence_score * 100,
                 quality_level,
             )
+
+            # 🎯 A2: Training Data Persistence - Collect valuable training data
+            try:
+                persistence_stats = self.training_persistence.persist_training_data(
+                    pdf_path=str(pdf_path),
+                    validated_gemini_result=structured_result,
+                    skr03_classifications=enhanced_classifications,
+                    processing_result=result,
+                )
+                logger.info("✅ Training data persisted: %s", persistence_stats)
+            except Exception as training_error:
+                # Training data persistence should not fail the main pipeline
+                logger.warning("⚠️ Training data persistence failed: %s", training_error)
 
             return result
 
@@ -656,16 +676,35 @@ EXTRAHIERE ALLE sichtbaren Positionen vollständig und präzise!
                 logger.info(f"🔄 Gemini-Analyse Versuch {attempt + 1}/{max_retries}...")
 
                 # Fallback auf bestehende Methode
-                result = self._analyze_pdf_with_gemini(pdf_content, analysis_prompt)
+                raw_result = self._analyze_pdf_with_gemini(pdf_content, analysis_prompt)
 
-                # Validierung der Gemini-Antwort
+                # 🎯 NEUE PYDANTIC-VALIDIERUNG (A1 TODO-Item)
+                logger.info("🔍 Validiere Gemini-Response mit Pydantic...")
+                validated_result, validation_errors = validate_gemini_response(
+                    raw_result
+                )
+
+                if validated_result:
+                    logger.info("✅ Gemini-Response erfolgreich validiert!")
+                    # Konvertiere zurück zu dict für Kompatibilität
+                    result = validated_result.model_dump()
+                else:
+                    # Validierung fehlgeschlagen - detaillierte Fehlerausgabe
+                    error_report = create_validation_report(validation_errors)
+                    logger.error("❌ Gemini-Response-Validierung fehlgeschlagen:")
+                    logger.error(error_report)
+                    raise ValueError(
+                        f"Pydantic-Validierung fehlgeschlagen: {len(validation_errors)} Fehler"
+                    )
+
+                # Legacy-Validierung für Rückwärtskompatibilität
                 if not isinstance(result, dict):
                     raise ValueError("Gemini-Antwort ist kein Dictionary")
 
                 if not result.get("line_items"):
                     logger.warning("⚠️ Gemini extrahierte keine Rechnungspositionen")
 
-                logger.info("✅ Gemini-Analyse erfolgreich")
+                logger.info("✅ Gemini-Analyse mit Pydantic-Validierung erfolgreich")
                 return result
 
             except Exception as e:
