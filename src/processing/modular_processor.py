@@ -81,7 +81,7 @@ class ModularProcessor:
     def extractor(self) -> DataExtractor:
         """Lazy load extractor when needed"""
         if self._extractor is None:
-            self._extractor = DataExtractor(self.config)  # type: ignore[no-untyped-call]
+            self._extractor = DataExtractor(self.config)
         return self._extractor
 
     @property

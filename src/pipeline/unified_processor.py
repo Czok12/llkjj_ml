@@ -106,7 +106,7 @@ class UnifiedProcessor:
         # Phase 2: SpaCy RAG bevorzugt (wenn verfügbar und trainiert)
         if "spacy_rag" in available:
             spacy_strategy = self._strategies["spacy_rag"]
-            training_status = spacy_strategy.check_training_data_readiness()  # type: ignore[attr-defined]
+            training_status = spacy_strategy.check_training_data_readiness()
             if training_status.get("training_data_sufficient", False):
                 logger.info(
                     "🎯 Default Strategy: spacy_rag (Phase 2: Local autonomous)"
@@ -177,7 +177,7 @@ class UnifiedProcessor:
             result = strategy_instance.process_pdf(pdf_path)
 
             # Strategy-Info zu Result hinzufügen
-            result.processing_method = selected_strategy  # type: ignore[assignment]
+            result.processing_method = selected_strategy
 
             logger.info("✅ %s Strategy erfolgreich", strategy_instance.name)
             return result
@@ -192,7 +192,7 @@ class UnifiedProcessor:
             ):
                 logger.warning("🔄 Fallback zu GeminiStrategy...")
                 fallback_result = self._strategies["gemini"].process_pdf(pdf_path)
-                fallback_result.processing_method = "gemini_fallback"  # type: ignore[assignment]
+                fallback_result.processing_method = "gemini_fallback"
                 return fallback_result
             else:
                 raise
@@ -232,7 +232,7 @@ class UnifiedProcessor:
             "strategy_pattern": "enabled",
         }
 
-        return all_info  # type: ignore[return-value]
+        return all_info
 
     def compare_strategies(self, pdf_path: str | Path) -> dict[str, Any]:
         """
@@ -278,9 +278,7 @@ class UnifiedProcessor:
 
         # Zusammenfassung
         successful_strategies: list[str] = [
-            k
-            for k, v in comparison_results.items()
-            if v.get("success")  # type: ignore[misc]
+            k for k, v in comparison_results.items() if v.get("success")
         ]
 
         summary: dict[str, Any] = {
@@ -299,14 +297,14 @@ class UnifiedProcessor:
             # Fastest
             fastest: str = min(
                 successful_strategies,
-                key=lambda x: comparison_results[x]["processing_time_ms"],  # type: ignore[misc]
+                key=lambda x: comparison_results[x]["processing_time_ms"],
             )
             summary["summary"]["fastest_strategy"] = fastest
 
             # Highest confidence
             highest_conf: str = max(
                 successful_strategies,
-                key=lambda x: comparison_results[x]["confidence_score"],  # type: ignore[misc]
+                key=lambda x: comparison_results[x]["confidence_score"],
             )
             summary["summary"]["highest_confidence"] = highest_conf
 

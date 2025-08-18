@@ -463,7 +463,7 @@ class AsyncUnifiedProcessor:
                 embeddings = await loop.run_in_executor(
                     None,
                     self.embedding_model.encode,
-                    texts_to_embed,  # type: ignore[misc]
+                    texts_to_embed,
                 )
 
                 # Store in ChromaDB (in executor to avoid blocking)
@@ -477,7 +477,7 @@ class AsyncUnifiedProcessor:
 
                 logger.info(
                     "✅ Async Vektorisierung: %d Embeddings gespeichert",
-                    len(embeddings),  # type: ignore[arg-type]
+                    len(embeddings),
                 )
 
         except Exception as e:

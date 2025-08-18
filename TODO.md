@@ -1,5 +1,88 @@
 # LLKJJ ML Pipeline - Roadmap & TODO (Gemini-Strategie 18.08.2025)
 
+## 🚀 **PRIORITÄT 0: GEMINI REFACTORING UMSETZUNG (AKTUELL)**
+
+### **Umfassender Implementierungsplan: Gemini-Vorschläge umsetzen**
+
+**Ausgangslage**: Gemini hat drei kritische Verbesserungsbereiche identifiziert, die die Architektur straffen, Code-Qualität erhöhen und das Projekt strategisch auf Phase 2 vorbereiten.
+
+#### **SCHRITT 1: Kritische Import-Probleme beheben (SOFORT)**
+- [ ] **Broken Import eliminieren**: `from spacy_training.pipeline import TrainingPipeline` entfernen
+  - [ ] main.py: Zeile 25 auf `from src.trainer import TrainingService` ändern
+  - [ ] Alle Aufrufe von `TrainingPipeline` auf `TrainingService` migrieren
+  - [ ] Funktionsaufrufe in export_training_data(), train_model(), etc. anpassen
+  - [ ] Leeres `spacy_training/` Verzeichnis komplett entfernen
+
+#### **SCHRITT 2: Training Data Persistence verbessern (KERN)**
+- [ ] **Duale spaCy-Modell-Architektur (NER + TextCat) als Standard**:
+  - [ ] **NER-Training**: Positionsgenaue Entitätserkennung für deutsche Elektrotechnik
+    - [ ] `_create_annotated_text()` Methode vollständig implementieren
+    - [ ] Exakte Token-Positionen berechnen statt fehleranfälligem `string.find()`
+    - [ ] Deutsche Elektrotechnik-Entitäten: HÄNDLER, RECHNUNGSNUMMER, ARTIKEL, MENGE, PREIS, ELEKTRO_KATEGORIE
+  - [ ] **TextCat-Training**: SKR03-Klassifizierung und Elektro-Kategorien
+    - [ ] Elektro-Kategorien: BELEUCHTUNG, INSTALLATION, SCHALTER, KABEL, etc.
+    - [ ] SKR03-Konten-Kategorien für automatische Buchungsvorschläge
+    - [ ] Konfidenz-Scores für Klassifizierungsqualität
+- [ ] **Vollständige spaCy-Export-Pipeline (Dual-Model)**:
+  - [ ] **Gemeinsame JSONL-Basis**: Ein Datensatz für beide Modelle
+    - [ ] Format: `{"text": "...", "entities": [...], "cats": {...}, "meta": {...}}`
+    - [ ] NER-Pipeline: Nutzt `entities` Array
+    - [ ] TextCat-Pipeline: Nutzt `cats` Dictionary
+  - [ ] **Separate Training-Outputs**:
+    - [ ] `ner_training.jsonl` für Named Entity Recognition
+    - [ ] `textcat_training.jsonl` für Text Classification
+    - [ ] `combined_training.jsonl` für hybride Ansätze
+  - [ ] **Batch-Processing**: Beide Modelle parallel trainieren
+  - [ ] **Quality-Assurance**: Separate Metriken für NER und TextCat
+
+#### **SCHRITT 3: Processor-Architektur konsolidieren (STRUCTURE)**
+- [ ] **Unified Processor Integration**: Strategy-Pattern korrekt implementieren
+  - [ ] `ml_service/processor.py` Import-Probleme lösen
+  - [ ] ProcessingResult-Schema zwischen allen Modulen harmonisieren
+  - [ ] `src/pipeline/processor.py` vs `src/pipeline/unified_processor.py` konsolidieren
+- [ ] **API-Konsistenz sicherstellen**:
+  - [ ] Einheitliche Schnittstelle für alle Processing-Strategien
+  - [ ] Type-Safety mit korrekten Pydantic-Modellen
+  - [ ] Rückwärtskompatibilität für bestehende Clients
+
+#### **SCHRITT 4: Code-Qualität und Tests (ROBUSTHEIT)**
+- [ ] **Vollständige Funktions-Implementierung**: Alle Placeholder ersetzen
+  - [ ] `training_data_persistence.py`: Fehlende Logik in allen `_persist_*` Methoden
+  - [ ] `main.py`: Unvollständige Command-Handler fertigstellen
+  - [ ] Error-Handling spezifizieren (keine generischen `except Exception`)
+- [ ] **Type-Safety verbessern**:
+  - [ ] Alle mypy-Fehler beheben (aktuell 69 Fehler!)
+  - [ ] Return-Type-Annotationen für alle Funktionen
+  - [ ] Strikte Type-Hints für Pydantic-Models
+- [ ] **Testing-Strategy**:
+  - [ ] Unit-Tests für neue NER-Annotation-Logik
+  - [ ] Integration-Tests für konsolidierten Processor
+  - [ ] Performance-Tests für Trainingsdaten-Export
+
+#### **SCHRITT 5: Validierung und Deployment (VERIFICATION)**
+- [ ] **End-to-End Testing**: Komplette Pipeline mit echten PDFs testen
+  - [ ] Gemini-First Pipeline: PDF → Strukturierte Daten → Training-Export
+  - [ ] Trainingsdaten-Qualität: Manuelle Stichproben der generierten spaCy-Daten
+  - [ ] RAG-System: ChromaDB Population und Retrieval testen
+- [ ] **Performance-Benchmarking**:
+  - [ ] Verarbeitungszeit vor/nach Refactoring messen
+  - [ ] Speicherverbrauch der neuen Annotation-Pipeline
+  - [ ] Skalierbarkeit mit Batch-Processing testen
+- [ ] **Production Readiness**:
+  - [ ] Security-Audit durchführen
+  - [ ] Logging und Monitoring überprüfen
+  - [ ] Backup und Recovery-Strategien validieren
+
+### **Erwartete Verbesserungen nach Umsetzung:**
+- ✅ **Stabilität**: Keine Import-Fehler, alle Module funktionsfähig
+- ✅ **Qualität**: Bessere NER-Trainingsdaten für Phase 2 Vorbereitung
+- ✅ **Architektur**: Klare Trennung, Strategy-Pattern, weniger Redundanz
+- ✅ **Wartbarkeit**: Konsolidierte Codebase, einheitliche APIs
+- ✅ **Performance**: Optimierte Trainingsdaten-Pipeline
+- ✅ **Zukunftssicherheit**: Solide Basis für Phase 2 (lokale Autonomie)
+
+---
+
 ## 🎯 **PRIORITÄT 1: GEMINI-PIPELINE PRODUKTIONSREIF MACHEN (STRATEGIC PRIORITY)**
 
 ### **Strategische Vision: Phase 1 → 2 Transition**

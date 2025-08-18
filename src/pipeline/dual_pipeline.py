@@ -22,8 +22,11 @@ from typing import Any
 
 try:
     import google.genai as genai
+
+    GENAI_AVAILABLE = True
 except ImportError:
     genai = None
+    GENAI_AVAILABLE = False
 
 from src.config import Config
 from src.pipeline.processor import ResourceManager
@@ -55,7 +58,7 @@ class UnifiedDualPurposePipeline:
 
     def _setup_gemini(self) -> None:
         """Setup Gemini für dual-purpose Verarbeitung"""
-        if genai is None:
+        if not GENAI_AVAILABLE:
             logger.warning(
                 "⚠️ Google Gemini nicht verfügbar - verwende Fallback-Methoden"
             )
@@ -63,7 +66,10 @@ class UnifiedDualPurposePipeline:
 
         try:
             if hasattr(self.config, "google_api_key") and self.config.google_api_key:
-                self._gemini_client = genai.Client(api_key=self.config.google_api_key)
+                if genai is not None:
+                    self._gemini_client = genai.Client(
+                        api_key=self.config.google_api_key
+                    )
                 logger.info("✅ Gemini Client für Unified Pipeline geladen")
             else:
                 logger.warning("⚠️ Kein Google API Key - Gemini deaktiviert")
@@ -202,11 +208,18 @@ WICHTIG:
             else:
                 model = "gemini-1.5-flash"
 
+            if self._gemini_client is None:
+                logger.error("❌ Gemini Client nicht verfügbar")
+                return self._fallback_dual_purpose_extraction(docling_text)
+
             response = self._gemini_client.models.generate_content(
                 model=model, contents=dual_purpose_prompt
             )
 
             response_text = response.text if response else ""
+            if not response_text:
+                logger.error("❌ Leere Antwort von Gemini")
+                return self._fallback_dual_purpose_extraction(docling_text)
 
             # Parse JSON Response
             if "```json" in response_text:
@@ -300,7 +313,7 @@ WICHTIG:
 
         # Konvertiere zu spaCy NER Format
         entities = training_data.get("entities", [])
-        spacy_entities = []
+        spacy_entities: list[tuple[int, int, str]] = []
 
         for entity in entities:
             start = entity.get("start", 0)
@@ -380,7 +393,7 @@ WICHTIG:
         buchungs_dir = output_base / "buchungen"
         training_dir = output_base / "training"
 
-        results = {
+        results: dict[str, Any] = {
             "processed_files": [],
             "buchungsausgaben": [],
             "training_exports": [],

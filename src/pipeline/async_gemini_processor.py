@@ -89,7 +89,7 @@ class AsyncGeminiDirectProcessor(GeminiDirectProcessor):
     async def _check_cache(self, pdf_hash: str) -> dict[str, Any] | None:
         """Check if PDF result exists in cache."""
 
-        def _db_query():
+        def _db_query() -> tuple[str, float, float] | None:
             with sqlite3.connect(self.cache_db_path) as conn:
                 cursor = conn.execute(
                     """
@@ -122,7 +122,7 @@ class AsyncGeminiDirectProcessor(GeminiDirectProcessor):
     ) -> None:
         """Store processing result in cache."""
 
-        def _db_insert():
+        def _db_insert() -> None:
             with sqlite3.connect(self.cache_db_path) as conn:
                 conn.execute(
                     """
@@ -279,7 +279,7 @@ class AsyncGeminiDirectProcessor(GeminiDirectProcessor):
             Anzahl gelöschter Einträge
         """
 
-        def _db_cleanup():
+        def _db_cleanup() -> int:
             with sqlite3.connect(self.cache_db_path) as conn:
                 cursor = conn.execute(
                     f"""
@@ -311,7 +311,7 @@ async def process_pdf_async(
 
 
 async def process_batch_async(
-    pdf_paths: list[str], config: Config | None = None, max_concurrent: int = 3
+    pdf_paths: list[str | Path], config: Config | None = None, max_concurrent: int = 3
 ) -> list[ProcessingResult | None]:
     """Convenience function für async Batch-Processing."""
     processor = AsyncGeminiDirectProcessor(config)

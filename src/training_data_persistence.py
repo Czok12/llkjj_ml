@@ -310,7 +310,7 @@ class TrainingDataPersistence:
                 )
 
                 # Embedding erstellen
-                embedding = self.embedding_model.encode(doc_text).tolist()  # type: ignore[misc]
+                embedding = self.embedding_model.encode(doc_text).tolist()
 
                 # Metadaten mit validation_status (RAG-Strategie)
                 metadata = {
@@ -336,10 +336,10 @@ class TrainingDataPersistence:
 
             # Batch-Insert in ChromaDB
             if documents:
-                self.collection.add(  # type: ignore[misc]
+                self.collection.add(
                     documents=documents,
-                    metadatas=metadatas,  # type: ignore[arg-type]
-                    embeddings=embeddings,  # type: ignore[arg-type]
+                    metadatas=metadatas,
+                    embeddings=embeddings,
                     ids=ids,
                 )
 

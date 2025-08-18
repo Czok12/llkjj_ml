@@ -22,7 +22,6 @@ from pathlib import Path
 from typing import Any
 
 # Refactored Training Services
-from spacy_training.pipeline import TrainingPipeline
 from src.config import Config
 
 # Feature Engineering Integration
@@ -210,7 +209,7 @@ def process_pdfs_async_batch(args: argparse.Namespace) -> None:
     print(f"📁 Output: {output_dir}")
     print(f"⚡ Max concurrent: {max_concurrent}")
 
-    async def _process_async():
+    async def _process_async() -> None:
         if input_path.is_file() and input_path.suffix.lower() == ".pdf":
             # Single PDF with async processing
             print(f"📄 Processing single PDF: {input_path.name}")

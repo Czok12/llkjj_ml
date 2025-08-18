@@ -54,7 +54,15 @@ class ProcessingResult(BaseModel):
         description="ISO-Zeitstempel der Verarbeitung (UTC)",
         examples=["2025-08-18T14:30:25.123456Z"],
     )
-    processing_method: Literal["gemini_first", "docling_alternative"] = Field(
+    processing_method: Literal[
+        "gemini_first",
+        "docling_alternative",
+        "gemini",
+        "spacy_rag",
+        "hybrid",
+        "auto",
+        "gemini_fallback",
+    ] = Field(
         ...,
         description="Verwendete Verarbeitungsmethode",
         examples=["gemini_first"],

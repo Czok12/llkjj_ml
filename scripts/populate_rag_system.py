@@ -62,7 +62,7 @@ def populate_rag_system(
 
     logger.info("🚀 Starte RAG-System Population mit %d PDF-Dateien", len(pdf_files))
 
-    stats = {
+    stats: dict[str, Any] = {
         "processed": 0,
         "successful": 0,
         "failed": 0,

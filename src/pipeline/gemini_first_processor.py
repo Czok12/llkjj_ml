@@ -28,9 +28,12 @@ from sentence_transformers import SentenceTransformer
 
 # Gemini AI Integration
 try:
-    import google.genai as genai  # type: ignore[import-untyped]
+    import google.genai as genai
+
+    GENAI_AVAILABLE = True
 except ImportError:
-    genai = None  # type: ignore[assignment]
+    genai = None
+    GENAI_AVAILABLE = False
 
 from src.config import Config
 from src.models.gemini_schemas import create_validation_report, validate_gemini_response
@@ -94,8 +97,13 @@ class GeminiDirectProcessor:
                 )
 
             try:
-                self._gemini_client = genai.Client(api_key=self.config.google_api_key)
-                logger.info("✅ Gemini 2.5 Pro Client geladen")
+                if genai is not None:
+                    self._gemini_client = genai.Client(
+                        api_key=self.config.google_api_key
+                    )
+                    logger.info("✅ Gemini 2.5 Pro Client geladen")
+                else:
+                    raise ImportError("genai module not available")
             except Exception as e:
                 logger.error("❌ Gemini Client konnte nicht geladen werden: %s", e)
                 raise ValueError(
