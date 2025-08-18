@@ -1,8 +1,100 @@
-# LLKJJ ML Pipeline - Roadmap & TODO (Konsolidierung 18.08.2025)
+# LLKJJ ML Pipeline - Roadmap & TODO (Gemini-Strategie 18.08.2025)
 
-## 🚨 **PRIORITÄT 1: PROJEKTSTRUKTUR-KONSOLIDIERUNG (KISS-PRINZIP)**
+## 🎯 **PRIORITÄT 1: GEMINI-PIPELINE PRODUKTIONSREIF MACHEN (STRATEGIC PRIORITY)**
 
-### **Problem Analyse**
+### **Strategische Vision: Phase 1 → 2 Transition**
+- **Phase 1 (JETZT)**: Gemini AI als produktive Intelligence-Engine
+- **Phase 2 (SPÄTER)**: Nahtloser Übergang zu lokaler spaCy/RAG-Autonomie
+- **Kernziel**: Jede verarbeitete Rechnung = Trainingsdaten für zukünftige Unabhängigkeit
+
+### **Sofort-Umsetzung (A-Priorität)**
+
+#### **A1: Pydantic-Validierung für Gemini-Antworten (KRITISCH)**
+- [ ] **Schema-Definition**: `src/models/gemini_schemas.py` erstellen
+  - [ ] `GeminiInvoiceHeader(BaseModel)` - Rechnungskopf-Schema
+  - [ ] `GeminiLineItem(BaseModel)` - Rechnungspositions-Schema
+  - [ ] `GeminiExtractionResult(BaseModel)` - Vollständiges Response-Schema
+- [ ] **Integration in GeminiDirectProcessor**: Sofortige Validierung nach API-Response
+  - [ ] `validated_data = GeminiExtractionResult(**json.loads(response_text))`
+  - [ ] Fehlerbehandlung für ungültige Gemini-Responses
+- [ ] **Qualitätssicherung**: Nur validierte Daten in ProcessingResult
+
+#### **A2: Trainingsdaten-Persistierung (DATENSCHATZ)**
+- [ ] **spaCy-Training-Export**: Nach jeder erfolgreichen Verarbeitung
+  - [ ] JSONL-Format: `data/training/gemini_spacy_annotations.jsonl`
+  - [ ] Annotationen + raw_text für zukünftiges NER/TextCat-Training
+- [ ] **RAG-System-Population**: ChromaDB mit Gemini-Klassifizierungen
+  - [ ] Jede Position → ChromaDB-Dokument mit Metadatum `"source": "gemini_validated"`
+  - [ ] Embedding-Vektor für Ähnlichkeitssuche
+- [ ] **Audit-Trail**: GoBD-konforme Speicherung in `logs/audit_gemini.jsonl`
+
+#### **A3: Performance-Optimierung**
+- [ ] **Async Gemini-Processing**: `AsyncGeminiDirectProcessor`
+  - [ ] `asyncio.gather()` für Batch-Verarbeitung
+  - [ ] `asyncio.Semaphore(3)` für API-Rate-Limiting
+- [ ] **PDF-Hash-Caching**: SQLite-Cache gegen Duplikate
+  - [ ] SHA256-Hash vor API-Call
+  - [ ] Cache-Hit → sofortiges Ergebnis (0ms statt 5000ms)
+
+### **Architektur-Vorbereitung für Phase 2 (B-Priorität)**
+
+#### **B1: Strategy-Pattern für nahtlose Transition**
+- [ ] **Abstrakte ProcessingStrategy**: Interface für alle Engines
+- [ ] **GeminiStrategy**: Aktueller GeminiDirectProcessor
+- [ ] **UnifiedProcessor**: Engine-Auswahl zur Laufzeit
+- [ ] **Vorbereitung SpacyRagStrategy**: Platzhalter für Phase 2
+
+#### **B2: spaCy-Training-Pipeline**
+- [ ] **Automated Training**: Trigger bei X gesammelten Beispielen
+- [ ] **Model-Versioning**: Inkrementelle Verbesserung lokaler Modelle
+- [ ] **Performance-Benchmarking**: Gemini vs. spaCy Genauigkeitsvergleich
+
+#### **B3: RAG-System Optimierung (INTELLIGENTES GEDÄCHTNIS)**
+**Strategische Bedeutung**: Das RAG-System ist das Herzstück der zukünftigen autonomen Pipeline - von einfacher Ähnlichkeitssuche zum intelligenten Langzeitgedächtnis.
+
+##### **Phase 1: Robuste Dateneinspeisung (Sofort)**
+- [ ] **Validierungs-Status in ChromaDB-Metadaten**
+  - [ ] `validation_status`: `"ai_suggested"` | `"user_confirmed"` | `"user_corrected"` | `"system_flagged"`
+  - [ ] Grundlage für Qualitätsgewichtung und Selbstkorrektur
+- [ ] **Feedback-Loop Implementation**
+  - [ ] Backend-Endpunkt `/feedback` für Benutzerkorrekturen
+  - [ ] ChromaDB-Update mit korrigierten Klassifizierungen
+  - [ ] Konfidenz auf 1.0 setzen für `user_corrected`-Einträge
+- [ ] **Kontext-Anreicherung der Vektor-Dokumente**
+  - [ ] Von: `"Lieferant: X | Artikel: Y"`
+  - [ ] Zu: `"Artikel: Y, Menge: Z, Preis: N EUR. Lieferant: X (Typ). Kategorie: K."`
+  - [ ] Embedding versteht Kontext: Einzelwerkzeug vs. Verbrauchsmaterial
+
+##### **Phase 2: Intelligenter Abruf (Hybrid Search)**
+- [ ] **Mehrstufige Suche mit Metadaten-Filterung**
+  - [ ] ChromaDB `where`-Filter für Lieferanten-spezifische Suche
+  - [ ] Gewichtung: `user_corrected/confirmed` Einträge × 1.5 Faktor
+  - [ ] Vorfilterung reduziert "false positives" drastisch
+- [ ] **Dynamische Ähnlichkeitsschwelle**
+  - [ ] Hohe Schwelle (0.7) bei vielen validierten Lieferanten-Daten
+  - [ ] Niedrige Schwelle (0.5) bei unbekannten Artikeln
+  - [ ] Adaptive Präzision vs. Recall-Balance
+
+##### **Phase 3: Explainable AI & Selbstkorrektur**
+- [ ] **Erweiterte Begründungs-Engine**
+  - [ ] XAI-Reasoning: "Vorschlag 3400. Regel-Konfidenz 0.8 + 3 ähnliche bestätigte Sonepar-Buchungen (Ø 0.85)"
+  - [ ] Frontend-Integration für Benutzervertrauen
+- [ ] **Proaktives Inkonsistenz-Flagging**
+  - [ ] Top-3 RAG-Treffer → 3 verschiedene SKR03-Konten = `system_flagged`
+  - [ ] Automatische Konfidenz-Reduktion bei Mehrdeutigkeit
+  - [ ] "Warnung: Ähnliche Artikel unterschiedlich kontiert. Bitte prüfen."
+
+**Strategischer Nutzen**:
+- ✅ Kontinuierliches Lernen aus Benutzerfeedback
+- ✅ Selbstheilende Datenbasis ("vergiftete" Daten werden korrigiert)
+- ✅ Kontextbewusste Klassifizierung (Anlagevermögen vs. Verbrauchsmaterial)
+- ✅ Vorbereitung für Phase 2: Lokales "intelligentes Gedächtnis" ohne Gemini-Abhängigkeit
+
+---
+
+## 🏗️ **PRIORITÄT 2: STRUKTUR-KONSOLIDIERUNG (KANN WARTEN)**
+
+### **Problem Analyse (Ursprünglicher Plan)**
 - **Redundante Struktur**: `src/` UND `ml_service/` innerhalb eines Plugin-Pakets
 - **Abhängigkeits-Chaos**: `ml_service/` importiert von `src/` (4 Imports gefunden)
 - **Gegen KISS-Prinzip**: Zwei Quellcode-Verzeichnisse für ein Paket
