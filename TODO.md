@@ -7,61 +7,70 @@
 **Ausgangslage**: Gemini hat drei kritische Verbesserungsbereiche identifiziert, die die Architektur straffen, Code-Qualität erhöhen und das Projekt strategisch auf Phase 2 vorbereiten.
 
 #### **SCHRITT 1: Kritische Import-Probleme beheben (SOFORT)**
-- [x] **Broken Import eliminieren**: `from spacy_training.pipeline import TrainingPipeline` entfernen ✅
-  - [x] main.py: Zeile 25 auf `from src.trainer import TrainingService` ändern ✅
-  - [x] Alle Aufrufe von `TrainingPipeline` auf `TrainingService` migrieren ✅
-  - [x] Funktionsaufrufe in export_training_data(), train_model(), etc. anpassen ✅
-  - [x] Leeres `spacy_training/` Verzeichnis komplett entfernen ✅
+
+- [X] **Broken Import eliminieren**: `from spacy_training.pipeline import TrainingPipeline` entfernen ✅
+  - [X] main.py: Zeile 25 auf `from src.trainer import TrainingService` ändern ✅
+  - [X] Alle Aufrufe von `TrainingPipeline` auf `TrainingService` migrieren ✅
+  - [X] Funktionsaufrufe in export_training_data(), train_model(), etc. anpassen ✅
+  - [X] Leeres `spacy_training/` Verzeichnis komplett entfernen ✅
 
 #### **SCHRITT 2: Training Data Persistence verbessern (KERN)**
-- [x] **Duale spaCy-Modell-Architektur (NER + TextCat) als Standard**: ✅
-  - [x] **NER-Training**: Positionsgenaue Entitätserkennung für deutsche Elektrotechnik ✅
-    - [x] `_create_annotated_text()` Methode vollständig implementiert ✅
-    - [x] Exakte Token-Positionen berechnen statt fehleranfälligem `string.find()` ✅
-    - [x] Deutsche Elektrotechnik-Entitäten: HÄNDLER, RECHNUNGSNUMMER, ARTIKEL, MENGE, PREIS, ELEKTRO_KATEGORIE ✅
-  - [x] **TextCat-Training**: SKR03-Klassifizierung und Elektro-Kategorien ✅
-    - [x] Elektro-Kategorien: BELEUCHTUNG, INSTALLATION, SCHALTER, KABEL, etc. ✅
-    - [x] SKR03-Konten-Kategorien für automatische Buchungsvorschläge ✅
-    - [x] Konfidenz-Scores für Klassifizierungsqualität ✅
-- [x] **Vollständige spaCy-Export-Pipeline (Dual-Model)**: ✅
-  - [x] **Gemeinsame JSONL-Basis**: Ein Datensatz für beide Modelle ✅
-    - [x] Format: `{"text": "...", "entities": [...], "cats": {...}, "meta": {...}}` ✅
-    - [x] NER-Pipeline: Nutzt `entities` Array ✅
-    - [x] TextCat-Pipeline: Nutzt `cats` Dictionary ✅
-  - [x] **Separate Training-Outputs**: ✅
-    - [x] `ner_training.jsonl` für Named Entity Recognition ✅
-    - [x] `textcat_training.jsonl` für Text Classification ✅
-    - [x] `combined_training.jsonl` für hybride Ansätze ✅
-  - [x] **Batch-Processing**: Beide Modelle parallel trainieren ✅
-  - [x] **Quality-Assurance**: Separate Metriken für NER und TextCat ✅
+
+- [X] **Duale spaCy-Modell-Architektur (NER + TextCat) als Standard**: ✅
+  - [X] **NER-Training**: Positionsgenaue Entitätserkennung für deutsche Elektrotechnik ✅
+    - [X] `_create_annotated_text()` Methode vollständig implementiert ✅
+    - [X] Exakte Token-Positionen berechnen statt fehleranfälligem `string.find()` ✅
+    - [X] Deutsche Elektrotechnik-Entitäten: HÄNDLER, RECHNUNGSNUMMER, ARTIKEL, MENGE, PREIS, ELEKTRO_KATEGORIE ✅
+  - [X] **TextCat-Training**: SKR03-Klassifizierung und Elektro-Kategorien ✅
+    - [X] Elektro-Kategorien: BELEUCHTUNG, INSTALLATION, SCHALTER, KABEL, etc. ✅
+    - [X] SKR03-Konten-Kategorien für automatische Buchungsvorschläge ✅
+    - [X] Konfidenz-Scores für Klassifizierungsqualität ✅
+- [X] **Vollständige spaCy-Export-Pipeline (Dual-Model)**: ✅
+  - [X] **Gemeinsame JSONL-Basis**: Ein Datensatz für beide Modelle ✅
+    - [X] Format: `{"text": "...", "entities": [...], "cats": {...}, "meta": {...}}` ✅
+    - [X] NER-Pipeline: Nutzt `entities` Array ✅
+    - [X] TextCat-Pipeline: Nutzt `cats` Dictionary ✅
+  - [X] **Separate Training-Outputs**: ✅
+    - [X] `ner_training.jsonl` für Named Entity Recognition ✅
+    - [X] `textcat_training.jsonl` für Text Classification ✅
+    - [X] `combined_training.jsonl` für hybride Ansätze ✅
+  - [X] **Batch-Processing**: Beide Modelle parallel trainieren ✅
+  - [X] **Quality-Assurance**: Separate Metriken für NER und TextCat ✅
 
 #### **SCHRITT 3: Processor-Architektur konsolidieren (STRUCTURE)**
-- [x] **Unified Processor Integration**: Strategy-Pattern korrekt implementiert ✅
-  - [x] `ml_service/processor.py` Import-Probleme gelöst ✅
-  - [x] ProcessingResult-Schema zwischen allen Modulen harmonisiert ✅
-  - [x] `src/pipeline/processor.py` vs `src/pipeline/unified_processor.py` konsolidiert ✅
-- [x] **API-Konsistenz sichergestellt**: ✅
-  - [x] Einheitliche Schnittstelle für alle Processing-Strategien ✅
-  - [x] Type-Safety mit korrekten Pydantic-Modellen ✅ (Details in Schritt 4)
-  - [x] Rückwärtskompatibilität für bestehende Clients ✅
+
+- [X] **Unified Processor Integration**: Strategy-Pattern korrekt implementiert ✅
+  - [X] `ml_service/processor.py` Import-Probleme gelöst ✅
+  - [X] ProcessingResult-Schema zwischen allen Modulen harmonisiert ✅
+  - [X] `src/pipeline/processor.py` vs `src/pipeline/unified_processor.py` konsolidiert ✅
+- [X] **API-Konsistenz sichergestellt**: ✅
+  - [X] Einheitliche Schnittstelle für alle Processing-Strategien ✅
+  - [X] Type-Safety mit korrekten Pydantic-Modellen ✅ (Details in Schritt 4)
+  - [X] Rückwärtskompatibilität für bestehende Clients ✅
 
 #### **SCHRITT 4: Code-Qualität und Tests (ROBUSTHEIT)**
-- [x] **Vollständige Funktions-Implementierung**: Alle Placeholder ersetzen ✅
-  - [x] Type-Errors in main.py behoben: Strategy-Parameter-Validierung ✅
-  - [x] ProcessingResult-Type-Annotations in Batch-Processing ✅
-  - [x] Kritische List-Type-Annotations hinzugefügt ✅
-  - [x] Batch-data-Type-Hints verbessert ✅
-- [x] **Exception-Handling-Analyse**: Kritische vs. unkritische Exceptions identifiziert ✅
+
+- [X] **Vollständige Funktions-Implementierung**: Alle Placeholder ersetzen ✅
+
+  - [X] Type-Errors in main.py behoben: Strategy-Parameter-Validierung ✅
+  - [X] ProcessingResult-Type-Annotations in Batch-Processing ✅
+  - [X] Kritische List-Type-Annotations hinzugefügt ✅
+  - [X] Batch-data-Type-Hints verbessert ✅
+- [X] **Exception-Handling-Analyse**: Kritische vs. unkritische Exceptions identifiziert ✅
+
   - Exception-Handling-Verbesserungen als zukünftige Verbesserung dokumentiert
   - Fokus auf Production-Readiness statt theoretischer Perfektion ✅
+
   - [ ] `training_data_persistence.py`: Fehlende Logik in allen `_persist_*` Methoden
   - [ ] `main.py`: Unvollständige Command-Handler fertigstellen
   - [ ] Error-Handling spezifizieren (keine generischen `except Exception`)
 - [ ] **Type-Safety verbessern**:
-  - [ ] Alle mypy-Fehler beheben (aktuell 69 Fehler!)
+
+  - [X] Alle mypy-Fehler beheben (aktuell 69 Fehler!)
   - [ ] Return-Type-Annotationen für alle Funktionen
   - [ ] Strikte Type-Hints für Pydantic-Models
 - [ ] **Testing-Strategy (Dual-Model Fokus)**:
+
   - [ ] **NER-Tests**: Unit-Tests für neue Entitäts-Annotation-Logik
     - [ ] Positionsgenauigkeit deutscher Elektro-Entitäten
     - [ ] Fehlerbehandlung bei ungültigen Texten
@@ -72,20 +81,21 @@
   - [ ] **Performance-Tests**: Dual-Training Geschwindigkeit
 
 #### **SCHRITT 5: Validierung und Deployment (VERIFICATION)**
-- [x] **End-to-End-Pipeline-Testing**: Vollständige Funktionsprüfung ✅
-  - [x] UnifiedProcessor erfolgreich initialisiert ✅
-  - [x] Gemini-First-Pipeline läuft durch ✅
-  - [x] SKR03-Klassifizierung funktioniert ✅
-  - [x] Training Data Persistence aktiv ✅
-  - [x] Quality Assessment berechnet korrekt ✅
-  - [x] JSON-Ausgabe vollständig und strukturiert ✅
-- [x] **CLI-Interface-Validierung**: Alle Commands funktionsfähig ✅
-  - [x] process-unified läuft erfolgreich ✅
-  - [x] Strategy-Pattern implementiert ✅
-  - [x] Type-Safety gewährleistet ✅
-- [x] **Performance-Validation**: Sub-600ms-Verarbeitung erreicht ✅
-  - [x] Sonepar_test3.pdf in 568ms verarbeitet ✅
-  - [x] Dual-model training data collection funktioniert ✅
+
+- [X] **End-to-End-Pipeline-Testing**: Vollständige Funktionsprüfung ✅
+  - [X] UnifiedProcessor erfolgreich initialisiert ✅
+  - [X] Gemini-First-Pipeline läuft durch ✅
+  - [X] SKR03-Klassifizierung funktioniert ✅
+  - [X] Training Data Persistence aktiv ✅
+  - [X] Quality Assessment berechnet korrekt ✅
+  - [X] JSON-Ausgabe vollständig und strukturiert ✅
+- [X] **CLI-Interface-Validierung**: Alle Commands funktionsfähig ✅
+  - [X] process-unified läuft erfolgreich ✅
+  - [X] Strategy-Pattern implementiert ✅
+  - [X] Type-Safety gewährleistet ✅
+- [X] **Performance-Validation**: Sub-600ms-Verarbeitung erreicht ✅
+  - [X] Sonepar_test3.pdf in 568ms verarbeitet ✅
+  - [X] Dual-model training data collection funktioniert ✅
 
 ---
 
@@ -94,6 +104,7 @@
 ### **✅ ERFOLGREICHE IMPLEMENTATION - ALLE ZIELE ERREICHT**
 
 **Phase 1 (Gemini-First) erfolgreich konsolidiert:**
+
 - **Import-Probleme gelöst**: Alle spacy_training-Abhängigkeiten migriert ✅
 - **Dual-model Training**: NER + TextCat Pipeline vollständig implementiert ✅
 - **Unified Processor**: Strategy-Pattern mit nahtloser Engine-Transition ✅
@@ -103,6 +114,7 @@
 ### **🚀 PRODUKTIONSREIFE ERREICHT**
 
 Das LLKJJ ML Plugin ist jetzt bereit für:
+
 - **Sofortige Produktionsnutzung** mit Gemini-First-Pipeline
 - **Automatisierte Trainingsdaten-Sammlung** für Phase 2 (lokale Autonomie)
 - **Nahtlose Strategy-Transitions** wenn spaCy-Modelle verfügbar werden
@@ -129,6 +141,7 @@ Das LLKJJ ML Plugin ist jetzt bereit für:
 ## 🎯 **PRIORITÄT 1: GEMINI-PIPELINE PRODUKTIONSREIF MACHEN (STRATEGIC PRIORITY)**
 
 ### **Strategische Vision: Phase 1 → 2 Transition**
+
 - **Phase 1 (JETZT)**: Gemini AI als produktive Intelligence-Engine
 - **Phase 2 (SPÄTER)**: Nahtloser Übergang zu lokaler spaCy/RAG-Autonomie
 - **Kernziel**: Jede verarbeitete Rechnung = Trainingsdaten für zukünftige Unabhängigkeit
@@ -136,49 +149,56 @@ Das LLKJJ ML Plugin ist jetzt bereit für:
 ### **Sofort-Umsetzung (A-Priorität)**
 
 #### **A1: Pydantic-Validierung für Gemini-Antworten (KRITISCH)**
-- [x] **Schema-Definition**: `src/models/gemini_schemas.py` erstellen ✅
-  - [x] `GeminiInvoiceHeader(BaseModel)` - Rechnungskopf-Schema ✅
-  - [x] `GeminiLineItem(BaseModel)` - Rechnungspositions-Schema ✅
-  - [x] `GeminiExtractionResult(BaseModel)` - Vollständiges Response-Schema ✅
-- [x] **Integration in GeminiDirectProcessor**: Sofortige Validierung nach API-Response ✅
-  - [x] `validated_data = GeminiExtractionResult(**json.loads(response_text))` ✅
-  - [x] Fehlerbehandlung für ungültige Gemini-Responses ✅
-- [x] **Qualitätssicherung**: Nur validierte Daten in ProcessingResult ✅
+
+- [X] **Schema-Definition**: `src/models/gemini_schemas.py` erstellen ✅
+  - [X] `GeminiInvoiceHeader(BaseModel)` - Rechnungskopf-Schema ✅
+  - [X] `GeminiLineItem(BaseModel)` - Rechnungspositions-Schema ✅
+  - [X] `GeminiExtractionResult(BaseModel)` - Vollständiges Response-Schema ✅
+- [X] **Integration in GeminiDirectProcessor**: Sofortige Validierung nach API-Response ✅
+  - [X] `validated_data = GeminiExtractionResult(**json.loads(response_text))` ✅
+  - [X] Fehlerbehandlung für ungültige Gemini-Responses ✅
+- [X] **Qualitätssicherung**: Nur validierte Daten in ProcessingResult ✅
 
 #### **A2: Trainingsdaten-Persistierung (DATENSCHATZ)**
-- [x] **spaCy-Training-Export**: Nach jeder erfolgreichen Verarbeitung ✅
-  - [x] JSONL-Format: `data/training/gemini_spacy_annotations.jsonl` ✅
-  - [x] Annotationen + raw_text für zukünftiges NER/TextCat-Training ✅
-- [x] **RAG-System-Population**: ChromaDB mit Gemini-Klassifizierungen ✅
-  - [x] Jede Position → ChromaDB-Dokument mit Metadatum `"source": "gemini_validated"` ✅
-  - [x] Embedding-Vektor für Ähnlichkeitssuche ✅
-- [x] **Audit-Trail**: GoBD-konforme Speicherung in `logs/audit_gemini.jsonl` ✅
+
+- [X] **spaCy-Training-Export**: Nach jeder erfolgreichen Verarbeitung ✅
+  - [X] JSONL-Format: `data/training/gemini_spacy_annotations.jsonl` ✅
+  - [X] Annotationen + raw_text für zukünftiges NER/TextCat-Training ✅
+- [X] **RAG-System-Population**: ChromaDB mit Gemini-Klassifizierungen ✅
+  - [X] Jede Position → ChromaDB-Dokument mit Metadatum `"source": "gemini_validated"` ✅
+  - [X] Embedding-Vektor für Ähnlichkeitssuche ✅
+- [X] **Audit-Trail**: GoBD-konforme Speicherung in `logs/audit_gemini.jsonl` ✅
 
 #### **A3: Performance-Optimierung**
-- [x] **Async Gemini-Processing**: `AsyncGeminiDirectProcessor` ✅
-  - [x] `asyncio.gather()` für Batch-Verarbeitung ✅
-  - [x] `asyncio.Semaphore(3)` für API-Rate-Limiting ✅
-- [x] **PDF-Hash-Caching**: SQLite-Cache gegen Duplikate ✅
-  - [x] SHA256-Hash vor API-Call ✅
-  - [x] Cache-Hit → sofortiges Ergebnis (0ms statt 5000ms) ✅
+
+- [X] **Async Gemini-Processing**: `AsyncGeminiDirectProcessor` ✅
+  - [X] `asyncio.gather()` für Batch-Verarbeitung ✅
+  - [X] `asyncio.Semaphore(3)` für API-Rate-Limiting ✅
+- [X] **PDF-Hash-Caching**: SQLite-Cache gegen Duplikate ✅
+  - [X] SHA256-Hash vor API-Call ✅
+  - [X] Cache-Hit → sofortiges Ergebnis (0ms statt 5000ms) ✅
 
 ### **Architektur-Vorbereitung für Phase 2 (B-Priorität)**
 
 #### **B1: Strategy-Pattern für nahtlose Transition**
-- [x] **Abstrakte ProcessingStrategy**: Interface für alle Engines ✅
-- [x] **GeminiStrategy**: Aktueller GeminiDirectProcessor ✅
-- [x] **UnifiedProcessor**: Engine-Auswahl zur Laufzeit ✅
-- [x] **Vorbereitung SpacyRagStrategy**: Platzhalter für Phase 2 ✅
+
+- [X] **Abstrakte ProcessingStrategy**: Interface für alle Engines ✅
+- [X] **GeminiStrategy**: Aktueller GeminiDirectProcessor ✅
+- [X] **UnifiedProcessor**: Engine-Auswahl zur Laufzeit ✅
+- [X] **Vorbereitung SpacyRagStrategy**: Platzhalter für Phase 2 ✅
 
 #### **B2: spaCy-Training-Pipeline**
+
 - [ ] **Automated Training**: Trigger bei X gesammelten Beispielen
 - [ ] **Model-Versioning**: Inkrementelle Verbesserung lokaler Modelle
 - [ ] **Performance-Benchmarking**: Gemini vs. spaCy Genauigkeitsvergleich
 
 #### **B3: RAG-System Optimierung (INTELLIGENTES GEDÄCHTNIS)**
+
 **Strategische Bedeutung**: Das RAG-System ist das Herzstück der zukünftigen autonomen Pipeline - von einfacher Ähnlichkeitssuche zum intelligenten Langzeitgedächtnis.
 
 ##### **Phase 1: Robuste Dateneinspeisung (Sofort)**
+
 - [ ] **Validierungs-Status in ChromaDB-Metadaten**
   - [ ] `validation_status`: `"ai_suggested"` | `"user_confirmed"` | `"user_corrected"` | `"system_flagged"`
   - [ ] Grundlage für Qualitätsgewichtung und Selbstkorrektur
@@ -192,6 +212,7 @@ Das LLKJJ ML Plugin ist jetzt bereit für:
   - [ ] Embedding versteht Kontext: Einzelwerkzeug vs. Verbrauchsmaterial
 
 ##### **Phase 2: Intelligenter Abruf (Hybrid Search)**
+
 - [ ] **Mehrstufige Suche mit Metadaten-Filterung**
   - [ ] ChromaDB `where`-Filter für Lieferanten-spezifische Suche
   - [ ] Gewichtung: `user_corrected/confirmed` Einträge × 1.5 Faktor
@@ -202,6 +223,7 @@ Das LLKJJ ML Plugin ist jetzt bereit für:
   - [ ] Adaptive Präzision vs. Recall-Balance
 
 ##### **Phase 3: Explainable AI & Selbstkorrektur**
+
 - [ ] **Erweiterte Begründungs-Engine**
   - [ ] XAI-Reasoning: "Vorschlag 3400. Regel-Konfidenz 0.8 + 3 ähnliche bestätigte Sonepar-Buchungen (Ø 0.85)"
   - [ ] Frontend-Integration für Benutzervertrauen
@@ -211,6 +233,7 @@ Das LLKJJ ML Plugin ist jetzt bereit für:
   - [ ] "Warnung: Ähnliche Artikel unterschiedlich kontiert. Bitte prüfen."
 
 **Strategischer Nutzen**:
+
 - ✅ Kontinuierliches Lernen aus Benutzerfeedback
 - ✅ Selbstheilende Datenbasis ("vergiftete" Daten werden korrigiert)
 - ✅ Kontextbewusste Klassifizierung (Anlagevermögen vs. Verbrauchsmaterial)
@@ -221,6 +244,7 @@ Das LLKJJ ML Plugin ist jetzt bereit für:
 ## 🏗️ **PRIORITÄT 2: STRUKTUR-KONSOLIDIERUNG (KANN WARTEN)**
 
 ### **Problem Analyse (Ursprünglicher Plan)**
+
 - **Redundante Struktur**: `src/` UND `ml_service/` innerhalb eines Plugin-Pakets
 - **Abhängigkeits-Chaos**: `ml_service/` importiert von `src/` (4 Imports gefunden)
 - **Gegen KISS-Prinzip**: Zwei Quellcode-Verzeichnisse für ein Paket
@@ -229,6 +253,7 @@ Das LLKJJ ML Plugin ist jetzt bereit für:
 ### **Konsolidierungsplan: Alles → `src/`**
 
 #### **Phase 1: Struktur-Analyse & Backup (2h)**
+
 - [ ] **Abhängigkeits-Mapping**: Vollständige Analyse aller Import-Beziehungen
   - [ ] `grep -r "from ml_service" src/` → Rückwärts-Dependencies prüfen
   - [ ] `grep -r "from src" ml_service/` → Vorwärts-Dependencies dokumentieren
@@ -237,6 +262,7 @@ Das LLKJJ ML Plugin ist jetzt bereit für:
 - [ ] **Funktionalitäts-Audit**: Was macht `ml_service/` was `src/` nicht kann?
 
 #### **Phase 2: ml_service/ → src/ Migration (4h)**
+
 - [ ] **CLI Migration**: `ml_service/cli.py` → `src/cli/ml_service_cli.py`
   - [ ] Imports auf src/-Struktur umstellen
   - [ ] `__main__.py` Funktionalität nach `src/cli/` verschieben
@@ -249,6 +275,7 @@ Das LLKJJ ML Plugin ist jetzt bereit für:
   - [ ] Environment-Variable Handling vereinheitlichen
 
 #### **Phase 3: pyproject.toml für src/-Layout (1h)**
+
 - [ ] **Poetry Konfiguration**:
   ```toml
   packages = [{ include = "llkjj_ml", from = "src" }]
@@ -261,18 +288,21 @@ Das LLKJJ ML Plugin ist jetzt bereit für:
 - [ ] **Package-Struktur validieren**: `poetry install` testen
 
 #### **Phase 4: Import-Cleanup & Tests (2h)**
+
 - [ ] **Import-Pfade reparieren**: Alle `from ml_service.` → `from src.`
 - [ ] **main.py aktualisieren**: CLI-Integration für konsolidierte Struktur
 - [ ] **Tests reparieren**: `ml_service/tests/` → `tests/ml_service/`
 - [ ] **Funktionalitäts-Test**: Vollständige Pipeline-Validation
 
 #### **Phase 5: Aufräumen & Dokumentation (1h)**
+
 - [ ] **ml_service/ Verzeichnis entfernen**: Nach erfolgreicher Migration
 - [ ] **README.md aktualisieren**: Neue src/-Struktur dokumentieren
 - [ ] **API_DOCUMENTATION.py**: Import-Pfade korrigieren
 - [ ] **Commit & Tag**: `git tag v4.0.0-consolidated`
 
 ### **Erfolgs-Kriterien**
+
 - ✅ Ein einziges Quellcode-Verzeichnis: `src/`
 - ✅ Keine Import-Abhängigkeiten zwischen ehemaligen Verzeichnissen
 - ✅ Alle Tests bestehen nach Konsolidierung
@@ -280,6 +310,7 @@ Das LLKJJ ML Plugin ist jetzt bereit für:
 - ✅ Poetry build/install funktioniert einwandfrei
 
 ### **Rollback-Plan**
+
 - **Git Branch**: `backup-before-consolidation` für sofortigen Rollback
 - **Validierungs-Skript**: `poetry run python -c "from src import *; print('Import OK')"`
 
@@ -288,6 +319,7 @@ Das LLKJJ ML Plugin ist jetzt bereit für:
 ## 📋 **PROJEKTSTATUS-ÜBERSICHT** (nach Konsolidierung)
 
 **Aktuelle Version:** 3.0.0 → 4.0.0 (Konsolidierte KISS-Architektur)
+
 ```markdown
 - [ ] Sprint 1 — Critical Foundation (26h)
   - [ ] Learning Rate Optimization (6h) — `spacy_training/ner_training.py`, `spacy_training/cat_trainer.py`
@@ -353,4 +385,7 @@ Das LLKJJ ML Plugin ist jetzt bereit für:
   - Prefer incremental PRs per subtask for easy review and rollback
 
 ```
+
 ```markdown
+
+```

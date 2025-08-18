@@ -75,56 +75,6 @@ Die Systemarchitektur basiert auf einer strikten Trennung zwischen einem zentral
 
 Das ML-Plugin ist als hochgradig modulares, eigenständiges Paket konzipiert.
 
-```mermaid
-graph TD
-
-    %% Subgraph: API Backend
-    subgraph llkjj_backend [API Backend]
-        A[API Endpunkt]
-    end
-
-    %% Subgraph: ML Plugin (Dein Fokus)
-    subgraph llkjj_ml [ML Plugin (Dein Fokus)]
-
-        %% Prozessoren
-        B((Standard-Prozessor\nGeminiDirectProcessor))
-        C((Alternativ-Prozessor\nDoclingAlternativeProcessor))
-
-        %% Core Services
-        subgraph Core_Services [Core Services]
-            D[SKR03Manager]
-            E[QualityAssessor]
-            F[ResourceManager\nSingleton für Modelle]
-        end
-
-        %% KI Engines
-        subgraph KI_Engines [KI Engines]
-            G[Gemini API Client]
-            H[RAG-System\n(ChromaDB + Embedding Model)]
-            I[Docling Engine]
-        end
-
-        %% Datenmodelle (Pydantic)
-        subgraph Datenmodelle_Pydantic [Datenmodelle (Pydantic)]
-            J[ProcessingResult\nÖffentlicher Datenvertrag]
-            K[Gemini Schemas\nInterner KI-Vertrag]
-        end
-
-    end
-
-    %% Kanten
-    A -->|ruft auf| B
-    B --> G
-    B --> D
-    B --> H
-    B --> E
-    B --> J
-    B -.-> F
-    H -.-> F
-    I -.-> F
-
-```
-
 ### 4.2. Haupt-Workflow (Gemini-First)
 
 Der Standardprozess wird durch `GeminiDirectProcessor` gesteuert:

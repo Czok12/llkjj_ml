@@ -275,17 +275,10 @@ class GeminiDirectProcessor:
 
             # Phase 4: Annotation für spaCy-Training mit Error Handling
             try:
-                training_annotations_raw = self._generate_spacy_annotations_robust(
+                training_annotations = self._generate_spacy_annotations_robust(
                     structured_result, enhanced_classifications
                 )
-                # Ensure it's a list
-                if isinstance(training_annotations_raw, list):
-                    training_annotations = training_annotations_raw
-                else:
-                    training_annotations = []
-                    logger.warning(
-                        "⚠️ spaCy-Annotations sind nicht im erwarteten Format"
-                    )
+                # Method always returns list[dict[str, Any]], no type check needed
             except Exception as e:
                 logger.warning(
                     "⚠️ spaCy-Annotation fehlgeschlagen, verwende leere Annotations: %s",

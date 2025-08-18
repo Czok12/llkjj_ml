@@ -53,7 +53,7 @@ class UnifiedDualPurposePipeline:
     def __init__(self, config: Config):
         self.config = config
         self.resource_manager = ResourceManager()
-        self._gemini_client = None
+        self._gemini_client: Any | None = None  # Can be genai.Client or None
         self._setup_gemini()
 
     def _setup_gemini(self) -> None:
@@ -67,7 +67,7 @@ class UnifiedDualPurposePipeline:
         try:
             if hasattr(self.config, "google_api_key") and self.config.google_api_key:
                 if genai is not None:
-                    self._gemini_client = genai.Client(  # type: ignore[assignment]
+                    self._gemini_client = genai.Client(
                         api_key=self.config.google_api_key
                     )
                 logger.info("✅ Gemini Client für Unified Pipeline geladen")
@@ -208,9 +208,8 @@ WICHTIG:
             else:
                 model = "gemini-1.5-flash"
 
-            if self._gemini_client is None:
-                logger.error("❌ Gemini Client nicht verfügbar")
-                return self._fallback_dual_purpose_extraction(docling_text)
+            # _gemini_client is guaranteed to be not None since this method is only called when it's truthy
+            assert self._gemini_client is not None, "Gemini client should be available"
 
             response = self._gemini_client.models.generate_content(
                 model=model, contents=dual_purpose_prompt
