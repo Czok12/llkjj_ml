@@ -25,7 +25,7 @@ try:
 
     GENAI_AVAILABLE = True
 except ImportError:
-    genai = None
+    genai = None  # type: ignore[assignment]
     GENAI_AVAILABLE = False
 
 from src.config import Config
@@ -67,7 +67,7 @@ class UnifiedDualPurposePipeline:
         try:
             if hasattr(self.config, "google_api_key") and self.config.google_api_key:
                 if genai is not None:
-                    self._gemini_client = genai.Client(
+                    self._gemini_client = genai.Client(  # type: ignore[assignment]
                         api_key=self.config.google_api_key
                     )
                 logger.info("✅ Gemini Client für Unified Pipeline geladen")
@@ -227,7 +227,8 @@ WICHTIG:
                     "\n```", 1
                 )[0]
 
-            return json.loads(response_text)
+            result: dict[str, Any] = json.loads(response_text)
+            return result
 
         except Exception as e:
             logger.error("❌ Gemini Dual-Purpose Extraktion fehlgeschlagen: %s", str(e))
@@ -288,7 +289,7 @@ WICHTIG:
         self, gemini_result: dict[str, Any], pdf_path: Path
     ) -> dict[str, Any]:
         """Erstellt sofort verwendbare Buchungsausgabe für Ihre Buchhaltung"""
-        buchungsausgabe = gemini_result.get("buchungsausgabe", {})
+        buchungsausgabe: dict[str, Any] = gemini_result.get("buchungsausgabe", {})
 
         # Ergänze Metadaten für Buchhaltungssoftware
         buchungsausgabe.update(

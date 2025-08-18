@@ -272,7 +272,7 @@ def cmd_test_capabilities(args: argparse.Namespace) -> int:
 
             for test_name, test_func in tests:
                 try:
-                    result = test_func()
+                    result: bool = test_func()  # type: ignore[no-untyped-call]
                     status = "✅ PASS" if result else "❌ FAIL"
                     print(f"   {test_name}: {status}")
                     if not result:

@@ -106,7 +106,12 @@ class UnifiedProcessor:
         # Phase 2: SpaCy RAG bevorzugt (wenn verfügbar und trainiert)
         if "spacy_rag" in available:
             spacy_strategy = self._strategies["spacy_rag"]
-            training_status = spacy_strategy.check_training_data_readiness()
+            # TODO: Implement check_training_data_readiness method
+            training_status = getattr(
+                spacy_strategy,
+                "check_training_data_readiness",
+                lambda: {"training_data_sufficient": False},
+            )()
             if training_status.get("training_data_sufficient", False):
                 logger.info(
                     "🎯 Default Strategy: spacy_rag (Phase 2: Local autonomous)"
@@ -177,7 +182,7 @@ class UnifiedProcessor:
             result = strategy_instance.process_pdf(pdf_path)
 
             # Strategy-Info zu Result hinzufügen
-            result.processing_method = selected_strategy
+            result.processing_method = selected_strategy  # type: ignore[assignment]
 
             logger.info("✅ %s Strategy erfolgreich", strategy_instance.name)
             return result
@@ -265,6 +270,7 @@ class UnifiedProcessor:
 
                 comparison_results[strategy_name] = {
                     "success": True,
+                    "result": result,
                     "processing_time_ms": result.processing_time_ms,
                     "confidence_score": result.confidence_score,
                     "extraction_quality": result.extraction_quality,
@@ -297,21 +303,21 @@ class UnifiedProcessor:
             # Fastest
             fastest: str = min(
                 successful_strategies,
-                key=lambda x: comparison_results[x]["processing_time_ms"],
+                key=lambda x: comparison_results[x]["processing_time_ms"],  # type: ignore[arg-type, return-value]
             )
             summary["summary"]["fastest_strategy"] = fastest
 
             # Highest confidence
             highest_conf: str = max(
                 successful_strategies,
-                key=lambda x: comparison_results[x]["confidence_score"],
+                key=lambda x: comparison_results[x]["confidence_score"],  # type: ignore[arg-type, return-value]
             )
             summary["summary"]["highest_confidence"] = highest_conf
 
             # Most classifications
             most_class = max(
                 successful_strategies,
-                key=lambda x: comparison_results[x]["skr03_classifications"],
+                key=lambda x: comparison_results[x]["skr03_classifications"],  # type: ignore[arg-type, return-value]
             )
             summary["summary"]["most_classifications"] = most_class
 

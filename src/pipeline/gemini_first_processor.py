@@ -32,7 +32,7 @@ try:
 
     GENAI_AVAILABLE = True
 except ImportError:
-    genai = None
+    genai = None  # type: ignore[assignment]
     GENAI_AVAILABLE = False
 
 from src.config import Config
@@ -69,15 +69,15 @@ class GeminiDirectProcessor:
         self.skr03_manager = lade_skr03_manager()
 
         # Gemini AI Client
-        self._gemini_client = None
+        self._gemini_client: Any = None
 
         # ChromaDB für RAG-System
-        self._chromadb_client = None
-        self._embedding_model = None
-        self._invoice_collection = None
+        self._chromadb_client: Any = None
+        self._embedding_model: SentenceTransformer | None = None
+        self._invoice_collection: Any = None
 
         # Quality Assessor
-        self._quality_assessor = None
+        self._quality_assessor: Any = None
 
         # 🎯 A2: Training Data Persistence (Strategic TODO)
         self.training_persistence = TrainingDataPersistence(self.config)
@@ -501,7 +501,7 @@ EXTRAHIERE ALLE sichtbaren Positionen vollständig und präzise!
                         json_match = re.search(r"\{.*\}", response_text, re.DOTALL)
                         if json_match:
                             json_str = json_match.group()
-                            result = json.loads(json_str)
+                            result: dict[str, Any] = json.loads(json_str)
                             logger.info(
                                 "✅ Gemini-Analyse erfolgreich - Produktionsdaten von %s",
                                 self.config.gemini_model,
@@ -941,7 +941,7 @@ EXTRAHIERE ALLE sichtbaren Positionen vollständig und präzise!
         """
         try:
             # Suche nach vollständigem Text in verschiedenen Feldern
-            full_text = structured_result.get("raw_text", "")
+            full_text: str = structured_result.get("raw_text", "")
 
             if not full_text:
                 # Fallback: Konstruiere Text aus Rechnungsheader und Items

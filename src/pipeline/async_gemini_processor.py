@@ -99,7 +99,7 @@ class AsyncGeminiDirectProcessor(GeminiDirectProcessor):
                     (pdf_hash,),
                 )
                 row = cursor.fetchone()
-                return row
+                return row  # type: ignore[no-any-return]
 
         # Run database operation in thread pool to avoid blocking
         loop = asyncio.get_event_loop()

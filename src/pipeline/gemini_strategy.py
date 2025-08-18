@@ -35,7 +35,7 @@ class GeminiStrategy(ProcessingStrategy):
 
     def __init__(self, config: Config):
         super().__init__(config)
-        self._processor = None
+        self._processor: GeminiDirectProcessor | None = None
         logger.info("🎯 GeminiStrategy initialisiert (Phase 1: AI-powered)")
 
     @property

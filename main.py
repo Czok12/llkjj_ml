@@ -251,8 +251,8 @@ def process_pdfs_async_batch(args: argparse.Namespace) -> None:
 
             start_time = time.time()
             results = await processor.process_batch_async(
-                pdf_files,
-                max_concurrent=max_concurrent,  # type: ignore[arg-type]
+                pdf_files,  # type: ignore[arg-type]
+                max_concurrent=max_concurrent,
             )
             total_time = (time.time() - start_time) * 1000
 

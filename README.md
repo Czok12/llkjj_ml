@@ -1,4 +1,3 @@
-
 # Umfassender Projektkontext & Entwicklungsrichtlinien für KI-Agenten: Das LLKJJ Projekt
 
 **Version: Master Context 1.0**
@@ -78,42 +77,52 @@ Das ML-Plugin ist als hochgradig modulares, eigenständiges Paket konzipiert.
 
 ```mermaid
 graph TD
+
+    %% Subgraph: API Backend
     subgraph llkjj_backend [API Backend]
         A[API Endpunkt]
     end
 
+    %% Subgraph: ML Plugin (Dein Fokus)
     subgraph llkjj_ml [ML Plugin (Dein Fokus)]
-        B(Standard-Prozessor </br> GeminiDirectProcessor)
-        C(Alternativ-Prozessor </br> DoclingAlternativeProcessor)
 
-        subgraph Core Services
+        %% Prozessoren
+        B((Standard-Prozessor\nGeminiDirectProcessor))
+        C((Alternativ-Prozessor\nDoclingAlternativeProcessor))
+
+        %% Core Services
+        subgraph Core_Services [Core Services]
             D[SKR03Manager]
             E[QualityAssessor]
-            F[ResourceManager </br> Singleton für Modelle]
+            F[ResourceManager\nSingleton für Modelle]
         end
 
-        subgraph KI Engines
+        %% KI Engines
+        subgraph KI_Engines [KI Engines]
             G[Gemini API Client]
-            H[RAG-System </br> (ChromaDB + Embedding Model)]
+            H[RAG-System\n(ChromaDB + Embedding Model)]
             I[Docling Engine]
         end
 
-        subgraph Datenmodelle [Pydantic]
-            J(ProcessingResult </br> **Öffentlicher Datenvertrag**)
-            K(Gemini Schemas </br> Interner KI-Vertrag)
+        %% Datenmodelle (Pydantic)
+        subgraph Datenmodelle_Pydantic [Datenmodelle (Pydantic)]
+            J[ProcessingResult\nÖffentlicher Datenvertrag]
+            K[Gemini Schemas\nInterner KI-Vertrag]
         end
+
     end
 
+    %% Kanten
     A -->|ruft auf| B
     B --> G
     B --> D
     B --> H
     B --> E
     B --> J
-
     B -.-> F
     H -.-> F
     I -.-> F
+
 ```
 
 ### 4.2. Haupt-Workflow (Gemini-First)
