@@ -796,7 +796,7 @@ EXTRAHIERE ALLE sichtbaren Positionen vollständig und präzise!
                 if validated_result:
                     logger.info("✅ Gemini-Response erfolgreich validiert!")
                     # Konvertiere zurück zu dict für Kompatibilität
-                    result = validated_result.model_dump()
+                    result: dict[str, Any] = validated_result.model_dump()
                 else:
                     # Validierung fehlgeschlagen - detaillierte Fehlerausgabe
                     error_report = create_validation_report(validation_errors)

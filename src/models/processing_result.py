@@ -210,6 +210,7 @@ class ProcessingResult(BaseModel):
         Returns:
             Dict representation of all results for JSON export
         """
+        # Pydantic returns dict[str, Any] (kein cast nötig)
         return self.model_dump()
 
     def get_summary(self) -> str:

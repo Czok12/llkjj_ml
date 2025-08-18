@@ -100,3 +100,14 @@ Recorded: 2025-08-18 by automated assistant
 - Klassifikation: Diese Dateien sind überwiegend ad-hoc Integration / Demo-Skripte, entworfen für manuelle Tests, schnelle Integrationschecks oder als Beispiele. Einige verwenden `print`-basierte Checks and manual exit codes; `test_hybrid_intelligence.py` enthält echte `pytest`-Style asserts and is more like a unit/integration test.
 - Empfehlung: Verschiebe langfristig alle echten Tests in den Standard-`tests/`-Ordner und strukturiere sie als pytest-Tests (asserts). Verschiebe ad-hoc Skripte und Demos nach `tools/`, `scripts/` oder `docs/examples/` or mark them as integration tests (e.g., `tests/integration/`). Entferne nur nach Review; lösche nicht ohne Backup.
 - Aktionsstatus: User asked whether they are demo files or removable — answered with recommendation to review and either move/convert or archive/delete after confirmation.
+
+## Verification Log: mypy run (2025-08-18)
+
+- Action: Lokale Ausführung von `mypy --strict .` zur Validierung von Type-Safety-Behauptungen im `TODO.md`.
+- Resultat: mypy meldete 174 Errors in 43 Dateien; viele Fehler entstehen durch fehlende Typ-Stubs (pydantic, pytest, google, cryptography, torch, etc.) und einige untyped decorators / Any-Rückgaben.
+- Empfohlene nächste Schritte:
+	- Paket-Dev-Dependencies prüfen und fehlende Typ-Stubs installieren (z. B. types-PyYAML, types-psutil, pandas-stubs, types-aiofiles, types-cryptography falls verfügbar).
+	- Tests in `tests/` konsolidieren und Demo-Skripte in `scripts/` verschieben.
+	- Priorisierte Behebung von Type-Errors für Produktionssicherheit.
+
+Recorded: 2025-08-18 by automated assistant

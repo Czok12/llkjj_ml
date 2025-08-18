@@ -306,6 +306,7 @@ class CachedAsyncUnifiedProcessor(AsyncUnifiedProcessor):
             # Convert ProcessingResult to dict for type compatibility
             result_dict: dict[str, Any]
             if isinstance(result, ProcessingResult):
+                # pydantic.model_dump already returns dict[str, Any]
                 result_dict = result.model_dump()
             else:
                 # Handle dict case - this branch is reachable for error cases

@@ -76,6 +76,8 @@ types-psutil = "^7.0.0.20250801"
 types-aiofiles = "^24.1.0.20250809"
 matplotlib = "^3.10.5"
 seaborn = "^0.13.2"
+pandas-stubs = "^2.2.0"
+types-cryptography = "^41.0.0"
 
 [tool.poetry.group.gpu]
 optional = true
@@ -137,6 +139,24 @@ strict_equality = true
 
 [[tool.mypy.overrides]]
 module = ["fitz", "chromadb.*", "faiss.*", "sentence_transformers.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+    "pydantic",
+    "pydantic.*",
+    "pydantic_settings",
+    "pytest",
+    "google.*",
+    "torch",
+    "cryptography.*",
+    "uvicorn",
+    "fastapi",
+    "aiofiles",
+    "psutil",
+    "matplotlib",
+    "pandas",
+]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
