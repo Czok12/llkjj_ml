@@ -111,7 +111,7 @@ class MLSettings(BaseSettings):
 
     # Alternative kompakte Version für bessere Performance
     embedding_model_compact: str = Field(
-        default="all-MiniLM-L6-v2",
+        default="all-MiniLM-L12-v2",
         description="Kompaktes Embedding-Modell für schnellere Verarbeitung",
     )
 

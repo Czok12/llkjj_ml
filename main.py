@@ -4,7 +4,7 @@ LLKJJ ML Pipeline - Hauptmodul
 =============================
 
 Zentrale CLI-Schnittstelle für alle ML-Operationen:
-- PDF-Verarbeitung mit KI-Pipeline
+- PDF-Verarbeitung mit KI-Pipeline (GEMINI-FIRST als Standard!)
 - Training und Modell-Management
 - Batch-Verarbeitung und Export
 - Security & Production-Readiness
@@ -16,6 +16,7 @@ import json
 import logging
 import sys
 from pathlib import Path
+from typing import Any
 
 # Refactored Training Services
 from spacy_training.pipeline import TrainingPipeline
@@ -23,6 +24,9 @@ from src.config import Config
 
 # Feature Engineering Integration
 from src.features.ml_integration import create_feature_pipeline
+
+# Import ProcessingResult for type-safe results
+from src.models.processing_result import ProcessingResult
 
 # Dual-Purpose Pipeline Import
 from src.pipeline.processor import UnifiedProcessor
@@ -51,27 +55,59 @@ def setup_logging(verbose: bool = False, production: bool = False) -> None:
 
 
 def process_pdfs(args: argparse.Namespace) -> None:
-    """Process PDF invoices with consolidated pipeline"""
+    """
+    Process PDF invoices with NEW GEMINI-FIRST PIPELINE (Standard)
+
+    NEUE STANDARD-PIPELINE:
+    PDF → Gemini AI direkt → Strukturierte Daten → SKR03-Klassifizierung
+
+    Kein Fallback auf Docling - bei Gemini-Fehlern wird Error-Log ausgegeben!
+    """
     config = Config()
-    processor = UnifiedProcessor(config)
+
+    # NEUE STANDARD-PIPELINE: Gemini-First Processor
+    from src.pipeline.gemini_first_processor import GeminiDirectProcessor
+
+    processor = GeminiDirectProcessor(config)
 
     input_path = Path(args.input)
     output_dir = Path(args.output) if args.output else Path("data/output")
 
+    print("🚀 GEMINI-FIRST PIPELINE (Standard)")
     print(f"🔄 Processing: {input_path}")
     print(f"📁 Output: {output_dir}")
 
     if input_path.is_file() and input_path.suffix.lower() == ".pdf":
-        # Single PDF
-        result = processor.process_pdf(input_path)
+        # Single PDF mit Gemini-First
+        try:
+            result = processor.process_pdf_gemini_first(input_path)
 
-        print("✅ Processing complete!")
-        print(f"📄 Processed: {Path(result.pdf_path).name}")
-        print(f"🎯 SKR03 matches: {len(result.skr03_classifications)}")
-        print(f"💾 Quality: {result.extraction_quality}")
+            print("✅ GEMINI-FIRST Processing complete!")
+            print(f"📄 Processed: {Path(result.pdf_path).name}")
+            print(f"🎯 SKR03 classifications: {len(result.skr03_classifications)}")
+            print(f"💾 Quality: {result.extraction_quality}")
+            print(f"⚡ Processing time: {result.processing_time_ms}ms")
+            print(
+                f"🤖 Gemini model: {getattr(result.structured_data, 'gemini_model', 'gemini-2.0-flash-exp')}"
+            )
+
+            # Speichere Ergebnis
+            output_file = output_dir / f"{input_path.stem}_gemini_result.json"
+            output_dir.mkdir(parents=True, exist_ok=True)
+
+            with open(output_file, "w", encoding="utf-8") as f:
+                json.dump(result.to_dict(), f, ensure_ascii=False, indent=2)
+
+            print(f"💾 Result saved: {output_file}")
+
+        except Exception as e:
+            print(f"❌ GEMINI-FIRST Pipeline failed: {e}")
+            print("💡 Hinweis: Überprüfe Google API Key und Gemini-Konfiguration")
+            print("🚫 KEIN FALLBACK AUF DOCLING - Fehler muss behoben werden!")
+            sys.exit(1)
 
     elif input_path.is_dir():
-        # Batch process directory
+        # Batch process directory mit Gemini-First
         pdf_files = list(input_path.glob("*.pdf"))
 
         if not pdf_files:
@@ -80,26 +116,28 @@ def process_pdfs(args: argparse.Namespace) -> None:
 
         print(f"📦 Found {len(pdf_files)} PDF files")
 
-        results = []
+        results: list[ProcessingResult] = []
+        failed_files: list[tuple[str, str]] = []
+
         for pdf_file in pdf_files:
             try:
-                result = processor.process_pdf(pdf_file)
+                result = processor.process_pdf_gemini_first(pdf_file)
                 results.append(result)
 
                 print(
-                    f"  ✅ {pdf_file.name}: {len(result.skr03_classifications)} SKR03, {result.extraction_quality} quality"
+                    f"  ✅ {pdf_file.name}: {len(result.skr03_classifications)} SKR03, "
+                    f"{result.extraction_quality} quality, "
+                    f"{result.processing_time_ms}ms"
                 )
 
-            except (ValueError, FileNotFoundError) as e:
-                print(f"  ❌ {pdf_file.name}: Eingabefehler - {e}")
-                continue
-            except (MemoryError, OSError) as e:
-                print(f"  ❌ {pdf_file.name}: Systemfehler - {e}")
-                continue
             except Exception as e:
-                print(f"  ❌ {pdf_file.name}: Unerwarteter Fehler - {e}")
+                failed_files.append((pdf_file.name, str(e)))
+                print(f"  ❌ {pdf_file.name}: Gemini-Fehler - {e}")
                 logging.error(
-                    "Unerwarteter Fehler bei PDF-Verarbeitung: %s", e, exc_info=True
+                    "GEMINI-FIRST Pipeline Fehler bei %s: %s",
+                    pdf_file.name,
+                    e,
+                    exc_info=True,
                 )
                 continue
 
@@ -109,13 +147,156 @@ def process_pdfs(args: argparse.Namespace) -> None:
             sum(r.confidence_score for r in results) / len(results) if results else 0
         )
 
-        print("\n📊 Batch Summary:")
-        print(f"   Files processed: {len(results)}/{len(pdf_files)}")
-        print(f"   SKR03 classifications: {total_skr03}")
-        print(f"   Average confidence: {avg_confidence:.3f}")
+        print("\n📊 GEMINI-FIRST Batch Summary:")
+        print(f"   ✅ Files processed: {len(results)}/{len(pdf_files)}")
+        print(f"   ❌ Failed files: {len(failed_files)}")
+        print(f"   🎯 SKR03 classifications: {total_skr03}")
+        print(f"   📈 Average confidence: {avg_confidence:.3f}")
+
+        if failed_files:
+            print("\n❌ Failed files (kein Fallback!):")
+            for filename, error in failed_files:
+                print(f"   - {filename}: {error}")
+
+        # Speichere Batch-Ergebnisse
+        batch_output = output_dir / "gemini_batch_results.json"
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        batch_data = {
+            "results": [result.to_dict() for result in results],
+            "failed_files": failed_files,
+            "summary": {
+                "processed": len(results),
+                "total": len(pdf_files),
+                "total_skr03": total_skr03,
+                "avg_confidence": avg_confidence,
+            },
+        }
+
+        with open(batch_output, "w", encoding="utf-8") as f:
+            json.dump(batch_data, f, ensure_ascii=False, indent=2)
+
+        print(f"💾 Batch results saved: {batch_output}")
 
     else:
         print(f"❌ Invalid input: {input_path} (must be PDF file or directory)")
+
+
+def process_pdfs_docling_alternative(args: argparse.Namespace) -> None:
+    """
+    ALTERNATIVE: Process PDF invoices with DOCLING (nur bei expliziter Anfrage)
+
+    Diese Methode wird nur noch bei expliziter Anfrage verwendet!
+    Standard ist die neue Gemini-First Pipeline.
+    """
+    config = Config()
+
+    # ALTERNATIVE: Docling-basierte Verarbeitung
+    from src.pipeline.gemini_first_processor import DoclingAlternativeProcessor
+
+    processor = DoclingAlternativeProcessor(config)
+
+    input_path = Path(args.input)
+    output_dir = Path(args.output) if args.output else Path("data/output")
+
+    print("🔄 ALTERNATIVE: Docling-Pipeline (explizit angefordert)")
+    print(f"🔄 Processing: {input_path}")
+    print(f"📁 Output: {output_dir}")
+
+    if input_path.is_file() and input_path.suffix.lower() == ".pdf":
+        # Single PDF mit Docling-Alternative
+        result = processor.process_pdf_with_docling(input_path)
+
+        print("✅ DOCLING-ALTERNATIVE Processing complete!")
+        print(f"📄 Processed: {Path(result['pdf_path']).name}")
+        print(f"🎯 SKR03 matches: {len(result.get('skr03_classifications', []))}")
+        print(f"💾 Quality: {result.get('extraction_quality', 'unknown')}")
+
+        # Speichere Ergebnis
+        output_file = output_dir / f"{input_path.stem}_docling_result.json"
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        with open(output_file, "w", encoding="utf-8") as f:
+            json.dump(result, f, ensure_ascii=False, indent=2)
+
+        print(f"💾 Result saved: {output_file}")
+
+    elif input_path.is_dir():
+        # Batch process directory mit Docling-Alternative
+        pdf_files = list(input_path.glob("*.pdf"))
+
+        if not pdf_files:
+            print(f"❌ No PDF files found in {input_path}")
+            return
+
+        print(f"� Found {len(pdf_files)} PDF files for DOCLING processing")
+
+        results: list[dict[str, Any]] = []
+        failed_files: list[tuple[str, str]] = []
+
+        for pdf_file in pdf_files:
+            try:
+                result = processor.process_pdf_with_docling(pdf_file)
+                results.append(result)
+
+                print(
+                    f"  ✅ {pdf_file.name}: {len(result.get('skr03_classifications', []))} SKR03, "
+                    f"{result.get('extraction_quality', 'unknown')} quality"
+                )
+
+            except Exception as e:
+                failed_files.append((pdf_file.name, str(e)))
+                print(f"  ❌ {pdf_file.name}: Docling-Fehler - {e}")
+                logging.error(
+                    "DOCLING-ALTERNATIVE Pipeline Fehler bei %s: %s",
+                    pdf_file.name,
+                    e,
+                    exc_info=True,
+                )
+                continue
+
+        # Summary
+        total_skr03 = sum(len(r.get("skr03_classifications", [])) for r in results)
+
+        print("\n📊 DOCLING-ALTERNATIVE Batch Summary:")
+        print(f"   ✅ Files processed: {len(results)}/{len(pdf_files)}")
+        print(f"   ❌ Failed files: {len(failed_files)}")
+        print(f"   🎯 SKR03 classifications: {total_skr03}")
+
+        if failed_files:
+            print("\n❌ Failed files:")
+            for filename, error in failed_files:
+                print(f"   - {filename}: {error}")
+
+        # Speichere Batch-Ergebnisse
+        batch_output = output_dir / "docling_batch_results.json"
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        with open(batch_output, "w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "results": results,
+                    "failed_files": failed_files,
+                    "summary": {
+                        "processed": len(results),
+                        "total": len(pdf_files),
+                        "total_skr03": total_skr03,
+                    },
+                },
+                f,
+                ensure_ascii=False,
+                indent=2,
+            )
+
+        print(f"💾 Batch results saved: {batch_output}")
+
+    else:
+        print(f"❌ Invalid input: {input_path} (must be PDF file or directory)")
+        pdf_files = list(input_path.glob("*.pdf"))
+
+        if not pdf_files:
+            print(f"❌ No PDF files found in {input_path}")
+            return
 
 
 def export_training_data(args: argparse.Namespace) -> None:
@@ -817,7 +998,8 @@ def create_arg_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Beispiele:
-  python main.py process rechnung.pdf
+  python main.py process rechnung.pdf                  # NEUE STANDARD GEMINI-FIRST Pipeline
+  python main.py process-docling rechnung.pdf          # Alternative Docling-Pipeline
   python main.py export data/processed/ --output training.jsonl
   python main.py train training.jsonl --epochs 30
   python main.py database init --path data/vectors
@@ -837,10 +1019,20 @@ Beispiele:
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
-    # Process command
-    process_parser = subparsers.add_parser("process", help="Process PDF invoices")
+    # Process command (NEW GEMINI-FIRST as standard!)
+    process_parser = subparsers.add_parser(
+        "process", help="Process PDF invoices (GEMINI-FIRST Standard)"
+    )
     process_parser.add_argument("input", help="PDF file or directory to process")
     process_parser.add_argument("--output", "-o", help="Output directory (optional)")
+
+    # NEW: Docling Alternative command (nur bei expliziter Anfrage)
+    docling_parser = subparsers.add_parser(
+        "process-docling",
+        help="Process PDF invoices (DOCLING Alternative - nur bei expliziter Anfrage)",
+    )
+    docling_parser.add_argument("input", help="PDF file or directory to process")
+    docling_parser.add_argument("--output", "-o", help="Output directory (optional)")
 
     # Export command
     export_parser = subparsers.add_parser("export", help="Export training data")
@@ -1177,7 +1369,9 @@ def main() -> None:
     try:
         # Route commands
         if args.command == "process":
-            process_pdfs(args)
+            process_pdfs(args)  # NEUE GEMINI-FIRST Standard Pipeline
+        elif args.command == "process-docling":
+            process_pdfs_docling_alternative(args)  # Alternative Docling Pipeline
         elif args.command == "export":
             export_training_data(args)
         elif args.command == "train":

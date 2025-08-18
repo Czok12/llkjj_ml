@@ -60,7 +60,7 @@ class ResourceManager:
         """Lazy-loaded Singleton SentenceTransformer"""
         if self._embedding_model is None:
             logger.info("🔄 Lade SentenceTransformer (Singleton)...")
-            self._embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
+            self._embedding_model = SentenceTransformer("all-MiniLM-L12-v2")
             logger.info("✅ SentenceTransformer geladen")
         return self._embedding_model
 

@@ -1,8 +1,75 @@
-# LLKJJ ML Pipeline - Roadmap & TODO (Vollständige Neuordnung 17.08.2025)
+# LLKJJ ML Pipeline - Roadmap & TODO (Konsolidierung 18.08.2025)
 
-## 📋 **PROJEKTSTATUS-ÜBERSICHT**
+## 🚨 **PRIORITÄT 1: PROJEKTSTRUKTUR-KONSOLIDIERUNG (KISS-PRINZIP)**
 
-**Aktuelle Version:** 3.0.0 (Enterprise Production-Ready)
+### **Problem Analyse**
+- **Redundante Struktur**: `src/` UND `ml_service/` innerhalb eines Plugin-Pakets
+- **Abhängigkeits-Chaos**: `ml_service/` importiert von `src/` (4 Imports gefunden)
+- **Gegen KISS-Prinzip**: Zwei Quellcode-Verzeichnisse für ein Paket
+- **Wartungslast**: Doppelte Implementierungen und unklare Zuständigkeiten
+
+### **Konsolidierungsplan: Alles → `src/`**
+
+#### **Phase 1: Struktur-Analyse & Backup (2h)**
+- [ ] **Abhängigkeits-Mapping**: Vollständige Analyse aller Import-Beziehungen
+  - [ ] `grep -r "from ml_service" src/` → Rückwärts-Dependencies prüfen
+  - [ ] `grep -r "from src" ml_service/` → Vorwärts-Dependencies dokumentieren
+  - [ ] Zirkuläre Imports identifizieren und dokumentieren
+- [ ] **Backup erstellen**: `git branch backup-before-consolidation`
+- [ ] **Funktionalitäts-Audit**: Was macht `ml_service/` was `src/` nicht kann?
+
+#### **Phase 2: ml_service/ → src/ Migration (4h)**
+- [ ] **CLI Migration**: `ml_service/cli.py` → `src/cli/ml_service_cli.py`
+  - [ ] Imports auf src/-Struktur umstellen
+  - [ ] `__main__.py` Funktionalität nach `src/cli/` verschieben
+- [ ] **Processor Migration**: `ml_service/processor.py` → `src/processor/ml_service_processor.py`
+  - [ ] 4 src/-Imports auflösen (bereits dokumentiert)
+  - [ ] MLSettings Integration mit bestehender src/config.py
+  - [ ] ProcessingResult Deduplizierung
+- [ ] **Config Migration**: `ml_service/config.py` → `src/config/ml_service_config.py`
+  - [ ] MLSettings mit bestehender Config-Klasse mergen
+  - [ ] Environment-Variable Handling vereinheitlichen
+
+#### **Phase 3: pyproject.toml für src/-Layout (1h)**
+- [ ] **Poetry Konfiguration**:
+  ```toml
+  packages = [{ include = "llkjj_ml", from = "src" }]
+  ```
+- [ ] **Entry Points aktualisieren**:
+  ```toml
+  [project.scripts]
+  llkjj-ml = "src.main:main"
+  ```
+- [ ] **Package-Struktur validieren**: `poetry install` testen
+
+#### **Phase 4: Import-Cleanup & Tests (2h)**
+- [ ] **Import-Pfade reparieren**: Alle `from ml_service.` → `from src.`
+- [ ] **main.py aktualisieren**: CLI-Integration für konsolidierte Struktur
+- [ ] **Tests reparieren**: `ml_service/tests/` → `tests/ml_service/`
+- [ ] **Funktionalitäts-Test**: Vollständige Pipeline-Validation
+
+#### **Phase 5: Aufräumen & Dokumentation (1h)**
+- [ ] **ml_service/ Verzeichnis entfernen**: Nach erfolgreicher Migration
+- [ ] **README.md aktualisieren**: Neue src/-Struktur dokumentieren
+- [ ] **API_DOCUMENTATION.py**: Import-Pfade korrigieren
+- [ ] **Commit & Tag**: `git tag v4.0.0-consolidated`
+
+### **Erfolgs-Kriterien**
+- ✅ Ein einziges Quellcode-Verzeichnis: `src/`
+- ✅ Keine Import-Abhängigkeiten zwischen ehemaligen Verzeichnissen
+- ✅ Alle Tests bestehen nach Konsolidierung
+- ✅ CLI-Funktionalität vollständig erhalten
+- ✅ Poetry build/install funktioniert einwandfrei
+
+### **Rollback-Plan**
+- **Git Branch**: `backup-before-consolidation` für sofortigen Rollback
+- **Validierungs-Skript**: `poetry run python -c "from src import *; print('Import OK')"`
+
+---
+
+## 📋 **PROJEKTSTATUS-ÜBERSICHT** (nach Konsolidierung)
+
+**Aktuelle Version:** 3.0.0 → 4.0.0 (Konsolidierte KISS-Architektur)
 ```markdown
 - [ ] Sprint 1 — Critical Foundation (26h)
   - [ ] Learning Rate Optimization (6h) — `spacy_training/ner_training.py`, `spacy_training/cat_trainer.py`
