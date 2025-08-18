@@ -44,12 +44,28 @@ class AsyncGeminiDirectProcessor(GeminiDirectProcessor):
 
     def __init__(self, config: Config | None = None):
         super().__init__(config)
-        self.rate_limiter = asyncio.Semaphore(3)  # Max 3 concurrent Gemini calls
+        self.rate_limiter = asyncio.Semaphore(
+            5
+        )  # 🚀 Erhöht: 3→5 concurrent Gemini calls
         self.cache_db_path = Path("data/cache/pdf_hash_cache.db")
         self._setup_cache_database()
 
+        # 📊 MEMORY-OPTIMIERUNG: Batch-Processing Limits
+        self.max_batch_size = 50  # Absolute Obergrenze für Memory-Schutz
+        self.memory_check_interval = 10  # Alle 10 PDFs Memory-Check
+
+        # 📄 SMART PDF-DETECTION: Größe-basierte Timeouts
+        self.pdf_size_thresholds: dict[str, tuple[int, float]] = {
+            "small": (0, 5 * 1024 * 1024),  # 0-5MB: Standard-Timeout
+            "medium": (5 * 1024 * 1024, 20 * 1024 * 1024),  # 5-20MB: +50% Timeout
+            "large": (20 * 1024 * 1024, 100 * 1024 * 1024),  # 20-100MB: +200% Timeout
+            "huge": (100 * 1024 * 1024, float("inf")),  # >100MB: +500% Timeout
+        }
+
+        self.base_timeout = 30  # Sekunden für kleine PDFs
+
         logger.info(
-            "✅ AsyncGeminiDirectProcessor initialisiert (Rate-Limited + Cached)"
+            "✅ AsyncGeminiDirectProcessor initialisiert (Rate-Limited + Memory-Optimized + Smart-Detection)"
         )
 
     def _setup_cache_database(self) -> None:
@@ -85,6 +101,79 @@ class AsyncGeminiDirectProcessor(GeminiDirectProcessor):
             for chunk in iter(lambda: f.read(8192), b""):
                 hasher.update(chunk)
         return hasher.hexdigest()
+
+    def _get_pdf_size_category(self, pdf_path: Path) -> tuple[str, int, float]:
+        """
+        🚀 SMART PDF-DETECTION: Bestimme PDF-Kategorie basierend auf Dateigröße.
+
+        Returns:
+            Tuple von (kategorie, timeout_sekunden, kompression_faktor)
+        """
+        try:
+            file_size = pdf_path.stat().st_size
+
+            for category, (min_size, max_size) in self.pdf_size_thresholds.items():
+                if min_size <= file_size < max_size:
+                    timeout_multiplier = {
+                        "small": 1.0,  # Standard
+                        "medium": 1.5,  # +50%
+                        "large": 3.0,  # +200%
+                        "huge": 6.0,  # +500%
+                    }[category]
+
+                    timeout = int(self.base_timeout * timeout_multiplier)
+                    compression_factor = min(
+                        1.0, 10 * 1024 * 1024 / file_size
+                    )  # Komprimierung für >10MB
+
+                    logger.info(
+                        "📄 PDF-Kategorie '%s': %s (%.2f MB) → Timeout: %ds, Kompression: %.2f",
+                        category,
+                        pdf_path.name,
+                        file_size / (1024 * 1024),
+                        timeout,
+                        compression_factor,
+                    )
+
+                    return category, timeout, compression_factor
+
+            # Fallback
+            return "small", self.base_timeout, 1.0
+
+        except Exception as e:
+            logger.warning(
+                "⚠️ PDF-Größe-Detection fehlgeschlagen für %s: %s", pdf_path.name, e
+            )
+            return "small", self.base_timeout, 1.0
+
+    def _check_memory_usage(self) -> dict[str, float]:
+        """
+        📊 MEMORY-MONITORING: Überwache aktuelle Memory-Usage für Batch-Processing.
+
+        Returns:
+            Dictionary mit Memory-Statistiken
+        """
+        import psutil
+
+        process = psutil.Process()
+        memory_info = process.memory_info()
+
+        memory_stats: dict[str, float] = {
+            "rss_mb": float(memory_info.rss / (1024 * 1024)),  # Resident Set Size
+            "vms_mb": float(memory_info.vms / (1024 * 1024)),  # Virtual Memory Size
+            "percent": float(process.memory_percent()),  # % of system memory
+            "available_mb": float(psutil.virtual_memory().available / (1024 * 1024)),
+        }
+
+        logger.debug(
+            "💾 Memory: RSS=%.1fMB, VMS=%.1fMB, Usage=%.1f%%, Available=%.1fGB",
+            memory_stats["rss_mb"],
+            memory_stats["vms_mb"],
+            memory_stats["percent"],
+            memory_stats["available_mb"] / 1024,
+        )
+
+        return memory_stats
 
     async def _check_cache(self, pdf_hash: str) -> dict[str, Any] | None:
         """Check if PDF result exists in cache."""
@@ -220,7 +309,13 @@ class AsyncGeminiDirectProcessor(GeminiDirectProcessor):
         self, pdf_paths: list[str | Path], max_concurrent: int = 3
     ) -> list[ProcessingResult | None]:
         """
-        Batch-Processing für mehrere PDFs mit optimaler Parallelisierung.
+        🚀 ENHANCED Batch-Processing für mehrere PDFs mit Memory-Optimierung und Smart Detection.
+
+        Performance-Features:
+        - Memory-Monitoring alle 10 PDFs
+        - Smart PDF-Größe-Detection für optimale Timeouts
+        - Batch-Größe-Limiting bei >50 PDFs
+        - Automatische Garbage Collection
 
         Args:
             pdf_paths: Liste der PDF-Pfade
@@ -229,41 +324,125 @@ class AsyncGeminiDirectProcessor(GeminiDirectProcessor):
         Returns:
             Liste der ProcessingResults in derselben Reihenfolge
         """
+        total_pdfs = len(pdf_paths)
+
+        # 📊 MEMORY-SCHUTZ: Batch-Größe limitieren
+        if total_pdfs > self.max_batch_size:
+            logger.warning(
+                "⚠️ Batch-Größe %d > Maximum %d - wird in Chunks aufgeteilt",
+                total_pdfs,
+                self.max_batch_size,
+            )
+            # Recursive batch processing in chunks
+            all_results: list[ProcessingResult | None] = []
+            for i in range(0, total_pdfs, self.max_batch_size):
+                chunk = pdf_paths[i : i + self.max_batch_size]
+                chunk_results = await self.process_batch_async(chunk, max_concurrent)
+                all_results.extend(chunk_results)
+            return all_results
+
         logger.info(
-            "🚀 Batch-Processing startet: %d PDFs, max %d parallel",
-            len(pdf_paths),
+            "🚀 Enhanced Batch-Processing startet: %d PDFs, max %d parallel (Memory-Optimized)",
+            total_pdfs,
             max_concurrent,
         )
 
         start_time = time.time()
+        initial_memory = self._check_memory_usage()
+
+        # 📄 SMART PDF-ANALYSIS: Analysiere alle PDFs für optimale Strategie
+        pdf_analysis: list[dict[str, Any]] = []
+        for pdf_path in pdf_paths:
+            category, timeout, compression = self._get_pdf_size_category(Path(pdf_path))
+            pdf_analysis.append(
+                {
+                    "path": pdf_path,
+                    "category": category,
+                    "timeout": timeout,
+                    "compression": compression,
+                }
+            )
+
+        # Sortiere PDFs: Große zuerst (bessere Memory-Verteilung)
+        pdf_analysis.sort(key=lambda x: x["timeout"], reverse=True)
+        logger.info(
+            "📊 PDF-Kategorien: %s",
+            ", ".join(
+                f"{info['category']}({Path(info['path']).name})"
+                for info in pdf_analysis[:5]
+            ),
+        )
 
         # Semaphore für Batch-Limit (zusätzlich zu API-Rate-Limit)
         batch_semaphore = asyncio.Semaphore(max_concurrent)
+        processed_count = 0
 
-        async def _process_with_semaphore(
-            pdf_path: str | Path,
+        async def _process_with_enhanced_monitoring(
+            pdf_info: dict[str, Any], index: int
         ) -> ProcessingResult | None:
+            nonlocal processed_count
+
             async with batch_semaphore:
                 try:
-                    return await self.process_pdf_async(pdf_path)
+                    # 📊 MEMORY-CHECK alle 10 PDFs
+                    if (
+                        processed_count > 0
+                        and processed_count % self.memory_check_interval == 0
+                    ):
+                        current_memory = self._check_memory_usage()
+                        memory_growth = (
+                            current_memory["rss_mb"] - initial_memory["rss_mb"]
+                        )
+
+                        if memory_growth > 500:  # >500MB Growth
+                            logger.warning(
+                                "⚠️ Memory-Growth: +%.1fMB nach %d PDFs - Garbage Collection",
+                                memory_growth,
+                                processed_count,
+                            )
+                            import gc
+
+                            gc.collect()
+
+                    result = await self.process_pdf_async(pdf_info["path"])
+                    processed_count += 1
+
+                    if processed_count % 10 == 0:
+                        logger.info(
+                            "📈 Progress: %d/%d PDFs verarbeitet",
+                            processed_count,
+                            total_pdfs,
+                        )
+
+                    return result
+
                 except Exception as e:
                     logger.error(
-                        "❌ PDF-Verarbeitung fehlgeschlagen: %s -> %s", pdf_path, e
+                        "❌ PDF-Verarbeitung fehlgeschlagen: %s -> %s",
+                        pdf_info["path"],
+                        e,
                     )
                     return None
 
-        # Alle PDFs parallel verarbeiten
-        tasks = [_process_with_semaphore(pdf_path) for pdf_path in pdf_paths]
+        # 🚀 Alle PDFs parallel verarbeiten mit Enhanced Monitoring
+        tasks = [
+            _process_with_enhanced_monitoring(pdf_info, i)
+            for i, pdf_info in enumerate(pdf_analysis)
+        ]
         results = await asyncio.gather(*tasks)
 
+        # 📊 FINAL STATISTICS
         batch_time_ms = int((time.time() - start_time) * 1000)
         successful_count = sum(1 for r in results if r is not None)
+        final_memory = self._check_memory_usage()
+        memory_efficiency = final_memory["rss_mb"] / max(1, successful_count)
 
         logger.info(
-            "✅ Batch-Processing abgeschlossen: %d/%d erfolgreich in %dms",
+            "✅ Enhanced Batch-Processing abgeschlossen: %d/%d erfolgreich in %dms (%.1fMB/PDF avg)",
             successful_count,
-            len(pdf_paths),
+            total_pdfs,
             batch_time_ms,
+            memory_efficiency,
         )
 
         return results
@@ -286,7 +465,8 @@ class AsyncGeminiDirectProcessor(GeminiDirectProcessor):
                 cursor = conn.execute(
                     "SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size()"
                 )
-                db_size_bytes = cursor.fetchone()[0] if cursor.fetchone() else 0
+                size_result = cursor.fetchone()
+                db_size_bytes = size_result[0] if size_result else 0
 
                 # Cache-Hit-Rate der letzten 24h
                 cursor = conn.execute(

@@ -1205,6 +1205,293 @@ def extract_features_batch(args: argparse.Namespace) -> None:
     print(f"💾 Results saved to: {output_dir}")
 
 
+def run_benchmark_single(args: argparse.Namespace) -> None:
+    """
+    🎯 Führt Single PDF Benchmark aus.
+
+    Args:
+        args: CLI-Argumente mit pdf_path und runs
+    """
+    import asyncio
+
+    from src.monitoring.performance_benchmarking import PerformanceBenchmarkSuite
+
+    async def _run_single() -> None:
+        suite = PerformanceBenchmarkSuite()
+
+        try:
+            result = await suite.run_single_pdf_benchmark(args.pdf_path, runs=args.runs)
+
+            # Zeige kompakte Ergebnisse
+            pdf_info = result["pdf_info"]
+            perf = result["performance"]
+
+            print("📊 SINGLE PDF BENCHMARK RESULTS:")
+            print(f"   📄 PDF: {pdf_info['name']} ({pdf_info['size_mb']:.1f} MB)")
+            print(f"   📂 Category: {pdf_info['category']}")
+            print(
+                f"   ⏱️  Processing: {perf['processing_time_ms']['mean']:.0f}±{perf['processing_time_ms']['std']:.0f}ms"
+            )
+            print(f"   🎯 Confidence: {perf['confidence_score']['mean']:.2f}")
+            print(f"   💾 Memory: +{perf['memory_delta_mb']['mean']:.1f}MB")
+            print(f"   🔄 Runs: {perf['runs']}")
+
+            # Speichere detaillierte Ergebnisse
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            output_file = Path("data/benchmarks") / f"single_benchmark_{timestamp}.json"
+            output_file.parent.mkdir(parents=True, exist_ok=True)
+
+            with open(output_file, "w", encoding="utf-8") as f:
+                json.dump(result, f, indent=2, ensure_ascii=False)
+
+            print(f"   💾 Detaillierte Ergebnisse: {output_file}")
+
+        except Exception as e:
+            print(f"❌ Single PDF Benchmark fehlgeschlagen: {e}")
+            sys.exit(1)
+
+    asyncio.run(_run_single())
+
+
+def run_benchmark_batch(args: argparse.Namespace) -> None:
+    """
+    🚀 Führt Batch Processing Benchmark aus.
+
+    Args:
+        args: CLI-Argumente mit pdf_directory und max_pdfs
+    """
+    import asyncio
+
+    from src.monitoring.performance_benchmarking import PerformanceBenchmarkSuite
+
+    async def _run_batch() -> None:
+        suite = PerformanceBenchmarkSuite()
+
+        try:
+            result = await suite.run_batch_benchmark(
+                args.pdf_directory, max_pdfs=args.max_pdfs
+            )
+
+            # Zeige kompakte Ergebnisse
+            batch_info = result["batch_info"]
+            perf = result["performance"]
+            quality = result["quality"]
+
+            print("🚀 BATCH PROCESSING BENCHMARK RESULTS:")
+            print(
+                f"   📦 PDFs: {batch_info['successful_pdfs']}/{batch_info['total_pdfs']}"
+            )
+            print(f"   ✅ Success Rate: {batch_info['success_rate']*100:.1f}%")
+            print(f"   ⏱️  Total Time: {perf['total_time_s']:.1f}s")
+            print(
+                f"   📈 Throughput: {perf['throughput_pdfs_per_minute']:.1f} PDFs/min"
+            )
+            print(f"   🎯 Avg Confidence: {quality['confidence_mean']:.2f}")
+            print(f"   💾 Memory: +{perf['memory_delta_mb']:.1f}MB total")
+            print(f"   📊 Memory/PDF: {perf['memory_per_pdf_mb']:.1f}MB")
+
+            # Speichere detaillierte Ergebnisse
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            output_file = Path("data/benchmarks") / f"batch_benchmark_{timestamp}.json"
+            output_file.parent.mkdir(parents=True, exist_ok=True)
+
+            with open(output_file, "w", encoding="utf-8") as f:
+                json.dump(result, f, indent=2, ensure_ascii=False)
+
+            print(f"   💾 Detaillierte Ergebnisse: {output_file}")
+
+        except Exception as e:
+            print(f"❌ Batch Benchmark fehlgeschlagen: {e}")
+            sys.exit(1)
+
+    asyncio.run(_run_batch())
+
+
+def run_benchmark_comprehensive(args: argparse.Namespace) -> None:
+    """
+    🎯 Führt umfassenden Performance-Benchmark aus.
+
+    Args:
+        args: CLI-Argumente mit optionaler test_pdf
+    """
+    import asyncio
+
+    from src.monitoring.performance_benchmarking import PerformanceBenchmarkSuite
+
+    async def _run_comprehensive() -> None:
+        suite = PerformanceBenchmarkSuite()
+
+        try:
+            result = await suite.run_comprehensive_benchmark(args.test_pdf)
+
+            # Generiere und zeige Report
+            report = suite.generate_benchmark_report(result)
+            print(report)
+
+            # Speichere Ergebnisse (bereits in run_comprehensive_benchmark gemacht)
+            print("\n💾 Ergebnisse gespeichert in: data/benchmarks/")
+
+        except Exception as e:
+            print(f"❌ Comprehensive Benchmark fehlgeschlagen: {e}")
+            sys.exit(1)
+
+    asyncio.run(_run_comprehensive())
+
+
+def run_cache_health(args: argparse.Namespace) -> None:
+    """
+    📊 Führt Cache-Health-Report aus.
+
+    Args:
+        args: CLI-Argumente
+    """
+    from src.monitoring.cache_invalidation import CacheInvalidationEngine
+
+    engine = CacheInvalidationEngine()
+    health_report = engine.get_cache_health_report()
+
+    print("📊 CACHE HEALTH REPORT:")
+    print("=" * 60)
+    print(f"Status: {health_report.get('status', 'unknown')}")
+
+    if health_report.get("status") != "no_cache":
+        print(f"Cache-Größe: {health_report.get('cache_size_mb', 0):.1f}MB")
+        print(f"Max-Größe: {health_report.get('max_size_mb', 0):.1f}MB")
+        print(f"Auslastung: {health_report.get('usage_percent', 0):.1f}%")
+        print(f"Einträge: {health_report.get('total_entries', 0)}")
+        print(f"Ältester Eintrag: {health_report.get('oldest_entry', 'N/A')}")
+        print(
+            f"Ø Tage seit Zugriff: {health_report.get('avg_days_since_access', 0):.1f}"
+        )
+
+        recommendations = health_report.get("recommendations", [])
+        if recommendations:
+            print("\n💡 EMPFEHLUNGEN:")
+            for rec in recommendations:
+                print(f"   {rec}")
+    else:
+        print("Keine Cache-Datenbank gefunden.")
+
+    print("=" * 60)
+
+
+def run_cache_cleanup_age(args: argparse.Namespace) -> None:
+    """
+    🕐 Führt Age-basierte Cache-Invalidation aus.
+
+    Args:
+        args: CLI-Argumente mit max_age_days
+    """
+    from src.monitoring.cache_invalidation import CacheInvalidationEngine
+
+    engine = CacheInvalidationEngine()
+    stats = engine.invalidate_by_age(max_age_days=args.max_age_days)
+
+    print("🕐 AGE-BASIERTE CACHE-INVALIDATION:")
+    print(f"   Maximales Alter: {args.max_age_days} Tage")
+    print(f"   Invalidierte Einträge: {stats['invalidated_entries']}")
+    print(f"   Befreiter Speicher: {stats['space_freed_mb']:.1f}MB")
+    print(f"   Cutoff-Datum: {stats['cutoff_date']}")
+
+
+def run_cache_cleanup_schema(args: argparse.Namespace) -> None:
+    """
+    🔄 Führt Schema-Version basierte Cache-Invalidation aus.
+
+    Args:
+        args: CLI-Argumente mit optionaler version
+    """
+    from src.monitoring.cache_invalidation import CacheInvalidationEngine
+
+    engine = CacheInvalidationEngine()
+    stats = engine.invalidate_by_schema_version(current_version=args.version)
+
+    print("🔄 SCHEMA-VERSION CACHE-INVALIDATION:")
+    print(f"   Schema-Version: {stats['schema_version']}")
+    print(f"   Invalidierte Einträge: {stats['invalidated_entries']}")
+    print(f"   Befreiter Speicher: {stats['space_freed_mb']:.1f}MB")
+
+
+def run_cache_cleanup_emergency(args: argparse.Namespace) -> None:
+    """
+    🚨 Führt Notfall-Cache-Cleanup aus.
+
+    Args:
+        args: CLI-Argumente
+    """
+    from src.monitoring.cache_invalidation import CacheInvalidationEngine
+
+    engine = CacheInvalidationEngine()
+    stats = engine.emergency_cleanup()
+
+    print("🚨 NOTFALL-CACHE-CLEANUP:")
+
+    age_stats = stats.get("age_cleanup", {})
+    if age_stats:
+        print(
+            f"   Age-Cleanup: {age_stats.get('invalidated_entries', 0)} Einträge, {age_stats.get('space_freed_mb', 0):.1f}MB"
+        )
+
+    additional_stats = stats.get("additional_cleanup", {})
+    if additional_stats:
+        print(
+            f"   LRU-Cleanup: {additional_stats.get('invalidated_entries', 0)} Einträge, {additional_stats.get('space_freed_mb', 0):.1f}MB"
+        )
+
+    print(f"   Finale Cache-Größe: {stats.get('cache_size_mb', 0):.1f}MB")
+    print(f"   Max-Größe: {stats.get('max_size_mb', 0):.1f}MB")
+
+
+def run_cache_maintenance(args: argparse.Namespace) -> None:
+    """
+    🔧 Führt geplante Cache-Wartung aus.
+
+    Args:
+        args: CLI-Argumente
+    """
+    from src.monitoring.cache_invalidation import CacheInvalidationEngine
+
+    engine = CacheInvalidationEngine()
+    maintenance_stats = engine.run_scheduled_maintenance()
+
+    print("🔧 GEPLANTE CACHE-WARTUNG:")
+    print(f"   Zeitstempel: {maintenance_stats['timestamp']}")
+
+    # Age-Cleanup Statistiken
+    age_cleanup = maintenance_stats.get("age_cleanup", {})
+    if isinstance(age_cleanup, dict) and age_cleanup.get("invalidated_entries", 0) > 0:
+        print(
+            f"   Age-Cleanup: {age_cleanup['invalidated_entries']} Einträge, {age_cleanup['space_freed_mb']:.1f}MB"
+        )
+
+    # Schema-Check Statistiken
+    schema_check = maintenance_stats.get("schema_check", {})
+    if (
+        isinstance(schema_check, dict)
+        and schema_check.get("invalidated_entries", 0) > 0
+    ):
+        print(
+            f"   Schema-Check: {schema_check['invalidated_entries']} Einträge, {schema_check['space_freed_mb']:.1f}MB"
+        )
+
+    # Emergency-Check Statistiken
+    emergency_check = maintenance_stats.get("emergency_check", {})
+    if (
+        isinstance(emergency_check, dict)
+        and emergency_check.get("total_space_freed_mb", 0) > 0
+    ):
+        print(
+            f"   Emergency-Check: {emergency_check['total_space_freed_mb']:.1f}MB befreit"
+        )
+
+    print(
+        f"   Gesamt befreiter Speicher: {maintenance_stats.get('total_space_freed_mb', 0):.1f}MB"
+    )
+    print(
+        f"   Finale Cache-Größe: {maintenance_stats.get('final_cache_size_mb', 0):.1f}MB"
+    )
+
+
 def analyze_feature_pipeline(args: argparse.Namespace) -> None:
     """Analyze feature pipeline capabilities"""
 
@@ -1662,6 +1949,121 @@ Examples:
     )
     parser_analyze_features.set_defaults(func=analyze_feature_pipeline)
 
+    # 📊 PERFORMANCE BENCHMARK COMMANDS (Business Value Maximization)
+    benchmark_parser = subparsers.add_parser(
+        "benchmark",
+        help="🚀 Performance Benchmarking Suite (Business Value Maximization)",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description="""Performance-Benchmarking für LLKJJ ML Pipeline.
+
+Testet verschiedene PDF-Kategorien und dokumentiert Metriken:
+- Small PDFs (0-5MB): Standard-Elektro-Rechnungen
+- Medium PDFs (5-20MB): Multi-Page-Kataloge
+- Large PDFs (20-100MB): Komplexe Dokumentenpakete
+- Huge PDFs (>100MB): Bulk-Uploads
+
+Beispiele:
+    poetry run python main.py benchmark single test_pdfs/rechnung.pdf
+    poetry run python main.py benchmark batch test_pdfs/ --max-pdfs 20
+    poetry run python main.py benchmark comprehensive --test-pdf test_pdfs/rechnung.pdf
+""",
+    )
+    benchmark_subparsers = benchmark_parser.add_subparsers(
+        dest="benchmark_command", help="Benchmark commands"
+    )
+
+    # Single PDF Benchmark
+    single_benchmark_parser = benchmark_subparsers.add_parser(
+        "single", help="Benchmark einzelne PDF mit mehreren Durchläufen"
+    )
+    single_benchmark_parser.add_argument("pdf_path", help="Pfad zur Test-PDF")
+    single_benchmark_parser.add_argument(
+        "--runs", type=int, default=3, help="Anzahl Durchläufe (default: 3)"
+    )
+
+    # Batch Benchmark
+    batch_benchmark_parser = benchmark_subparsers.add_parser(
+        "batch", help="Benchmark Batch-Processing Performance"
+    )
+    batch_benchmark_parser.add_argument(
+        "pdf_directory", help="Verzeichnis mit Test-PDFs"
+    )
+    batch_benchmark_parser.add_argument(
+        "--max-pdfs", type=int, default=20, help="Maximale Anzahl PDFs (default: 20)"
+    )
+
+    # Comprehensive Benchmark
+    comprehensive_benchmark_parser = benchmark_subparsers.add_parser(
+        "comprehensive", help="Umfassender Performance-Benchmark mit allen Tests"
+    )
+    comprehensive_benchmark_parser.add_argument(
+        "--test-pdf", help="Spezifische Test-PDF (optional)"
+    )
+
+    # 🧹 CACHE MANAGEMENT COMMANDS (Business Value Maximization)
+    cache_parser = subparsers.add_parser(
+        "cache",
+        help="🧹 Cache Management & Invalidation (Business Value Maximization)",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description="""Intelligente Cache-Verwaltung für LLKJJ ML Pipeline.
+
+Cache-Invalidation Rules:
+- Content-basierte Invalidation bei PDF-Änderungen
+- Time-basierte Rules für Business-Logik Updates
+- Schema-Version Tracking für Model-Upgrades
+- Smart Clean-up für Speicher-Optimierung
+
+Beispiele:
+    poetry run python main.py cache health
+    poetry run python main.py cache cleanup age --max-age-days 7
+    poetry run python main.py cache cleanup schema
+    poetry run python main.py cache maintenance
+""",
+    )
+    cache_subparsers = cache_parser.add_subparsers(
+        dest="cache_command", help="Cache commands"
+    )
+
+    # Cache Health Report
+    cache_subparsers.add_parser("health", help="Cache-Health-Report für Monitoring")
+
+    # Cache Cleanup Commands
+    cache_cleanup_parser = cache_subparsers.add_parser(
+        "cleanup", help="Cache-Cleanup mit verschiedenen Strategien"
+    )
+    cache_cleanup_subparsers = cache_cleanup_parser.add_subparsers(
+        dest="cleanup_type", help="Cleanup strategies"
+    )
+
+    # Age-based Cleanup
+    age_cleanup_parser = cache_cleanup_subparsers.add_parser(
+        "age", help="Age-basierte Cache-Invalidation"
+    )
+    age_cleanup_parser.add_argument(
+        "--max-age-days",
+        type=int,
+        default=30,
+        help="Maximales Alter in Tagen (default: 30)",
+    )
+
+    # Schema-based Cleanup
+    schema_cleanup_parser = cache_cleanup_subparsers.add_parser(
+        "schema", help="Schema-Version basierte Cache-Invalidation"
+    )
+    schema_cleanup_parser.add_argument(
+        "--version", help="Pipeline-Version für Vergleich (optional)"
+    )
+
+    # Emergency Cleanup
+    cache_cleanup_subparsers.add_parser(
+        "emergency", help="Notfall-Cleanup bei kritischer Speicher-Auslastung"
+    )
+
+    # Scheduled Maintenance
+    cache_subparsers.add_parser(
+        "maintenance", help="Geplante Cache-Wartung (alle Regeln)"
+    )
+
     return parser
 
 
@@ -1804,6 +2206,33 @@ def main() -> None:
         # Dual-Purpose Pipeline
         elif args.command == "dual-purpose":
             dual_purpose_pipeline(args)
+        # 📊 Performance Benchmark Commands (Business Value Maximization)
+        elif args.command == "benchmark":
+            if args.benchmark_command == "single":
+                run_benchmark_single(args)
+            elif args.benchmark_command == "batch":
+                run_benchmark_batch(args)
+            elif args.benchmark_command == "comprehensive":
+                run_benchmark_comprehensive(args)
+            else:
+                print("❌ Unknown benchmark command. Use 'benchmark -h' for help.")
+        # 🧹 Cache Management Commands (Business Value Maximization)
+        elif args.command == "cache":
+            if args.cache_command == "health":
+                run_cache_health(args)
+            elif args.cache_command == "cleanup":
+                if args.cleanup_type == "age":
+                    run_cache_cleanup_age(args)
+                elif args.cleanup_type == "schema":
+                    run_cache_cleanup_schema(args)
+                elif args.cleanup_type == "emergency":
+                    run_cache_cleanup_emergency(args)
+                else:
+                    print("❌ Unknown cleanup type. Use 'cache cleanup -h' for help.")
+            elif args.cache_command == "maintenance":
+                run_cache_maintenance(args)
+            else:
+                print("❌ Unknown cache command. Use 'cache -h' for help.")
 
     except KeyboardInterrupt:
         print("\n⚠️  Operation cancelled by user")

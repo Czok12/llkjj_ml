@@ -43,11 +43,13 @@ applyTo: "**"
 
 ### Primäre Technologien
 
-- **Python 3.10+**: Moderne Type Hints, Pattern Matching, async/await
+### **\*\***nutze IMMER bei Terminalbefehlen: poetry run ...**\*\***
+
+- **Python 3.12+**: Moderne Type Hints, Pattern Matching, async/await
 - **Poetry**: Dependency Management und CLI-Werkzeuge
 - **Docling 2.44.0**: IBMs PDF-Verarbeitung mit TableFormer KI
 - **spaCy 3.7+**: Deutsche NLP und Entitätserkennung
-- **Gemini 2.5 Pro**: KI-Verbesserung für Extraktionsqualität
+- **Gemini 2.5 flash**: KI-Verbesserung für Extraktionsqualität
 
 ### KI/ML Frameworks
 
@@ -135,6 +137,7 @@ Der Standardprozess wird durch `GeminiDirectProcessor` gesteuert:
    - Qualitätsbewertung der Extraktionsergebnisse
 
 5. **SKR03Manager**
+
    - Deutsche Buchhaltungsklassifizierung
    - ChromaDB-Integration für intelligente Kontierung
 
