@@ -1,0 +1,438 @@
+#!/usr/bin/env python3
+"""
+LLKJJ ML Pipeline - Deutsche Elektrotechnik NER (Type-Safe)
+===========================================================
+
+🔌 Spezialisierte Named Entity Recognition für deutsche Elektro-Rechnungen        # Elektro-Begriffe
+        elektro_begriffe_patterns = self.patterns["elektro_begriffe"]
+        if isinstance(elektro_begriffe_patterns, list):
+            for pattern in elektro_begriffe_patterns:
+                for match in pattern.finditer(text):
+                    entities.append(
+                        ElektroEntität(
+                            text=match.group(0),
+                            label="ELEKTRO_BEGRIFF",
+                            start=match.start(),
+                            end=match.end(),
+                            confidence=0.80,
+                            zusatz_info={"kategorie": "elektro_terminologie"}
+                        )
+                    )
+        elif isinstance(elektro_begriffe_patterns, Pattern):
+            for match in elektro_begriffe_patterns.finditer(text):
+                entities.append(
+                    ElektroEntität(
+                        text=match.group(0),
+                        label="ELEKTRO_BEGRIFF",
+                        start=match.start(),
+                        end=match.end(),
+                        confidence=0.80,
+                        zusatz_info={"kategorie": "elektro_terminologie"}
+                    )
+                )- Domain-spezifische Entitäts-Erkennung (GIRA, Hager, Siemens)
+- Artikelnummer-Pattern-Learning für Elektro-SKUs
+- Mengen-Unit-Normalization (St, Stück, x)
+- Robuste Preis-Extraktion mit Euro-Erkennung
+
+Autor: LLKJJ ML Pipeline Team
+Version: 1.0.0 (Type-Safe Deutsche Elektrotechnik NER)
+Datum: 18. August 2025
+"""
+
+import re
+from typing import Any, Dict, List, Optional, Pattern, Union
+from pydantic import BaseModel, Field
+
+
+class ElektroEntität(BaseModel):
+    """Elektriker-spezifische Named Entity."""
+
+    text: str = Field(..., description="Erkannter Text")
+    label: str = Field(..., description="Entity-Label")
+    start: int = Field(..., description="Start-Position im Text")
+    end: int = Field(..., description="End-Position im Text")
+    confidence: float = Field(..., description="Konfidenz der Erkennung (0.0-1.0)")
+    zusatz_info: Dict[str, Any] = Field(default_factory=dict, description="Zusätzliche Metadaten")
+
+
+class ElektroNERResult(BaseModel):
+    """Ergebnis der Elektrotechnik-NER-Analyse."""
+
+    entities: List[ElektroEntität] = Field(default_factory=list, description="Erkannte Entitäten")
+    hersteller: List[str] = Field(default_factory=list, description="Erkannte Hersteller")
+    artikel_nummern: List[str] = Field(default_factory=list, description="Erkannte Artikelnummern")
+    mengen: List[Dict[str, Any]] = Field(default_factory=list, description="Erkannte Mengen")
+    preise: List[Dict[str, Any]] = Field(default_factory=list, description="Erkannte Preise")
+    skr03_empfehlungen: List[str] = Field(default_factory=list, description="SKR03-Empfehlungen")
+    gesamt_confidence: float = Field(default=0.0, description="Durchschnittliche Konfidenz")
+
+
+class VereinfachteElektrotechnikNER:
+    """
+    🔌 Vereinfachte aber robuste Elektrotechnik-NER mit Regex-Patterns
+
+    Optimiert für deutsche Elektro-Rechnungen mit Focus auf:
+    - Hersteller-Erkennung (GIRA, Hager, Siemens, etc.)
+    - Artikelnummer-Patterns
+    - Mengen-Normalisierung
+    - SKR03-Kategorisierung
+    """
+
+    def __init__(self):
+        self.patterns: Dict[str, Union[Pattern[str], List[Pattern[str]]]] = self._compile_patterns()
+        self.hersteller_mapping = self._build_hersteller_mapping()
+        self.skr03_mapping = self._build_skr03_mapping()
+
+    def _compile_patterns(self) -> Dict[str, Union[Pattern[str], List[Pattern[str]]]]:
+        """🔧 Kompiliert Regex-Patterns für Elektro-Entitäten."""
+
+        patterns: Dict[str, Union[Pattern[str], List[Pattern[str]]]] = {
+            # Hersteller-Pattern (case-insensitive)
+            "hersteller": re.compile(
+                r'\b(GIRA|Gira|HAGER|Hager|SIEMENS|Siemens|ABB|Abb|SCHNEIDER|Schneider|'
+                r'BUSCH|Busch|JUNG|Jung|MERTEN|Merten|LEGRAND|Legrand)\b',
+                re.IGNORECASE
+            ),
+
+            # Artikelnummer-Patterns für Elektro
+            "artikel_nummern": [
+                re.compile(r'\b\d{5,12}\b'),  # Klassische Artikelnummern
+                re.compile(r'\b[A-Z]{2,4}[-/]\d{3,8}\b'),  # GIRA-Style: XX-123456
+                re.compile(r'\b\d{3}[-/]\d{2,6}\b'),  # Hager-Style: 123-45678
+                re.compile(r'\b[A-Z]\d{6,10}\b'),  # Siemens-Style: A1234567
+            ],
+
+            # Mengen-Pattern
+            "mengen": re.compile(
+                r'\b(\d+(?:,\d+)?)\s*(St\.?|Stück|Stk\.?|x|Stk|Pkt\.?|Punkt|Paar|Set)\b',
+                re.IGNORECASE
+            ),
+
+            # Preis-Pattern (Euro)
+            "preise": re.compile(
+                r'(\d{1,6}(?:,\d{2})?)\s*€|€\s*(\d{1,6}(?:,\d{2})?)|'
+                r'(\d{1,6}(?:,\d{2})?)\s*EUR\b',
+                re.IGNORECASE
+            ),
+
+            # Elektro-spezifische Begriffe
+            "elektro_begriffe": re.compile(
+                r'\b(Schalter|Steckdose|Kabel|Leitung|Installation|Dose|Rahmen|'
+                r'Dimmer|Taster|Bewegungsmelder|LED|Lampe|Beleuchtung|Schuko|'
+                r'Unterputz|UP|Aufputz|AP|Verteilung|Sicherung|FI|LS)\b',
+                re.IGNORECASE
+            )
+        }
+
+        return patterns
+
+    def _build_hersteller_mapping(self) -> Dict[str, Dict[str, Any]]:
+        """🏭 Mapping von Herstellern zu Metadaten."""
+
+        return {
+            "GIRA": {
+                "kategorie": "Schalter/Steckdosen",
+                "land": "Deutschland",
+                "spezialisierung": "Design-Schalter",
+                "skr03_hint": "3400"  # Elektroinstallation
+            },
+            "HAGER": {
+                "kategorie": "Verteilertechnik",
+                "land": "Deutschland",
+                "spezialisierung": "Schaltschränke",
+                "skr03_hint": "3400"
+            },
+            "SIEMENS": {
+                "kategorie": "Industrieelektrik",
+                "land": "Deutschland",
+                "spezialisierung": "Automation",
+                "skr03_hint": "3400"
+            },
+            "ABB": {
+                "kategorie": "Industrieelektrik",
+                "land": "Schweiz",
+                "spezialisierung": "Schaltgeräte",
+                "skr03_hint": "3400"
+            },
+            "SCHNEIDER": {
+                "kategorie": "Energiemanagement",
+                "land": "Frankreich",
+                "spezialisierung": "Gebäudeautomation",
+                "skr03_hint": "3400"
+            }
+        }
+
+    def _build_skr03_mapping(self) -> Dict[str, str]:
+        """📊 SKR03-Kontenzuordnung für Elektro-Begriffe."""
+
+        return {
+            "schalter": "3400",  # Elektroinstallation
+            "steckdose": "3400",
+            "kabel": "3400",
+            "installation": "3400",
+            "beleuchtung": "3400",
+            "led": "3400",
+            "werkzeug": "3410",  # Werkzeuge
+            "messgerät": "3410",
+            "zubehör": "3420",  # Elektro-Zubehör
+            "ersatzteil": "3420",
+            "verbrauchsmaterial": "6400",  # Büromaterial (bei Kleinteilen)
+        }
+
+    def analyze_text(self, text: str) -> ElektroNERResult:
+        """
+        🔍 Analysiert Text auf Elektrotechnik-Entitäten
+
+        Args:
+            text: Zu analysierender Text
+
+        Returns:
+            ElektroNERResult: Analyse-Ergebnisse
+        """
+
+        entities: List[ElektroEntität] = []
+        hersteller: List[str] = []
+        artikel_nummern: List[str] = []
+
+        # Hersteller-Erkennung
+        hersteller_pattern = self.patterns["hersteller"]
+        if isinstance(hersteller_pattern, Pattern):
+            for match in hersteller_pattern.finditer(text):
+                hersteller_name = match.group(1).upper()
+                hersteller.append(hersteller_name)
+
+                # Hersteller-Metadaten hinzufügen
+                zusatz_info = self.hersteller_mapping.get(hersteller_name, {})
+
+                entities.append(
+                    ElektroEntität(
+                        text=match.group(1),
+                        label="HERSTELLER",
+                        start=match.start(),
+                        end=match.end(),
+                        confidence=0.95,
+                        zusatz_info=zusatz_info
+                    )
+                )
+
+        # Artikelnummern
+        artikel_patterns = self.patterns["artikel_nummern"]
+        if isinstance(artikel_patterns, list):
+            for pattern in artikel_patterns:
+                for match in pattern.finditer(text):
+                    artikel_nr = match.group(0)
+                    artikel_nummern.append(artikel_nr)
+
+                    entities.append(
+                        ElektroEntität(
+                            text=artikel_nr,
+                            label="ARTIKEL_NUMMER",
+                            start=match.start(),
+                            end=match.end(),
+                            confidence=0.85,
+                            zusatz_info={"pattern_type": "elektro_artikelnummer"}
+                        )
+                    )
+
+        # Mengen extrahieren
+        mengen = self._extract_mengen(text)
+
+        # Preise extrahieren
+        preise = self._extract_preise(text)
+
+        # SKR03-Empfehlungen generieren
+        skr03_empfehlungen = self._generate_skr03_recommendations(text, hersteller)
+
+        # Elektro-Begriffe
+        for match in self.patterns["elektro_begriffe"].finditer(text):
+            entities.append(
+                ElektroEntität(
+                    text=match.group(0),
+                    label="ELEKTRO_BEGRIFF",
+                    start=match.start(),
+                    end=match.end(),
+                    confidence=0.80,
+                    zusatz_info={"kategorie": "elektrotechnik"}
+                )
+            )
+
+        # Gesamt-Konfidenz berechnen
+        if entities:
+            gesamt_confidence = sum(e.confidence for e in entities) / len(entities)
+        else:
+            gesamt_confidence = 0.0
+
+        return ElektroNERResult(
+            entities=entities,
+            hersteller=list(set(hersteller)),  # Duplikate entfernen
+            artikel_nummern=list(set(artikel_nummern)),
+            mengen=mengen,
+            preise=preise,
+            skr03_empfehlungen=skr03_empfehlungen,
+            gesamt_confidence=gesamt_confidence
+        )
+
+    def _extract_mengen(self, text: str) -> List[Dict[str, Any]]:
+        """📦 Extrahiert und normalisiert Mengen-Angaben."""
+
+        mengen = []
+
+        for match in self.patterns["mengen"].finditer(text):
+            value_str = match.group(1).replace(",", ".")
+            unit = match.group(2)
+
+            try:
+                value = float(value_str)
+
+                # Unit normalisieren
+                normalized_unit = self._normalize_unit(unit)
+
+                mengen.append({
+                    "menge": value,
+                    "einheit": normalized_unit,
+                    "original_text": match.group(0),
+                    "position": match.start()
+                })
+
+            except ValueError:
+                continue  # Ungültige Zahlenwerte ignorieren
+
+        return mengen
+
+    def _extract_preise(self, text: str) -> List[Dict[str, Any]]:
+        """💰 Extrahiert Preis-Informationen."""
+
+        preise = []
+
+        for match in self.patterns["preise"].finditer(text):
+            # Finde den Preis-Wert (kann in verschiedenen Gruppen sein)
+            price_value = None
+            for group_idx in range(1, 4):  # Gruppen 1, 2, 3 prüfen
+                if match.group(group_idx):
+                    price_value = match.group(group_idx)
+                    break
+
+            if price_value:
+                try:
+                    # Komma zu Punkt für float-Konversion
+                    price_float = float(price_value.replace(",", "."))
+
+                    preise.append({
+                        "betrag": price_float,
+                        "währung": "EUR",
+                        "original_text": match.group(0),
+                        "position": match.start(),
+                        "netto_brutto": "unbekannt"  # Könnte durch weitere Analyse bestimmt werden
+                    })
+
+                except ValueError:
+                    continue
+
+        return preise
+
+    def _normalize_unit(self, unit: str) -> str:
+        """📏 Normalisiert Mengen-Einheiten."""
+
+        unit_mapping = {
+            "st": "Stück",
+            "st.": "Stück",
+            "stk": "Stück",
+            "stk.": "Stück",
+            "stück": "Stück",
+            "x": "Stück",
+            "pkt": "Punkt",
+            "pkt.": "Punkt",
+            "punkt": "Punkt",
+            "paar": "Paar",
+            "set": "Set"
+        }
+
+        return unit_mapping.get(unit.lower(), unit)
+
+    def _generate_skr03_recommendations(
+        self,
+        text: str,
+        hersteller: List[str]
+    ) -> List[str]:
+        """📊 Generiert SKR03-Konto-Empfehlungen."""
+
+        recommendations = []
+        text_lower = text.lower()
+
+        # Hersteller-basierte Empfehlungen
+        for h in hersteller:
+            hersteller_info = self.hersteller_mapping.get(h, {})
+            skr03_hint = hersteller_info.get("skr03_hint")
+            if skr03_hint and skr03_hint not in recommendations:
+                recommendations.append(skr03_hint)
+
+        # Begriff-basierte Empfehlungen
+        for begriff, konto in self.skr03_mapping.items():
+            if begriff in text_lower and konto not in recommendations:
+                recommendations.append(konto)
+
+        # Default-Empfehlung für Elektro
+        if not recommendations:
+            recommendations.append("3400")  # Standard Elektroinstallation
+
+        return recommendations
+
+    def get_statistics(self, result: ElektroNERResult) -> Dict[str, Any]:
+        """📈 Generiert Statistiken für NER-Ergebnis."""
+
+        entity_counts = {}
+        for entity in result.entities:
+            label = entity.label
+            entity_counts[label] = entity_counts.get(label, 0) + 1
+
+        return {
+            "total_entities": len(result.entities),
+            "entity_types": entity_counts,
+            "unique_hersteller": len(result.hersteller),
+            "artikel_nummern_count": len(result.artikel_nummern),
+            "mengen_count": len(result.mengen),
+            "preise_count": len(result.preise),
+            "avg_confidence": result.gesamt_confidence,
+            "skr03_empfehlungen": len(result.skr03_empfehlungen),
+            "is_elektro_content": len(result.hersteller) > 0 or len(result.artikel_nummern) > 0
+        }
+
+
+# Convenience Functions
+def create_elektro_ner() -> VereinfachteElektrotechnikNER:
+    """Factory-Function für VereinfachteElektrotechnikNER."""
+    return VereinfachteElektrotechnikNER()
+
+
+def analyze_elektro_text(text: str) -> ElektroNERResult:
+    """
+    Einfache Analyse-Function für Elektro-Texte.
+
+    Args:
+        text: Zu analysierender Text
+
+    Returns:
+        ElektroNERResult: Analyse-Ergebnisse
+    """
+    ner = create_elektro_ner()
+    return ner.analyze_text(text)
+
+
+def extract_hersteller_and_skr03(text: str) -> Dict[str, Any]:
+    """
+    Extrahiert schnell Hersteller und SKR03-Empfehlungen.
+
+    Args:
+        text: Zu analysierender Text
+
+    Returns:
+        Dict: Hersteller und SKR03-Empfehlungen
+    """
+    result = analyze_elektro_text(text)
+
+    return {
+        "hersteller": result.hersteller,
+        "skr03_empfehlungen": result.skr03_empfehlungen,
+        "confidence": result.gesamt_confidence,
+        "is_elektro": len(result.hersteller) > 0
+    }

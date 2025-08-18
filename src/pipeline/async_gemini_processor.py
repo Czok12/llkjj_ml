@@ -268,6 +268,165 @@ class AsyncGeminiDirectProcessor(GeminiDirectProcessor):
 
         return results
 
+    async def get_cache_statistics(self) -> dict[str, Any]:
+        """
+        🎯 QUICK WIN: Cache-Statistiken für Performance-Monitoring
+
+        Returns:
+            Dictionary mit Cache-Performance-Metriken
+        """
+
+        def _gather_stats() -> dict[str, Any]:
+            with sqlite3.connect(self.cache_db_path) as conn:
+                # Basis-Statistiken
+                cursor = conn.execute("SELECT COUNT(*) FROM pdf_cache")
+                total_entries = cursor.fetchone()[0]
+
+                # Speicherplatz-Analyse
+                cursor = conn.execute(
+                    "SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size()"
+                )
+                db_size_bytes = cursor.fetchone()[0] if cursor.fetchone() else 0
+
+                # Cache-Hit-Rate der letzten 24h
+                cursor = conn.execute(
+                    """
+                    SELECT COUNT(*) FROM pdf_cache
+                    WHERE processed_at > datetime('now', '-24 hours')
+                """
+                )
+                recent_entries = cursor.fetchone()[0]
+
+                # Qualitäts-Verteilung
+                cursor = conn.execute(
+                    """
+                    SELECT extraction_quality, COUNT(*)
+                    FROM pdf_cache
+                    GROUP BY extraction_quality
+                """
+                )
+                quality_dist = dict(cursor.fetchall())
+
+                # Durchschnittliche Konfidenz
+                cursor = conn.execute("SELECT AVG(confidence_score) FROM pdf_cache")
+                avg_confidence = cursor.fetchone()[0] or 0.0
+
+                return {
+                    "total_cached_pdfs": total_entries,
+                    "database_size_mb": round(db_size_bytes / (1024 * 1024), 2),
+                    "cache_entries_24h": recent_entries,
+                    "quality_distribution": quality_dist,
+                    "average_confidence": round(avg_confidence, 3),
+                    "estimated_savings_hours": round(
+                        total_entries * 5.0 / 3600, 2
+                    ),  # 5s pro PDF gespart
+                }
+
+        loop = asyncio.get_event_loop()
+        stats = await loop.run_in_executor(None, _gather_stats)
+
+        logger.info(
+            "📊 Cache-Statistiken: %d PDFs gecacht, %.2f MB, %.3f Ø Konfidenz",
+            stats["total_cached_pdfs"],
+            stats["database_size_mb"],
+            stats["average_confidence"],
+        )
+
+        return stats
+
+    async def warm_cache_for_patterns(self, pattern_files: list[Path]) -> int:
+        """
+        🎯 QUICK WIN: Cache-Warming für häufige PDF-Patterns
+
+        Analysiert häufige PDF-Muster und cached sie proaktiv.
+
+        Args:
+            pattern_files: Liste von PDF-Dateien mit typischen Mustern
+
+        Returns:
+            Anzahl neu gecachter PDFs
+        """
+        warmed_count = 0
+
+        for pdf_path in pattern_files:
+            if not pdf_path.exists():
+                continue
+
+            # Prüfe ob bereits gecacht
+            try:
+                pdf_hash = await asyncio.get_event_loop().run_in_executor(
+                    None, self._calculate_pdf_hash, pdf_path
+                )
+
+                cached_result = await self._check_cache(pdf_hash)
+                if cached_result:
+                    logger.debug("⚡ Pattern bereits gecacht: %s", pdf_path.name)
+                    continue
+
+                # Cache-Miss → verarbeite und cache
+                logger.info("🔥 Cache-Warming für Pattern: %s", pdf_path.name)
+                await self.process_pdf_async(pdf_path)
+                warmed_count += 1
+
+            except Exception as e:
+                logger.warning(
+                    "⚠️ Cache-Warming fehlgeschlagen für %s: %s", pdf_path.name, e
+                )
+
+        logger.info(
+            "🔥 Cache-Warming abgeschlossen: %d neue Patterns gecacht", warmed_count
+        )
+        return warmed_count
+
+    async def optimize_cache_performance(self) -> dict[str, Any]:
+        """
+        🎯 QUICK WIN: Cache-Performance-Optimierung
+
+        Führt Wartungsoperationen für bessere Cache-Performance durch.
+
+        Returns:
+            Optimierungsstatistiken
+        """
+
+        def _optimize_db() -> dict[str, Any]:
+            with sqlite3.connect(self.cache_db_path) as conn:
+                # VACUUM für Speicher-Optimierung
+                conn.execute("VACUUM")
+
+                # ANALYZE für Query-Optimierung
+                conn.execute("ANALYZE")
+
+                # Zusätzliche Indizes für häufige Queries
+                conn.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_confidence_quality
+                    ON pdf_cache(confidence_score, extraction_quality)
+                """
+                )
+
+                # Cache-Größe nach Optimierung
+                cursor = conn.execute(
+                    "SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size()"
+                )
+                optimized_size = cursor.fetchone()[0] if cursor.fetchone() else 0
+
+                return {
+                    "vacuum_completed": True,
+                    "analyze_completed": True,
+                    "new_indexes_created": 1,
+                    "optimized_size_mb": round(optimized_size / (1024 * 1024), 2),
+                }
+
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(None, _optimize_db)
+
+        logger.info(
+            "⚡ Cache-Optimierung abgeschlossen: %.2f MB nach VACUUM/ANALYZE",
+            result["optimized_size_mb"],
+        )
+
+        return result
+
     async def clear_cache(self, older_than_days: int = 30) -> int:
         """
         Cache-Bereinigung für ältere Einträge.

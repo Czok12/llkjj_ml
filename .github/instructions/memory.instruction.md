@@ -93,3 +93,10 @@ Recorded: 2025-08-18 by automated assistant
 ## Notes
 - Start with type annotation and stub errors, then address assignment and attribute errors
 - Update memory after each major step
+
+## Ad-hoc Review: Root test files (2025-08-18)
+
+- Root test files found in repository root: `test_automated_training.py`, `test_elektro_ner_simple.py`, `test_elektro_ner.py`, `test_context_integration.py`, `test_performance_integration.py`, `test_feedback_integration.py`, `test_production_chromadb.py`, `test_hybrid_intelligence.py`.
+- Klassifikation: Diese Dateien sind überwiegend ad-hoc Integration / Demo-Skripte, entworfen für manuelle Tests, schnelle Integrationschecks oder als Beispiele. Einige verwenden `print`-basierte Checks and manual exit codes; `test_hybrid_intelligence.py` enthält echte `pytest`-Style asserts and is more like a unit/integration test.
+- Empfehlung: Verschiebe langfristig alle echten Tests in den Standard-`tests/`-Ordner und strukturiere sie als pytest-Tests (asserts). Verschiebe ad-hoc Skripte und Demos nach `tools/`, `scripts/` oder `docs/examples/` or mark them as integration tests (e.g., `tests/integration/`). Entferne nur nach Review; lösche nicht ohne Backup.
+- Aktionsstatus: User asked whether they are demo files or removable — answered with recommendation to review and either move/convert or archive/delete after confirmation.

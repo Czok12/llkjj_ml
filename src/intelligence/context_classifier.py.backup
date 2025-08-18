@@ -1,0 +1,499 @@
+#!/usr/bin/env python3
+"""
+LLKJJ ML Pipeline - Intelligent RAG System Enhancement
+=====================================================
+
+🎯 PRIORITÄT 1.3: RAG-System Intelligence Boost
+
+Context-Aware SKR03-Klassifizierung mit:
+- Lieferanten-spezifische Klassifizierungs-Pattern
+- Preis-Threshold-Logik für Anlagevermögen vs. Verbrauchsmaterial
+- Multi-Position-Context für konsistente Kontierung
+- Temporal-Pattern-Analysis für saisonale Muster
+
+Autor: LLKJJ ML Pipeline Team
+Version: 1.0.0 (Context-Aware Intelligence)
+Datum: 18. August 2025
+"""
+
+import logging
+import sqlite3
+from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Any
+
+from src.config import Config
+
+logger = logging.getLogger(__name__)
+
+
+class ContextAwareClassifier:
+    """
+    🧠 Intelligente Context-Aware SKR03-Klassifizierung
+
+    Features:
+    - Lieferanten-Context: Sonepar=Elektro, Amazon=Verbrauchsmaterial-Bias
+    - Preis-Threshold-Logik: >500€ → Anlagevermögen-Prüfung, <50€ → Verbrauchsmaterial
+    - Multi-Position-Context: Ähnliche Artikel → konsistente Kontierung
+    - Temporal-Pattern: Saisonale Kaufmuster erkennen und nutzen
+    """
+
+    def __init__(self, config: Config | None = None):
+        self.config = config or Config()
+        self.context_db_path = Path("data/context/classification_context.db")
+        self.supplier_patterns_cache: dict[str, Any] = {}
+        self.price_thresholds = {
+            "anlagevermögen_min": 500.0,  # >500€ → Anlagevermögen prüfen
+            "verbrauchsmaterial_max": 50.0,  # <50€ → Verbrauchsmaterial wahrscheinlich
+            "werkzeug_range": (50.0, 500.0),  # 50-500€ → Werkzeug/Betriebsmittel
+        }
+
+        # Lieferanten-Context-Mapping
+        self.supplier_contexts = {
+            "sonepar": {
+                "primary_category": "elektro_material",
+                "confidence_boost": 0.15,
+                "typical_accounts": ["3400", "3300"],  # Wareneingang Elektro
+                "bias_keywords": [
+                    "kabel",
+                    "schalter",
+                    "dose",
+                    "leitung",
+                    "installationsmaterial",
+                ],
+            },
+            "amazon": {
+                "primary_category": "verbrauchsmaterial",
+                "confidence_boost": 0.10,
+                "typical_accounts": [
+                    "6800",
+                    "6600",
+                ],  # Büromaterial, Verbrauchsmaterial
+                "bias_keywords": ["verbrauchsmaterial", "bürobedarf", "kleinteile"],
+            },
+            "würth": {
+                "primary_category": "werkzeug_betriebsmittel",
+                "confidence_boost": 0.12,
+                "typical_accounts": ["3500", "6670"],  # Werkzeug, Betriebsmittel
+                "bias_keywords": [
+                    "werkzeug",
+                    "schrauben",
+                    "befestigung",
+                    "betriebsmittel",
+                ],
+            },
+            "famo": {
+                "primary_category": "elektro_installationsmaterial",
+                "confidence_boost": 0.18,
+                "typical_accounts": ["3400"],  # Spezialist für Elektroinstallation
+                "bias_keywords": [
+                    "installation",
+                    "elektro",
+                    "verlegung",
+                    "kabelführung",
+                ],
+            },
+        }
+
+        self._setup_context_database()
+        logger.info("🧠 ContextAwareClassifier initialisiert")
+
+    def _setup_context_database(self) -> None:
+        """Setup SQLite database für Context-Patterns."""
+        self.context_db_path.parent.mkdir(parents=True, exist_ok=True)
+
+        with sqlite3.connect(self.context_db_path) as conn:
+            # Supplier-Pattern-Tracking
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS supplier_patterns (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    supplier_name TEXT NOT NULL,
+                    item_description TEXT NOT NULL,
+                    classified_account TEXT NOT NULL,
+                    confidence_score REAL NOT NULL,
+                    price_eur REAL,
+                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    validated BOOLEAN DEFAULT FALSE
+                )
+            """
+            )
+
+            # Multi-Position-Context-Tracking
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS position_contexts (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    invoice_id TEXT NOT NULL,
+                    position_descriptions TEXT NOT NULL,  -- JSON array
+                    classified_accounts TEXT NOT NULL,    -- JSON array
+                    consistency_score REAL NOT NULL,
+                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """
+            )
+
+            # Temporal-Pattern-Analysis
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS temporal_patterns (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    month INTEGER NOT NULL,
+                    quarter INTEGER NOT NULL,
+                    item_category TEXT NOT NULL,
+                    frequency_count INTEGER NOT NULL,
+                    avg_confidence REAL NOT NULL,
+                    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """
+            )
+
+            # Create indices for performance
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_supplier_name ON supplier_patterns(supplier_name)"
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_temporal_month ON temporal_patterns(month, quarter)"
+            )
+
+        logger.info("🔧 Context-Database initialisiert: %s", self.context_db_path)
+
+    def enhance_classification_with_context(
+        self, item: dict[str, Any], supplier_name: str, invoice_context: dict[str, Any]
+    ) -> dict[str, Any]:
+        """
+        Erweitert SKR03-Klassifizierung mit Context-Intelligence.
+
+        Args:
+            item: Einzelne Rechnungsposition
+            supplier_name: Name des Lieferanten
+            invoice_context: Kontext der gesamten Rechnung
+
+        Returns:
+            Enhanced item mit verbesserter Klassifizierung
+        """
+        enhanced_item = item.copy()
+
+        # 1. Supplier-Context-Enhancement
+        supplier_boost = self._apply_supplier_context(enhanced_item, supplier_name)
+
+        # 2. Price-Threshold-Logic
+        price_adjustment = self._apply_price_threshold_logic(enhanced_item)
+
+        # 3. Multi-Position-Context (wenn mehr als 1 Position)
+        consistency_boost = self._apply_multi_position_context(
+            enhanced_item, invoice_context.get("all_items", [])
+        )
+
+        # 4. Temporal-Pattern-Analysis
+        seasonal_adjustment = self._apply_temporal_patterns(enhanced_item)
+
+        # Kombiniere alle Context-Boosts
+        original_confidence = enhanced_item.get("confidence", 0.7)
+        total_boost = (
+            supplier_boost + price_adjustment + consistency_boost + seasonal_adjustment
+        )
+
+        # Cap confidence at 1.0, aber erlaube deutliche Verbesserungen
+        enhanced_confidence = min(1.0, original_confidence + total_boost)
+        enhanced_item["confidence"] = enhanced_confidence
+
+        # Context-Metadata für Debugging und Analytics
+        enhanced_item["context_analysis"] = {
+            "supplier_boost": supplier_boost,
+            "price_adjustment": price_adjustment,
+            "consistency_boost": consistency_boost,
+            "seasonal_adjustment": seasonal_adjustment,
+            "total_context_boost": total_boost,
+            "original_confidence": original_confidence,
+        }
+
+        logger.debug(
+            "🧠 Context-Enhancement: %s → Confidence %.3f (+%.3f)",
+            enhanced_item.get("beschreibung", "")[:30],
+            enhanced_confidence,
+            total_boost,
+        )
+
+        return enhanced_item
+
+    def _apply_supplier_context(
+        self, item: dict[str, Any], supplier_name: str
+    ) -> float:
+        """Anwendung lieferanten-spezifischer Klassifizierungs-Bias."""
+        supplier_key = supplier_name.lower()
+
+        # Suche nach bekannten Lieferanten-Pattern
+        for known_supplier, context in self.supplier_contexts.items():
+            if known_supplier in supplier_key:
+                # Prüfe ob Item-Description zu Lieferanten-Bias passt
+                description = item.get("beschreibung", "").lower()
+                bias_keywords = context["bias_keywords"]
+
+                keyword_matches = sum(
+1 for keyword in bias_keywords if keyword in description  # type: ignore[misc]
+                )
+                if keyword_matches > 0:
+                    # Boost proportional zu Keyword-Matches
+                    boost = context["confidence_boost"] * (  # type: ignore[operator]
+                        keyword_matches / len(bias_keywords) if item else 0
+                    )
+
+                    # Store pattern für Future Learning
+                    self._store_supplier_pattern(
+                        supplier_name,
+                        item.get("beschreibung", ""),
+                        item.get("skr03_account", ""),
+                        boost,
+                    )
+
+                    return boost
+
+        return 0.0
+
+    def _apply_price_threshold_logic(self, item: dict[str, Any]) -> float:
+        """Preis-basierte Klassifizierungs-Logik."""
+        price = item.get("einzelpreis", 0.0)
+        if not isinstance(price, (int, float)) or price <= 0:
+            return 0.0
+
+        current_account = item.get("skr03_account", "")
+
+        # Anlagevermögen-Prüfung für teure Items
+        anlagevermögen_min = float(self.price_thresholds["anlagevermögen_min"])  # type: ignore[arg-type]
+        if price >= anlagevermögen_min:
+            if current_account.startswith("04") or current_account.startswith("05"):
+                # Bereits als Anlagevermögen klassifiziert - Confidence-Boost
+                return 0.20
+            elif current_account.startswith("34") or current_account.startswith("68"):
+                # Möglicherweise falsch als Aufwand klassifiziert - Warnung
+                logger.warning(
+                    "💰 Hochpreisiger Artikel (%.2f€) als Aufwand klassifiziert: %s",
+                    price,
+                    item.get("beschreibung", "")[:50],
+                )
+                return -0.10  # Confidence-Reduction
+
+        # Verbrauchsmaterial-Bias für niedrigpreisige Items
+        elif price <= self.price_thresholds["verbrauchsmaterial_max"]:  # type: ignore[operator]
+            if current_account.startswith("68") or current_account.startswith("66"):
+                # Korrekt als Verbrauchsmaterial klassifiziert
+                return 0.15
+
+        # Werkzeug-Range (50-500€)
+        else:
+            werkzeug_min, werkzeug_max = self.price_thresholds["werkzeug_range"]
+            if werkzeug_min <= price <= werkzeug_max:
+                if current_account.startswith("35") or current_account.startswith(
+                    "667"
+                ):
+                    # Korrekt als Werkzeug/Betriebsmittel klassifiziert
+                    return 0.12
+
+        return 0.0
+
+    def _apply_multi_position_context(
+        self, item: dict[str, Any], all_items: list[dict[str, Any]]
+    ) -> float:
+        """Multi-Position-Context für konsistente Kontierung."""
+        if len(all_items) <= 1:
+            return 0.0
+
+        current_description = item.get("beschreibung", "").lower()
+        current_account = item.get("skr03_account", "")
+
+        # Finde ähnliche Items auf derselben Rechnung
+        similar_items = []
+        for other_item in all_items:
+            if other_item == item:
+                continue
+
+            other_description = other_item.get("beschreibung", "").lower()
+
+            # Einfache Ähnlichkeits-Heuristik (kann mit ML verbessert werden)
+            common_words = set(current_description.split()) & set(
+                other_description.split()
+            )
+            similarity_score = len(common_words) / max(
+                len(current_description.split()), 1
+            )
+
+            if similarity_score > 0.3:  # 30% Wort-Überlappung
+                similar_items.append(other_item)
+
+        if similar_items:
+            # Prüfe Kontierungs-Konsistenz
+            similar_accounts = [item.get("skr03_account", "") for item in similar_items]
+            consistent_accounts = [
+                acc for acc in similar_accounts if acc == current_account
+            ]
+
+            consistency_ratio = len(consistent_accounts) / len(similar_items)
+
+            if consistency_ratio > 0.7:  # >70% ähnliche Items haben gleiche Kontierung
+                boost = 0.10 * consistency_ratio
+                logger.debug(
+                    "🔗 Multi-Position-Konsistenz: %.1f%% ähnliche Items haben Konto %s",
+                    consistency_ratio * 100,
+                    current_account,
+                )
+                return boost
+
+        return 0.0
+
+    def _apply_temporal_patterns(self, item: dict[str, Any]) -> float:
+        """Temporal-Pattern-Analysis für saisonale Muster."""
+        current_month = datetime.now().month
+        current_quarter = (current_month - 1) // 3 + 1
+
+        # Einfache saisonale Heuristiken für Elektrotechnik
+        description = item.get("beschreibung", "").lower()
+
+        # Winter-Muster (Heizung, Beleuchtung)
+        if current_month in [11, 12, 1, 2]:
+            if any(
+                keyword in description
+                for keyword in ["heizung", "beleuchtung", "lampe", "licht"]
+            ):
+                return 0.05
+
+        # Sommer-Muster (Klimaanlagen, Lüftung)
+        elif current_month in [6, 7, 8]:
+            if any(
+                keyword in description
+                for keyword in ["klimaanlage", "lüftung", "ventilator", "kühlung"]
+            ):
+                return 0.05
+
+        # Jahresanfang (Werkzeug-Anschaffungen)
+        elif current_month in [1, 2]:
+            if any(
+                keyword in description
+                for keyword in ["werkzeug", "messgerät", "prüfgerät"]
+            ):
+                return 0.08
+
+        return 0.0
+
+    def _store_supplier_pattern(
+        self, supplier_name: str, description: str, account: str, confidence: float
+    ) -> None:
+        """Speichert Lieferanten-Pattern für zukünftiges Learning."""
+        try:
+            with sqlite3.connect(self.context_db_path) as conn:
+                conn.execute(
+                    """
+                    INSERT INTO supplier_patterns
+                    (supplier_name, item_description, classified_account, confidence_score)
+                    VALUES (?, ?, ?, ?)
+                """,
+                    (supplier_name, description, account, confidence),
+                )
+
+        except sqlite3.Error as e:
+            logger.warning("⚠️ Fehler beim Speichern des Supplier-Patterns: %s", e)
+
+    def get_context_analytics(self, days_back: int = 30) -> dict[str, Any]:
+        """
+        Analysiert Context-Effectiveness für Dashboard.
+
+        Returns:
+            Analytics über Context-Verbesserungen
+        """
+        cutoff_date = datetime.now() - timedelta(days=days_back)
+
+        try:
+            with sqlite3.connect(self.context_db_path) as conn:
+                # Supplier-Pattern-Effectiveness
+                cursor = conn.execute(
+                    """
+                    SELECT supplier_name, COUNT(*) as pattern_count,
+                           AVG(confidence_score) as avg_confidence
+                    FROM supplier_patterns
+                    WHERE timestamp > ?
+                    GROUP BY supplier_name
+                    ORDER BY pattern_count DESC
+                    LIMIT 10
+                """,
+                    (cutoff_date,),
+                )
+
+                supplier_stats = [
+                    {"supplier": row[0], "patterns": row[1], "avg_confidence": row[2]}
+                    for row in cursor.fetchall()
+                ]
+
+                # Multi-Position-Consistency-Stats
+                cursor = conn.execute(
+                    """
+                    SELECT AVG(consistency_score) as avg_consistency_score,
+                           COUNT(*) as total_multi_position_invoices
+                    FROM position_contexts
+                    WHERE timestamp > ?
+                """,
+                    (cutoff_date,),
+                )
+
+                consistency_row = cursor.fetchone()
+                consistency_stats = {
+                    "avg_consistency_score": consistency_row[0] or 0.0,
+                    "total_multi_position_invoices": consistency_row[1] or 0,
+                }
+
+                return {
+                    "timeframe_days": days_back,
+                    "supplier_pattern_stats": supplier_stats,
+                    "multi_position_consistency": consistency_stats,
+                    "price_threshold_config": self.price_thresholds,
+                    "active_supplier_contexts": list(self.supplier_contexts.keys()),
+                }
+
+        except sqlite3.Error as e:
+            logger.error("❌ Fehler bei Context-Analytics: %s", e)
+            return {"error": str(e)}
+
+    def learn_from_feedback(
+        self,
+        corrected_item: dict[str, Any],
+        original_item: dict[str, Any],
+        supplier_name: str,
+    ) -> None:
+        """
+        Lernt aus Benutzer-Feedback für zukünftige Verbesserungen.
+
+        Args:
+            corrected_item: Vom Benutzer korrigierte Klassifizierung
+            original_item: Original-Klassifizierung des Systems
+            supplier_name: Lieferantenname für Context-Learning
+        """
+        # Update Supplier-Pattern mit validierter Klassifizierung
+        corrected_account = corrected_item.get("skr03_account", "")
+        description = corrected_item.get("beschreibung", "")
+
+        try:
+            with sqlite3.connect(self.context_db_path) as conn:
+                # Markiere korrigierte Klassifizierung als validiert
+                conn.execute(
+                    """
+                    INSERT INTO supplier_patterns
+                    (supplier_name, item_description, classified_account, confidence_score, validated)
+                    VALUES (?, ?, ?, ?, ?)
+                """,
+                    (supplier_name, description, corrected_account, 1.0, True),
+                )
+
+                logger.info(
+                    "📚 Feedback-Learning: %s → %s (validiert)",
+                    description[:30],
+                    corrected_account,
+                )
+
+        except sqlite3.Error as e:
+            logger.warning("⚠️ Fehler beim Feedback-Learning: %s", e)
+
+
+def create_context_aware_classifier(
+    config: Config | None = None,
+) -> ContextAwareClassifier:
+    """Factory-Function für ContextAwareClassifier."""
+    return ContextAwareClassifier(config)

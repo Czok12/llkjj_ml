@@ -36,8 +36,13 @@ except ImportError:
     GENAI_AVAILABLE = False
 
 from src.config import Config
+from src.intelligence.context_classifier import (
+    ContextAwareClassifier,
+)
+from src.intelligence.feedback_learning import FeedbackLearningEngine
 from src.models.gemini_schemas import create_validation_report, validate_gemini_response
 from src.models.processing_result import ProcessingResult
+from src.monitoring.performance_metrics import PerformanceMonitor
 from src.processing.spacy_corrector import SpacyAnnotationCorrector
 from src.skr03_manager import lade_skr03_manager
 from src.training_data_persistence import TrainingDataPersistence
@@ -82,8 +87,17 @@ class GeminiDirectProcessor:
         # 🎯 A2: Training Data Persistence (Strategic TODO)
         self.training_persistence = TrainingDataPersistence(self.config)
 
+        # 📊 Performance Monitoring für Business Metrics
+        self.performance_monitor = PerformanceMonitor(self.config)
+
+        # 🧠 Context-Aware Classifier für intelligente Klassifizierung
+        self.context_classifier = ContextAwareClassifier()
+
+        # 🔄 Feedback Learning Engine für kontinuierliche Verbesserung
+        self.feedback_engine = FeedbackLearningEngine(self.config)
+
         logger.info(
-            "✅ GeminiDirectProcessor initialisiert (v4.0.0 + Training Data Collection)"
+            "✅ GeminiDirectProcessor initialisiert (v4.0.0 + Training Data Collection + Performance Monitoring + Context Intelligence + Feedback Learning)"
         )
 
     @property
@@ -217,7 +231,7 @@ class GeminiDirectProcessor:
 
                 if len(pdf_content) > 20 * 1024 * 1024:  # 20MB Limit
                     raise ValueError(
-                        f"PDF-Datei zu groß: {len(pdf_content)/1024/1024:.1f}MB (Max: 20MB)"
+                        f"PDF-Datei zu groß: {len(pdf_content) / 1024 / 1024:.1f}MB (Max: 20MB)"
                     )
 
             except OSError as e:
@@ -336,6 +350,22 @@ class GeminiDirectProcessor:
                 # Training data persistence should not fail the main pipeline
                 logger.warning("⚠️ Training data persistence failed: %s", training_error)
 
+            # 📊 Performance Monitoring - Record business metrics
+            try:
+                self.performance_monitor.record_processing_metrics(
+                    result=result,
+                    gemini_time_ms=gemini_time_ms,
+                    classification_time_ms=classification_time_ms,
+                    cache_hit=False,  # Not using cache in this standard processor
+                    error_occurred=False,
+                )
+                logger.debug("📊 Performance metrics recorded successfully")
+            except Exception as metrics_error:
+                # Metrics recording should not fail the main pipeline
+                logger.warning(
+                    "⚠️ Performance metrics recording failed: %s", metrics_error
+                )
+
             return result
 
         except Exception as e:
@@ -357,6 +387,35 @@ class GeminiDirectProcessor:
 
             # Error-Log in Datei schreiben für Debugging
             self._write_error_log_detailed(pdf_path, e, error_context)
+
+            # 📊 Performance Monitoring - Record error metrics
+            try:
+                # Create a minimal ProcessingResult for error recording
+                error_result = ProcessingResult(
+                    pdf_path=str(pdf_path),
+                    processing_timestamp=datetime.now().isoformat() + "Z",
+                    processing_method="gemini_first",
+                    structured_data={},
+                    skr03_classifications=[],
+                    confidence_score=0.0,
+                    extraction_quality="poor",
+                    training_annotations=[],
+                    processing_time_ms=int(str(error_context["processing_time_ms"])),
+                    gemini_time_ms=0,
+                    classification_time_ms=0,
+                )
+
+                self.performance_monitor.record_processing_metrics(
+                    result=error_result,
+                    gemini_time_ms=0,
+                    classification_time_ms=0,
+                    cache_hit=False,
+                    error_occurred=True,
+                    error_message=str(e),
+                )
+                logger.debug("📊 Error metrics recorded successfully")
+            except Exception as metrics_error:
+                logger.warning("⚠️ Error metrics recording failed: %s", metrics_error)
 
             # Exception re-raise mit besserer Nachricht
             if isinstance(e, FileNotFoundError | ValueError):
@@ -535,9 +594,9 @@ EXTRAHIERE ALLE sichtbaren Positionen vollständig und präzise!
         self, line_items: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
         """
-        Verbessert SKR03-Klassifizierung durch RAG-System.
+        🧠 Verbessert SKR03-Klassifizierung durch RAG-System + Context-Aware Intelligence.
         """
-        logger.info("🔄 SKR03-Enhancement mit RAG-System...")
+        logger.info("🔄 SKR03-Enhancement mit RAG-System + Context Intelligence...")
 
         enhanced_items = []
 
@@ -545,7 +604,7 @@ EXTRAHIERE ALLE sichtbaren Positionen vollständig und präzise!
             # RAG-basierte Verbesserung der Klassifizierung
             enhanced_item = item.copy()
 
-            # SKR03Manager für intelligente Klassifizierung nutzen
+            # 1. SKR03Manager für intelligente Klassifizierung nutzen
             if self.skr03_manager:
                 artikel_text = f"{item.get('beschreibung', '')} {item.get('marke', '')}"
                 kategorie, konto, konfidenz, keywords = (
@@ -561,10 +620,46 @@ EXTRAHIERE ALLE sichtbaren Positionen vollständig und präzise!
                     }
                 )
 
-            enhanced_items.append(enhanced_item)
+            # 2. 🧠 Context-Aware Intelligence Enhancement
+            try:
+                context_enhanced_item = self.context_classifier.classify_with_context(
+                    item=enhanced_item,
+                    all_items=line_items,  # Für Multi-Position-Context
+                )
+                enhanced_item.update(context_enhanced_item)
+
+                # 3. 🔄 Feedback Learning Enhancement
+                feedback_enhanced_item = self.feedback_engine.apply_feedback_boost(
+                    classification=enhanced_item,
+                    supplier_context={
+                        "supplier": item.get("lieferant", ""),
+                        "invoice_date": item.get("datum"),
+                        "total_amount": item.get("gesamtbetrag", 0),
+                    },
+                )
+                enhanced_items.append(feedback_enhanced_item)
+
+                logger.debug(
+                    "Feedback-Enhanced: %s -> %s (Supplier: %s) [Boost: +%.2f]",
+                    item.get("beschreibung", "")[:30],
+                    feedback_enhanced_item.get("skr03_konto", ""),
+                    item.get("lieferant", "")[:15],
+                    feedback_enhanced_item.get("feedback_boost", 0.0),
+                )
+
+            except Exception as context_error:
+                logger.warning(
+                    "Context-Enhancement fehler für %s: %s",
+                    item.get("beschreibung", "")[:30],
+                    str(context_error),
+                )
+                enhanced_items.append(
+                    enhanced_item
+                )  # Fallback: Standard RAG-Enhancement
 
         logger.info(
-            "✅ RAG-Enhancement abgeschlossen für %d Positionen", len(enhanced_items)
+            "✅ RAG + Context Enhancement abgeschlossen für %d Positionen",
+            len(enhanced_items),
         )
         return enhanced_items
 
