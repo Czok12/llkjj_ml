@@ -29,8 +29,8 @@ from .config import MLSettings, default_settings
 
 # Import existing components - we'll adapt them gradually
 try:
-    from src.pipeline.processor import ProcessingResult as BaseProcessingResult
-    from src.pipeline.processor import UnifiedProcessor
+    from src.models.processing_result import ProcessingResult as BaseProcessingResult
+    from src.pipeline.unified_processor import UnifiedProcessor
 
     LEGACY_COMPONENTS_AVAILABLE = True
 except ImportError:
@@ -38,8 +38,10 @@ except ImportError:
     from typing import TYPE_CHECKING
 
     if TYPE_CHECKING:
-        from src.pipeline.processor import ProcessingResult as BaseProcessingResult
-        from src.pipeline.processor import UnifiedProcessor
+        from src.models.processing_result import (
+            ProcessingResult as BaseProcessingResult,
+        )
+        from src.pipeline.unified_processor import UnifiedProcessor
     else:
         BaseProcessingResult = None  # type: ignore[misc,assignment]
         UnifiedProcessor = None  # type: ignore[misc,assignment]

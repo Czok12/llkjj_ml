@@ -29,7 +29,7 @@ class Config(BaseSettings):
 
     # API Configuration
     google_api_key: str | None = Field(default=None)
-    gemini_model: str = Field(default="gemini-2.0-flash-exp")
+    gemini_model: str = Field(default="gemini-2.5-flash")
 
     # Paths
     project_root: Path = Path(__file__).parent.parent

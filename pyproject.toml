@@ -9,7 +9,6 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -17,6 +16,7 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 keywords = ["pdf", "invoice", "accounting", "ml", "skr03", "elektrohandwerk"]
+
 dependencies = [
     "docling>=2.44.0,<3.0.0",
     "pandas>=2.2.3,<3.0.0",
@@ -25,7 +25,7 @@ dependencies = [
     "spacy>=3.7.6,<4.0.0",
     "sentence-transformers>=3.0.1,<4.0.0",
     "scikit-learn>=1.5.2,<2.0.0",
-    "torch>=2.4.1,<3.0.0",
+    "torch>=2.4.1,<3.0.0",                 # Base CPU Version (Default)
     "chromadb>=0.5.5,<1.0.0",
     "faiss-cpu>=1.8.0,<2.0.0",
     "python-dotenv>=1.0.1,<2.0.0",
@@ -39,6 +39,7 @@ dependencies = [
     "pymupdf>=1.26.3,<2.0.0",
     "pytesseract>=0.3.13,<1.0.0",
     "pdf2image>=1.17.0,<2.0.0",
+    "pillow>=10.4.0,<11.0.0",              # für pdf2image / OCR
     "google-genai>=1.30.0,<2.0.0",
     "opencv-python>=4.12.0.88,<5.0.0",
     "aiofiles>=24.1.0,<25.0.0",
@@ -49,20 +50,11 @@ dependencies = [
 llkjj-ml = "main:main"
 
 [project.optional-dependencies]
-dev = [
-    "pytest>=8.3.3,<9.0.0",
-    "black>=24.8.0,<25.0.0",
-    "mypy>=1.11.2,<2.0.0",
-    "ruff>=0.6.4,<1.0.0",
-    "pre-commit>=4.2.0,<5.0.0",
-    "types-pyyaml>=6.0.12.20250809",
-    "bandit>=1.8.6,<2.0.0",
-    "safety>=3.6.0,<4.0.0",
-    "types-psutil>=7.0.0.20250801",
-    "types-aiofiles>=24.1.0.20250809",
-]
+# Für legacy/pip-kompatibilität
+dev = ["pytest", "black", "mypy", "ruff", "pre-commit", "bandit", "safety"]
 gpu = ["torch[cuda]>=2.4.1,<3.0.0"]
 cuda = ["nvidia-ml-py3>=7.352.0,<8.0.0"]
+api = ["fastapi>=0.116.1,<1.0.0", "uvicorn>=0.35.0,<1.0.0"]
 
 [tool.poetry]
 packages = [{ include = "src" }]
@@ -70,29 +62,36 @@ packages = [{ include = "src" }]
 [tool.poetry.dependencies]
 python = ">=3.10,<3.13"
 
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.3"
+black = "^24.8.0"
+mypy = "^1.11.2"
+ruff = "^0.6.4"
+pre-commit = "^4.2.0"
+bandit = "^1.8.6"
+safety = "^3.6.0"
+types-pyyaml = "^6.0.12.20250809"
+types-requests = "^2.32.4.20250809"
+types-psutil = "^7.0.0.20250801"
+types-aiofiles = "^24.1.0.20250809"
+matplotlib = "^3.10.5"
+seaborn = "^0.13.2"
+
 [tool.poetry.group.gpu]
 optional = true
-
 [tool.poetry.group.gpu.dependencies]
-# GPU-optimized versions for better performance
 torch = { version = "^2.4.1", extras = ["cuda"], optional = true }
 
 [tool.poetry.group.cuda]
 optional = true
-
 [tool.poetry.group.cuda.dependencies]
-# CUDA-specific dependencies for GPU acceleration
 nvidia-ml-py3 = { version = "^7.352.0", optional = true }
 
-
-[tool.poetry.group.dev.dependencies]
-pandas = "^2.3.1"
-matplotlib = "^3.10.5"
-seaborn = "^0.13.2"
-uvicorn = "^0.35.0"
+[tool.poetry.group.api]
+optional = true
+[tool.poetry.group.api.dependencies]
 fastapi = "^0.116.1"
-types-pyyaml = "^6.0.12.20250809"
-types-requests = "^2.32.4.20250809"
+uvicorn = "^0.35.0"
 
 [build-system]
 requires = ["poetry-core"]
@@ -101,10 +100,9 @@ build-backend = "poetry.core.masonry.api"
 [tool.black]
 line-length = 88
 target-version = ['py310']
-include = '\.pyi?$'
+include = "\\.pyi?$"
 extend-exclude = '''
 /(
-  # directories
   \.eggs
   | \.git
   | \.hg
@@ -121,20 +119,8 @@ target-version = "py310"
 line-length = 88
 
 [tool.ruff.lint]
-select = [
-    "E",  # pycodestyle errors
-    "W",  # pycodestyle warnings
-    "F",  # pyflakes
-    "I",  # isort
-    "B",  # flake8-bugbear
-    "C4", # flake8-comprehensions
-    "UP", # pyupgrade
-]
-ignore = [
-    "E501", # line too long, handled by black
-    "B008", # do not perform function calls in argument defaults
-    "C901", # too complex
-]
+select = ["E", "W", "F", "I", "B", "C4", "UP"]
+ignore = ["E501", "B008", "C901"]
 per-file-ignores = { "__init__.py" = ["F401"] }
 
 [tool.mypy]
@@ -150,7 +136,7 @@ warn_return_any = true
 strict_equality = true
 
 [[tool.mypy.overrides]]
-module = ["fitz", "fitz.*", "chromadb.*", "faiss.*", "sentence_transformers.*"]
+module = ["fitz", "chromadb.*", "faiss.*", "sentence_transformers.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

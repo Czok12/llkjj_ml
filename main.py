@@ -31,7 +31,7 @@ from src.features.ml_integration import create_feature_pipeline
 from src.models.processing_result import ProcessingResult
 
 # Dual-Purpose Pipeline Import
-from src.pipeline.processor import UnifiedProcessor
+from src.pipeline.unified_processor import UnifiedProcessor
 
 # Import consolidated services
 from src.processing.modular_processor import ModularProcessor
@@ -164,7 +164,7 @@ def process_pdfs(args: argparse.Namespace) -> None:
         batch_output = output_dir / "gemini_batch_results.json"
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        batch_data = {
+        batch_data: dict[str, Any] = {
             "results": [result.to_dict() for result in results],
             "failed_files": failed_files,
             "summary": {
@@ -251,7 +251,8 @@ def process_pdfs_async_batch(args: argparse.Namespace) -> None:
 
             start_time = time.time()
             results = await processor.process_batch_async(
-                pdf_files, max_concurrent=max_concurrent
+                pdf_files,
+                max_concurrent=max_concurrent,  # type: ignore[arg-type]
             )
             total_time = (time.time() - start_time) * 1000
 
@@ -291,7 +292,7 @@ def process_pdfs_async_batch(args: argparse.Namespace) -> None:
                 )
                 output_dir.mkdir(parents=True, exist_ok=True)
 
-                batch_data = {
+                batch_data: dict[str, Any] = {
                     "metadata": {
                         "timestamp": datetime.now().isoformat(),
                         "method": "async_gemini_batch",
@@ -346,9 +347,7 @@ def process_pdfs_unified_strategy(args: argparse.Namespace) -> None:
     """
     config = Config()
 
-    # 🎯 B1: UnifiedProcessor mit Strategy Pattern
-    from src.pipeline.unified_processor import UnifiedProcessor
-
+    # Verwende bereits importierten UnifiedProcessor
     processor = UnifiedProcessor(config)
     input_path = Path(args.input)
     output_dir = Path(args.output) if args.output else Path("data/output")
@@ -424,7 +423,13 @@ def process_pdfs_unified_strategy(args: argparse.Namespace) -> None:
 
         try:
             start_time = time.time()
-            result = processor.process_pdf(input_path, strategy)
+            # Type-safe strategy parameter
+            valid_strategy = (
+                strategy
+                if strategy in ["auto", "gemini", "spacy_rag", "hybrid"]
+                else "auto"
+            )
+            result = processor.process_pdf(input_path, valid_strategy)  # type: ignore[arg-type]
             processing_time = (time.time() - start_time) * 1000
 
             print(f"✅ UNIFIED Processing complete in {processing_time:.0f}ms!")
@@ -467,12 +472,18 @@ def process_pdfs_unified_strategy(args: argparse.Namespace) -> None:
         print(f"📊 Found {len(pdf_files)} PDF files for unified batch processing")
         print(f"🎯 Using {strategy} strategy for all files...")
 
-        successful_results = []
-        failed_files = []
+        successful_results: list[ProcessingResult] = []
+        failed_files: list[tuple[str, str]] = []
 
         for pdf_file in pdf_files:
             try:
-                result = processor.process_pdf(pdf_file, strategy)
+                # Type-safe strategy parameter
+                valid_strategy = (
+                    strategy
+                    if strategy in ["auto", "gemini", "spacy_rag", "hybrid"]
+                    else "auto"
+                )
+                result = processor.process_pdf(pdf_file, valid_strategy)  # type: ignore[arg-type]
                 successful_results.append(result)
 
                 print(
@@ -511,7 +522,7 @@ def process_pdfs_unified_strategy(args: argparse.Namespace) -> None:
             )
             output_dir.mkdir(parents=True, exist_ok=True)
 
-            batch_data = {
+            batch_data: dict[str, Any] = {
                 "metadata": {
                     "timestamp": datetime.now().isoformat(),
                     "method": f"unified_{strategy}",
@@ -680,9 +691,7 @@ def export_training_data(args: argparse.Namespace) -> None:
 def train_model(args: argparse.Namespace) -> None:
     """Train spaCy models for German electrical invoices using new training pipeline"""
     config = Config()
-
-    # Use new training pipeline for better modularity
-    training_pipeline = TrainingPipeline(config)
+    training_service = TrainingService(config)
 
     training_data = Path(args.input)
     model_output = Path(args.output) if args.output else Path("output_model")
@@ -692,34 +701,11 @@ def train_model(args: argparse.Namespace) -> None:
     print(f"🚀 Training {model_type} model with: {training_data}")
     print(f"⚙️  Epochs: {epochs}")
 
-    # Use specific trainer based on model type
-    if model_type == "ner":
-        result = training_pipeline.train_ner_model(training_data, model_output, epochs)
-        print("✅ NER Training complete!")
-    elif model_type == "textcat":
-        result = training_pipeline.train_textcat_model(
-            training_data, model_output, epochs
-        )
-        print("✅ TextCat Training complete!")
-    elif model_type == "both":
-        # Run full pipeline for both models
-        pipeline_results = training_pipeline.run_full_pipeline(
-            training_data.parent,  # Assume JSONL is in training data folder
-            model_output,
-            epochs,
-            train_both_models=True,
-        )
-        result = pipeline_results["training_results"]["ner"]  # Show NER metrics
-        print("✅ Full Pipeline complete!")
-        print(f"📊 Models trained: {len(pipeline_results['training_results'])}")
-    else:
-        # Fallback to old training service for backwards compatibility
-        training_service = TrainingService(config)
-        result = training_service.train_model(
-            training_data, model_output, epochs, model_type
-        )
-        print("✅ Training complete!")
+    result = training_service.train_model(
+        training_data, model_output, epochs, model_type
+    )
 
+    print("✅ Training complete!")
     print(f"🎯 F1 Score: {result.f1_score:.3f}")
     print(f"📊 Precision: {result.precision:.3f}")
     print(f"📊 Recall: {result.recall:.3f}")
@@ -836,8 +822,8 @@ def analyze_results(args: argparse.Namespace) -> None:
 
     total_docs = len(json_files)
     total_skr03 = 0
-    processing_times = []
-    quality_scores = []
+    processing_times: list[float] = []
+    quality_scores: list[float] = []
 
     for json_file in json_files:
         try:
@@ -949,10 +935,11 @@ def run_workflow_4(args: argparse.Namespace) -> None:
     processor = UnifiedProcessor()
 
     pdf_path = Path(args.input)
-    Path(args.output) if args.output else None
+    output_path = Path(args.output) if args.output else None
 
     print("🔄 Workflow 4: Complete pipeline")
     print(f"📄 Input: {pdf_path}")
+    print(f"📁 Output: {output_path}")
 
     # Verwende existierenden Workflow
     result = processor.process_pdf(str(pdf_path))
@@ -1145,7 +1132,7 @@ def extract_features_batch(args: argparse.Namespace) -> None:
     print(f"📦 Found {len(json_files)} JSON files")
 
     # Load invoice data
-    invoice_data_list = []
+    invoice_data_list: list[dict[str, Any]] = []
     for json_file in json_files:
         try:
             with open(json_file, encoding="utf-8") as f:
@@ -1695,6 +1682,9 @@ def command_security_audit(args: argparse.Namespace) -> None:
 
 def command_security_validate(args: argparse.Namespace) -> None:
     """Validiert Production-Readiness."""
+    # Arguments sind derzeit nicht verwendet, aber behalten für Zukunft
+    _ = args  # Explicit unused variable marking
+
     print("🔍 Validiere Production Environment...")
 
     if validate_production_environment():

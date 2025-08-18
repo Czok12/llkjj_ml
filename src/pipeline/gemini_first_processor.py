@@ -457,69 +457,82 @@ EXTRAHIERE ALLE sichtbaren Positionen vollständig und präzise!
         Führt die direkte PDF-Analyse mit Gemini durch.
         """
         try:
-            # PDF an Gemini senden (implementiert upload/analysis)
-            # Hier würde die echte Gemini-API-Integration erfolgen
-
-            # Temporäre Mock-Implementierung für Demo
+            # PDF an Gemini senden für echte Analyse
             logger.info("🔄 Gemini analysiert PDF-Inhalt...")
 
-            # In der echten Implementierung würde hier der Gemini-API-Call erfolgen:
-            # response = self.gemini_client.models.generate_content(
-            #     model=self.config.gemini_model,
-            #     contents=[
-            #         {"parts": [{"text": prompt}]},
-            #         {"parts": [{"inline_data": {"mime_type": "application/pdf", "data": pdf_content}}]}
-            #     ]
-            # )
+            # Echte Gemini-API-Integration mit PDF Upload
+            try:
+                import base64
 
-            # Mock-Daten für Demonstration
-            mock_result = {
-                "invoice_header": {
-                    "lieferant": "Sonepar Deutschland AG",
-                    "kundennummer": "123456",
-                    "rechnungsnummer": "2024021489",
-                    "rechnungsdatum": "2024-12-10",
-                    "lieferdatum": "2024-12-09",
-                    "zahlungsziel": "30",
-                },
-                "line_items": [
-                    {
-                        "position": 1,
-                        "artikelnummer": "6189404",
-                        "beschreibung": "GIRA Rahmen 1-fach reinweiß glänzend",
-                        "marke": "GIRA",
-                        "menge": 10.0,
-                        "einheit": "Stk",
-                        "einzelpreis": 3.45,
-                        "gesamtpreis": 34.50,
-                        "elektro_kategorie": "Schalterprogramm",
-                        "skr03_vorschlag": "3400",
-                        "skr03_beschreibung": "Wareneingang Elektromaterial",
-                    },
-                    {
-                        "position": 2,
-                        "artikelnummer": "6507890",
-                        "beschreibung": "Hager Klemme 2,5mm² grau",
-                        "marke": "Hager",
-                        "menge": 50.0,
-                        "einheit": "Stk",
-                        "einzelpreis": 0.75,
-                        "gesamtpreis": 37.50,
-                        "elektro_kategorie": "Installationsmaterial",
-                        "skr03_vorschlag": "3400",
-                        "skr03_beschreibung": "Wareneingang Elektromaterial",
-                    },
-                ],
-                "totals": {
-                    "nettosumme": 72.00,
-                    "mwst_betrag": 13.68,
-                    "mwst_satz": 19.0,
-                    "bruttosumme": 85.68,
-                },
-            }
+                # PDF als base64 encodieren
+                pdf_base64 = base64.b64encode(pdf_content).decode("utf-8")
 
-            logger.info("✅ Gemini-Analyse erfolgreich - Mock-Daten verwendet")
-            return mock_result
+                # API-Call an Gemini mit korrektem Format
+                response = self.gemini_client.models.generate_content(
+                    model=self.config.gemini_model,
+                    contents=[
+                        {
+                            "role": "user",
+                            "parts": [
+                                {"text": prompt},
+                                {
+                                    "inline_data": {
+                                        "mime_type": "application/pdf",
+                                        "data": pdf_base64,
+                                    }
+                                },
+                            ],
+                        }
+                    ],
+                )
+
+                # Response verarbeiten
+                if response and hasattr(response, "text"):
+                    response_text = response.text
+                    logger.info(
+                        "📄 Gemini Response erhalten (%d Zeichen)", len(response_text)
+                    )
+
+                    # JSON aus Response extrahieren
+                    try:
+                        # Suche nach JSON in der Response
+                        import re
+
+                        json_match = re.search(r"\{.*\}", response_text, re.DOTALL)
+                        if json_match:
+                            json_str = json_match.group()
+                            result = json.loads(json_str)
+                            logger.info(
+                                "✅ Gemini-Analyse erfolgreich - Produktionsdaten von %s",
+                                self.config.gemini_model,
+                            )
+                            return result
+                        else:
+                            logger.error(
+                                "❌ Kein JSON in Gemini Response gefunden. Response: %s",
+                                response_text[:500],
+                            )
+                            raise ValueError(
+                                "Gemini API Response enthält kein gültiges JSON"
+                            )
+                    except json.JSONDecodeError as e:
+                        logger.error(
+                            "❌ JSON-Parsing-Fehler in Gemini Response: %s. Response: %s",
+                            e,
+                            response_text[:500],
+                        )
+                        raise ValueError(
+                            f"Gemini API Response JSON ist ungültig: {e}"
+                        ) from e
+                else:
+                    logger.error("❌ Leere oder ungültige Gemini Response erhalten")
+                    raise ValueError("Gemini API Response ist leer oder ungültig")
+
+            except Exception as api_error:
+                logger.error("❌ Gemini API-Fehler: %s", api_error)
+                raise ValueError(
+                    f"Gemini API-Aufruf fehlgeschlagen: {api_error}"
+                ) from api_error
 
         except Exception as e:
             logger.error("❌ Gemini-PDF-Analyse fehlgeschlagen: %s", e)

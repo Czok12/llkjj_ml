@@ -55,8 +55,11 @@ class TrainingDataPersistence:
         self.base_path.mkdir(parents=True, exist_ok=True)
         self.logs_path.mkdir(parents=True, exist_ok=True)
 
-        # Trainingsdaten-Pfade
+        # Trainingsdaten-Pfade (Dual-Model Support)
         self.spacy_annotations_file = self.base_path / "gemini_spacy_annotations.jsonl"
+        self.ner_training_file = self.base_path / "ner_training.jsonl"
+        self.textcat_training_file = self.base_path / "textcat_training.jsonl"
+        self.combined_training_file = self.base_path / "combined_training.jsonl"
         self.audit_log_file = self.logs_path / "audit_gemini.jsonl"
 
         # RAG-System (ChromaDB) Setup
@@ -155,23 +158,22 @@ class TrainingDataPersistence:
         processing_result: Any,
     ) -> dict[str, Any]:
         """
-        Speichere spaCy-Trainingsdaten im JSONL-Format.
+        Speichere spaCy-Trainingsdaten im JSONL-Format für duale Modell-Architektur.
 
         Format: {"text": "...", "entities": [...], "cats": {...}}
+        - NER-Pipeline nutzt 'entities' Array
+        - TextCat-Pipeline nutzt 'cats' Dictionary
         """
         try:
-            # Text aus Gemini-Result extrahieren
-            raw_text = self._extract_training_text(gemini_result)
+            # Erzeuge Text und Entitäten mit exakten Positionen (ROBUST)
+            annotated_text, entities = self._create_annotated_text(gemini_result)
 
-            # Entitäten aus Rechnungsdaten extrahieren
-            entities = self._extract_entities_for_training(gemini_result)
-
-            # Kategorien für TextCat
+            # Kategorien für TextCat (SKR03 + Elektro-Kategorien)
             categories = self._extract_categories_for_training(gemini_result)
 
-            # spaCy-Annotations-Format
+            # spaCy-Annotations-Format (Dual-Model)
             annotation_entry = {
-                "text": raw_text,
+                "text": annotated_text,
                 "entities": entities,
                 "cats": categories,
                 "meta": {
@@ -179,24 +181,117 @@ class TrainingDataPersistence:
                     "source": "gemini_validated",
                     "timestamp": datetime.now().isoformat(),
                     "gemini_model": gemini_result.get("gemini_model", "unknown"),
+                    "dual_model": True,  # Marker für NER+TextCat
                 },
             }
 
-            # Append zu JSONL-Datei
+            # Append zu JSONL-Datei (Combined für beide Modelle)
             with open(self.spacy_annotations_file, "a", encoding="utf-8") as f:
                 f.write(json.dumps(annotation_entry, ensure_ascii=False) + "\n")
 
-            logger.debug(f"💾 spaCy-Annotations gespeichert: {len(entities)} Entitäten")
+            # Separate Exports für Dual-Model-Architektur
+            self._export_ner_training_data(annotation_entry)
+            self._export_textcat_training_data(annotation_entry)
+
+            logger.debug(
+                "💾 Dual-Model Annotations gespeichert: %d Entitäten + %d Kategorien",
+                len(entities),
+                len(categories),
+            )
 
             return {
                 "annotation_count": len(entities),
                 "category_count": len(categories),
-                "text_length": len(raw_text),
+                "text_length": len(annotated_text),
             }
 
         except Exception as e:
             logger.error(f"❌ spaCy-Annotations-Speicherung fehlgeschlagen: {e}")
             return {"annotation_count": 0, "error": str(e)}
+
+    def _create_annotated_text(
+        self, gemini_result: dict[str, Any]
+    ) -> tuple[str, list[tuple[int, int, str]]]:
+        """
+        Erstellt den Trainingstext und die NER-Entitäten mit exakten Positionen.
+
+        ROBUSTE IMPLEMENTATION - vermeidet fehleranfälliges `string.find()`.
+        Baut Text sequenziell auf und verfolgt Positionen präzise.
+
+        Returns:
+            tuple: (annotated_text, entities_list)
+            - annotated_text: Vollständiger Text für Training
+            - entities_list: [(start, end, label), ...] mit exakten Token-Positionen
+        """
+        text_parts: list[str] = []
+        entities: list[tuple[int, int, str]] = []
+        current_pos = 0
+
+        def add_entity(text: str, label: str) -> None:
+            """Hilfsfunktion: Fügt Text hinzu und erstellt Entity-Annotation"""
+            nonlocal current_pos
+            start_pos = current_pos
+            text_parts.append(text)
+            current_pos += len(text)
+            entities.append((start_pos, current_pos, label))
+
+        def add_text(text: str) -> None:
+            """Hilfsfunktion: Fügt Text ohne Entity-Annotation hinzu"""
+            nonlocal current_pos
+            text_parts.append(text)
+            current_pos += len(text)
+
+        # Header-Informationen mit deutschen Elektrotechnik-Entitäten
+        header = gemini_result.get("invoice_header", {})
+
+        if header.get("lieferant"):
+            add_text("Lieferant: ")
+            add_entity(header["lieferant"], "HÄNDLER")
+            add_text("\n")
+
+        if header.get("rechnungsnummer"):
+            add_text("Rechnung Nr.: ")
+            add_entity(header["rechnungsnummer"], "RECHNUNGSNUMMER")
+            add_text("\n")
+
+        if header.get("rechnungsdatum"):
+            add_text("Datum: ")
+            add_entity(header["rechnungsdatum"], "RECHNUNGSDATUM")
+            add_text("\n")
+
+        # Line Items mit Elektrotechnik-spezifischen Entitäten
+        line_items = gemini_result.get("line_items", [])
+        if line_items:
+            add_text("\nArtikel:\n")
+
+            for i, item in enumerate(line_items, 1):
+                add_text(f"{i}. ")
+
+                # Artikel-Beschreibung (Hauptentität)
+                if item.get("beschreibung"):
+                    add_entity(item["beschreibung"], "ARTIKEL")
+                    add_text(" - ")
+
+                # Menge
+                if item.get("menge"):
+                    add_text("Menge: ")
+                    add_entity(str(item["menge"]), "MENGE")
+                    add_text(" ")
+
+                # Einzelpreis
+                if item.get("einzelpreis"):
+                    add_text("Preis: ")
+                    add_entity(f"{item['einzelpreis']:.2f} EUR", "PREIS")
+                    add_text(" ")
+
+                # Elektro-Kategorie (wichtig für deutsche Elektrotechnik)
+                if item.get("elektro_kategorie"):
+                    add_text("Kategorie: ")
+                    add_entity(item["elektro_kategorie"], "ELEKTRO_KATEGORIE")
+
+                add_text("\n")
+
+        return "".join(text_parts).strip(), entities
 
     def _extract_training_text(self, gemini_result: dict[str, Any]) -> str:
         """Extrahiere Volltext für spaCy-Training"""
@@ -255,20 +350,128 @@ class TrainingDataPersistence:
     def _extract_categories_for_training(
         self, gemini_result: dict[str, Any]
     ) -> dict[str, float]:
-        """Extrahiere Kategorien für TextCat-Training"""
-        categories = {}
+        """
+        Extrahiere Kategorien für TextCat-Training (Dual-Model: NER + TextCat).
 
-        # Elektro-Kategorien aus Line Items
-        elektro_kategorien = set()
+        Fokus auf deutsche Elektrotechnik und SKR03-Klassifizierung:
+        - Elektro-Kategorien: BELEUCHTUNG, INSTALLATION, SCHALTER, KABEL, etc.
+        - SKR03-Konten: Automatische Buchungsvorschläge
+        - Konfidenz-Scores für Qualitätsbewertung
+        """
+        categories: dict[str, float] = {}
+
+        # 1. Elektro-Kategorien aus Line Items
+        elektro_kategorien: set[str] = set()
         for item in gemini_result.get("line_items", []):
             if item.get("elektro_kategorie"):
-                elektro_kategorien.add(item["elektro_kategorie"])
+                elektro_kategorien.add(str(item["elektro_kategorie"]).upper())
 
-        # Kategorien mit Konfidenz (1.0 für bekannte, 0.0 für unbekannte)
+        # Deutsche Elektrotechnik-Kategorien (Standard-Set)
+        standard_elektro_kategorien = {
+            "BELEUCHTUNG",
+            "INSTALLATION",
+            "SCHALTER",
+            "KABEL",
+            "STECKDOSEN",
+            "SICHERUNGEN",
+            "VERTEILUNG",
+            "MOTOR",
+            "STEUERUNG",
+            "MESS_TECHNIK",
+            "WERKZEUG",
+            "MATERIAL",
+        }
+
+        # 2. Elektro-Kategorien mit Konfidenz
         for kategorie in elektro_kategorien:
-            categories[f"ELEKTRO_{kategorie.upper()}"] = 1.0
+            # Höhere Konfidenz für bekannte Standard-Kategorien
+            confidence = 1.0 if kategorie in standard_elektro_kategorien else 0.8
+            categories[f"ELEKTRO_{kategorie}"] = confidence
+
+        # 3. SKR03-Konten-Kategorien (deutsche Buchhaltung)
+        # Basierend auf typischen Elektrohandwerk-Konten
+        invoice_total = gemini_result.get("totals", {}).get("bruttosumme", 0)
+
+        if invoice_total > 0:
+            # Preis-basierte SKR03-Kategorisierung
+            if invoice_total < 100:
+                categories["SKR03_KLEINMATERIAL"] = 1.0  # Konto 3400-3499
+            elif invoice_total < 1000:
+                categories["SKR03_STANDARDMATERIAL"] = 1.0  # Konto 3500-3599
+            else:
+                categories["SKR03_GROSSEINKAUF"] = 1.0  # Konto 3600-3699
+
+        # 4. Lieferanten-Kategorien (Elektro-Großhandel)
+        lieferant = gemini_result.get("invoice_header", {}).get("lieferant", "")
+        if lieferant:
+            # Bekannte deutsche Elektro-Großhändler
+            elektro_grosshaendler = [
+                "SONEPAR",
+                "REXEL",
+                "SCHRACK",
+                "FEGIME",
+                "ELEKTRO",
+                "GROSSHANDEL",
+                "TECHNIK",
+                "MATERIAL",
+            ]
+
+            lieferant_upper = lieferant.upper()
+            for grosshaendler in elektro_grosshaendler:
+                if grosshaendler in lieferant_upper:
+                    categories["LIEFERANT_ELEKTRO_GROSSHANDEL"] = 1.0
+                    break
+            else:
+                categories["LIEFERANT_SONSTIGE"] = 0.7
+
+        # 5. Dokumenttyp-Kategorien
+        rechnungsnummer = gemini_result.get("invoice_header", {}).get(
+            "rechnungsnummer", ""
+        )
+        if rechnungsnummer:
+            categories["DOKUMENTTYP_RECHNUNG"] = 1.0
+        else:
+            categories["DOKUMENTTYP_UNBEKANNT"] = 0.5
 
         return categories
+
+    def _export_ner_training_data(self, annotation_entry: dict[str, Any]) -> None:
+        """
+        Exportiere NER-spezifische Trainingsdaten.
+
+        Format für spaCy NER-Training: {"text": "...", "entities": [...]}
+        """
+        ner_entry = {
+            "text": annotation_entry["text"],
+            "entities": annotation_entry["entities"],
+            "meta": {
+                **annotation_entry["meta"],
+                "model_type": "ner",
+                "export_timestamp": datetime.now().isoformat(),
+            },
+        }
+
+        with open(self.ner_training_file, "a", encoding="utf-8") as f:
+            f.write(json.dumps(ner_entry, ensure_ascii=False) + "\n")
+
+    def _export_textcat_training_data(self, annotation_entry: dict[str, Any]) -> None:
+        """
+        Exportiere TextCat-spezifische Trainingsdaten.
+
+        Format für spaCy TextCat-Training: {"text": "...", "cats": {...}}
+        """
+        textcat_entry = {
+            "text": annotation_entry["text"],
+            "cats": annotation_entry["cats"],
+            "meta": {
+                **annotation_entry["meta"],
+                "model_type": "textcat",
+                "export_timestamp": datetime.now().isoformat(),
+            },
+        }
+
+        with open(self.textcat_training_file, "a", encoding="utf-8") as f:
+            f.write(json.dumps(textcat_entry, ensure_ascii=False) + "\n")
 
     def _persist_rag_classifications(
         self,
