@@ -5,22 +5,36 @@ applyTo: '**'
 # User Memory
 
 ## User Preferences
-- Programming languages: Python
-- Code style preferences: Use type annotations, follow PEP 484, fix mypy errors
-- Development environment: VS Code, macOS, zsh
-- Communication style: Concise, step-by-step, progress updates
+ - Programming languages: Python
+ - Code style preferences: Use type annotations, follow PEP 484, fix mypy errors
+ - Development environment: VS Code, macOS, zsh
+ - Communication style: Concise, step-by-step, progress updates
+ - Preference: Use plain `python` instead of `poetry run`, keep poetry venv outside workspace
 
 ## Project Context
-- Current project type: Python ML pipeline and extraction toolkit
-- Tech stack: Python, spaCy, custom extractors, mypy for type checking
-- Architecture patterns: Modular, src/ structure, config-driven
-- Key requirements: Type safety, mypy compliance, maintainability
+- Current project type: LLKJJ ML-Pipeline (Workspace 2) - Teil eines 4-Workspace-Systems
+- Tech stack: Python 3.10+, spaCy, ChromaDB, Docling 2.44.0, Google Gemini 2.5 Pro, mypy, Poetry
+- Architecture patterns: Plugin-Architektur, Gemini-First-Pipeline, RAG-System (ChromaDB)
+- Key requirements: >92% SKR03-Klassifizierungsgenauigkeit, Type safety, Sicherheit bei Finanzdaten
+- Primary mission: PDF → strukturierte, SKR03-klassifizierte Rechnungsdaten
+- Strategic approach: 2-Phasen-Strategie (Phase 1: Gemini-First, Phase 2: Lokale autonome KI)
 
 ## Coding Patterns
-- Use explicit type annotations
-- Fix all mypy errors
+- Use explicit type annotations (Python 3.10+ syntax: dict[str, Any], str | int)
+- Fix all mypy errors with --strict compliance
+- Follow KISS-Prinzip and Single Responsibility Principle
 - Prefer PEP 484 and Context7 best practices
+- Use Pydantic for data validation and schemas
+- Deutsche Optimierung für Elektrotechnik-Domäne
 - Document fixes in memory
+
+## Architecture Knowledge
+- 4-Workspace-System: Backend (Core), ML-Pipeline (Workspace 2), E-Invoice, Export
+- Workspace-Isolation: Strikte Trennung, keine direkten Backend-Abhängigkeiten
+- Einzige Schnittstelle: ProcessingResult-Schema als Datenvertrag
+- Kern-Komponenten: GeminiDirectProcessor, ResourceManager (Singleton), QualityAssessor, SKR03Manager
+- Autonome Persistenz: ChromaDB in data/vectors (kein PostgreSQL-Zugriff)
+- Sicherheit: JWT + Argon2, SecurityAuditor (Bandit/Safety), AES-256 für API-Keys
 
 ## Context7 Research History
 - None yet (will update after research)
@@ -28,6 +42,9 @@ applyTo: '**'
 ## Conversation History
 - Task: Fix mypy errors and missing stubs in 15 files (113 errors)
 - Plan: Research, analyze, fix incrementally, test, update memory
+- Task (2025-08-18): Dokumentations-Update basierend auf neuer README.md
+- Erfolg: Copilot-instructions.md und memory.instruction.md aktualisiert
+- Neue Erkenntnisse: 4-Workspace-System, Gemini-First-Pipeline, erweiterte Sicherheitsrichtlinien
 
 ## Analysis-Log: 2025-08-17
 
@@ -55,22 +72,23 @@ applyTo: '**'
 
 Recorded: 2025-08-17 by automated assistant
 
-## Projektkontext Vergleich (automatisch protokolliert)
-- Datum: 2025-08-17
-- Vergleich von: `Projektkontext01.md` vs. `Projektkontext02.md`
-- Ergebnis: Empfehlung zur Verwendung und Platzierung der Dateien im Repo
+## Dokumentations-Update: 2025-08-18
 
-Kurzfassung:
-- `Projektkontext02.md` ist besser geeignet als übergeordnetes Vision/Manifest für das Core-Backend und als generelles Projektmanifest. Es ist umfassend, strukturiert, und beschreibt Architekturprinzipien, Komponenten, Workflows und Governance (Sicherheit, Tests, CI/CD) klar.
-- `Projektkontext01.md` ist besser geeignet als konkretes, AI-/Entwickler-orientiertes Manifest für das ML-Plugin (Workspace 2). Es enthält präzisere technische Vorgaben, Tool- und Kommandohinweise (Poetry), ML-Stack-Details und direkt anwendbare Best-Practices.
+**Task**: Aktualisierung der copilot-instructions.md und memory.instruction.md basierend auf neuer README.md Dokumentation
 
-Empfehlungen:
-1. Verwende `Projektkontext02.md` als Haupt-Vision/Manifest im Repository-Root oder in `docs/` (z. B. `docs/vision_manifest.md`).
-2. Platziere `Projektkontext01.md` innerhalb des ML-Plugin-Workspaces (z. B. `src/` oder `ml_service/README_ml_manifest.md`) als detailliertes Entwickler- und AI-Kontextdokument.
-3. Ergänze in der gewählten Haupt-Manifestdatei eine maschinenlesbare YAML-Frontmatter (keys: `title`, `version`, `last_updated`, `scope`, `audience`) zur einfachen Erfassung durch AI-Assistenten.
-4. Optional: Erzeuge eine kurze, synoptische `manifest_summary.json` mit Kernfeldern für schnelle maschinelle Nutzung.
+**Wichtige Änderungen**:
+- **4-Workspace-System**: Vollständige Architektur mit Backend (Core), ML-Pipeline (Workspace 2), E-Invoice, Export
+- **Gemini-First-Pipeline**: 2-Phasen-Strategie mit detailliertem Workflow (7 Schritte)
+- **Kern-Komponenten**: GeminiDirectProcessor, ResourceManager (Singleton), QualityAssessor, SKR03Manager
+- **Sicherheitsrichtlinien**: JWT + Argon2, SecurityAuditor, AES-256-Verschlüsselung für API-Keys
+- **Design-Entscheidungen**: ProcessingResult als stabile Schnittstelle, ChromaDB für RAG-System
+- **Strategische Ausrichtung**: >92% SKR03-Klassifizierungsgenauigkeit, Deutsche Elektrotechnik-Optimierung
 
-Diese Empfehlung wurde automatisch erstellt und im Memory protokolliert.
+**Erfolgreich aktualisiert**:
+1. ✅ copilot-instructions.md - Erweitert um vollständige Architektur und neue Komponenten
+2. ✅ memory.instruction.md - Aktualisiert mit Projektkontext und Architektur-Wissen
+
+Recorded: 2025-08-18 by automated assistant
 
 ## Notes
 - Start with type annotation and stub errors, then address assignment and attribute errors

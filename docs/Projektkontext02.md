@@ -1,27 +1,10 @@
-
 # Das LLKJJ-Projekt: Manifest, Vision und technische Blaupause
 
 ---
-title: "LLKJJ Manifest"
-version: "1.0"
-last_updated: "2025-08-17"
-scope: "repository"
-audience: ["core","ml","devops","ai-agent"]
-entry_points:
-   ml_pipeline: "src/pipeline/dual_pipeline.py"
-   cli: "main.py"
-   training: "src/trainer.py"
-policies:
-   poetry_cli: "poetry run ... is required"
-   language: "de"
-   type_safety: "mypy --strict"
----
-
-**Version 1.0 (Stand: August 2025)**
 
 ## 1. Vision und Leitbild (Das Manifest)
 
-**LLKJJ (Lernende Laufende Komfortable Kompetente Judikative)** ist eine moderne, KI-gestützte und sichere Buchhaltungs- und Dokumentenmanagement-Plattform, die als persönliche, überlegene Alternative zu kommerziellen Lösungen wie Buchhaltungsbutler.de, Lexware und Sevdesk konzipiert ist.
+llkjj (logisch leben - Kapitalismus jetzt für jeden) ist eine moderne, KI-gestützte und sichere Buchhaltungs- und Dokumentenmanagement-Plattform, die als persönliche, überlegene Alternative zu kommerziellen Lösungen wie Buchhaltungsbutler.de, Lexware und Sevdesk konzipiert ist.
 
 **Unser Ziel** ist es, den gesamten administrativen Overhead für kleine deutsche Handwerksbetriebe – initial mit Fokus auf die **Elektrotechnik-Branche** – durch intelligente Automatisierung zu eliminieren. Das System agiert als digitaler Finanzassistent, der nicht nur Daten verarbeitet, sondern den Geschäftskontext versteht, proaktiv lernt und Compliance-Anforderungen (GoBD, XRechnung) von Grund auf erfüllt.
 

@@ -1,179 +1,94 @@
-# Projektkontext: LLKJJ Autonome Buchhaltung
 
-## 1. Projekt-Vision & Zielsetzung
+# Umfassender Projektkontext & Entwicklungsrichtlinien für KI-Agenten: Das LLKJJ Projekt
 
-**Primärziel:** Entwicklung einer persönlichen, KI-gestützten Alternative zu kommerziellen Buchhaltungslösungen (Sevdesk, Lexoffice) für kleine deutsche Handwerksbetriebe, initial mit Fokus auf die **Elektrotechnik-Branche**.
+**Version: Master Context 1.0**
 
-**Kernfunktionalität:** Vollautomatische Verarbeitung von Eingangsrechnungen (PDF) inklusive Extraktion, SKR03-Kontierung und Vorbereitung für die Buchhaltung.
+Dieses Dokument ist die **einzige und maßgebliche Quelle der Wahrheit (Single Source of Truth)** für die KI-gestützte Entwicklung am LLKJJ-Projekt. Es fasst die Vision, Architektur, technische Blaupause und strategische Ausrichtung zusammen. Halte dich strikt an die hier dargelegten Prinzipien, Architekturen und Anweisungen.
 
-**Strategische Roadmap:**
+## 1. Vision & Manifest (Das "Warum")
 
-1. **Phase 1 (Aktuell):** Produktiver Einsatz mit einer **"Gemini-First"-Pipeline**. Google's Gemini-Modell ist das primäre "Gehirn" für die direkte PDF-Analyse und Datenerfassung. Jede Verarbeitung sammelt hochwertige Trainingsdaten.
-2. **Phase 2 (Zukunft):** Nahtloser Übergang zu einer **lokalen, autonomen KI-Lösung**. Ziel ist die Unabhängigkeit von externen APIs durch den Einsatz von selbst trainierten **spaCy-Modellen (NER, TextCat)** und einem lokalen **RAG-System (ChromaDB)**, das mit den in Phase 1 gesammelten Daten aufgebaut wird.
+Das Ziel des LLKJJ-Projekts ist die Schaffung einer persönlichen, hochautomatisierten und intelligenten Buchhaltungs- und Dokumentenmanagement-Engine. Es ist als private, überlegene Alternative zu Standardlösungen konzipiert und exakt auf die Bedürfnisse eines deutschen Elektrohandwerk-Betriebs zugeschnitten.
 
-## 2. Kerntechnologien & Architektur-Stack
+Es geht nicht darum, eine weitere App zu bauen, sondern eine **maßgeschneiderte, hochintegrierte und intelligente Engine**, die den administrativen Aufwand auf ein absolutes Minimum reduziert.
 
-- **Backend-Framework:** FastAPI
-- **Primäre KI-Engine:** Google Gemini API (aktuell `gemini-1.5-flash` oder `gemini-2.5-pro`)
-- **Lokale KI-Komponenten:**
-  - **Vektordatenbank (RAG):** ChromaDB
-  - **Embedding-Modell:** `sentence-transformers/all-MiniLM-L12-v2`
-  - **NLP-Modelle:** spaCy (für zukünftiges Training)
-- **Datenvalidierung:** Pydantic v2 (strikte Schemata für alle Datenstrukturen)
-- **Datenbank (Anwendungsdaten):** PostgreSQL (implizit für das `llkjj_backend`)
-- **Paketmanagement:** Poetry
-- **Sprache:** Python 3.10+
+## 2. Leitprinzipien & Strategische Roadmap
 
-## 3. Schlüsselkonzepte & Entitäten
+### 2.1. Leitprinzipien
 
-- **`ProcessingResult` (`src/models/processing_result.py`):** Der zentrale, Pydantic-validierte Datenvertrag, der das Ergebnis *jeder* Pipeline-Verarbeitung darstellt.
-- **`GeminiDirectProcessor` (`src/pipeline/gemini_first_processor.py`):** Der primäre Orchestrator für den Standard-Workflow. Er steuert die PDF-Analyse durch Gemini.
-- **`DoclingAlternativeProcessor`:** Die explizit aufrufbare, alternative Verarbeitungspipeline, die `Docling` für die Extraktion nutzt.
-- **RAG-System:** Die Kombination aus `ChromaDB` und dem `Embedding-Modell`. Es dient zur Anreicherung und Validierung von Klassifizierungen durch die Suche nach semantisch ähnlichen, bereits verarbeiteten Rechnungspositionen.
-- **Feedback-Loop:** Ein entscheidender Mechanismus, bei dem Benutzerkorrekturen in die Vektordatenbank zurückgespeist werden, um das RAG-System kontinuierlich zu verbessern (`validation_status: "user_corrected"`).
-- **SKR03:** Der deutsche Standardkontenrahmen für die Buchhaltung, der als Ziel für die Klassifizierung dient. Der `SKR03Manager` verwaltet die entsprechenden Regeln.
+1. **Autonomie:** Das System soll lernen, Kontexte verstehen und eigenständig korrekte Entscheidungen treffen, um manuelle Eingriffe zu minimieren.
+2. **Präzision:** Maximale Genauigkeit bei der Datenextraktion und SKR03-Klassifizierung ist das oberste Ziel (>92% Genauigkeit).
+3. **Sicherheit:** Da es um sensible Finanzdaten geht, hat die Sicherheit auf allen Ebenen – von der Code-Analyse bis zur Datenspeicherung – höchste Priorität.
+4. **Wartbarkeit:** Eine saubere, entkoppelte Architektur (KISS-Prinzip) ist entscheidend, um das System langfristig pflegen und erweitern zu können.
 
-## 4. Anweisungen für KI-Agenten
+### 2.2. Strategische Roadmap (KI-Entwicklung)
 
-- **Fokus:** Deine Hauptaufgabe ist es, die "Gemini-First"-Pipeline zu verbessern und gleichzeitig den Übergang zu Phase 2 vorzubereiten.
-- **Code-Stil:** Halte dich an die bestehende Architektur. Verwende das Singleton-Pattern des `ResourceManager` für schwere Modelle. Nutze Pydantic für alle neuen Datenstrukturen.
-- **Priorität:** Die Qualität und Konsistenz der gesammelten Trainingsdaten (`spaCy-Annotationen` und `RAG-Daten`) ist wichtiger als kurzfristige Performance-Hacks.
-- **Annahmen:** Gehe davon aus, dass ein übergeordnetes `llkjj_backend` die API-Endpunkte bereitstellt und dieses ML-Projekt als eigenständiges, installierbares Plugin (`llkjj_ml`) konsumiert.
+Die Entwicklung der KI-Fähigkeiten folgt einer zweistufigen Strategie:
 
----
+1. **Phase 1 (Aktuell): "Gemini-First"-Pipeline**
 
-### 2. `Dokumentation.md`
+   * **Ansatz:** Wir nutzen Google's Gemini-Modell (`gemini-2.5d-flash` oder besser) als primäres "Gehirn" für die direkte PDF-Analyse und Datenerfassung. Ein einziger API-Aufruf ersetzt einen komplexen, mehrstufigen Prozess.
+   * **Ziel:** Schnelle, qualitativ hochwertige Ergebnisse erzielen und gleichzeitig hochwertige Trainingsdaten (validierte Extraktionen, SKR03-Kontierungen, spaCy-Annotationen) für die nächste Phase sammeln.
+2. **Phase 2 (Zukunft): Lokale, autonome KI-Lösung**
 
-Dieses Dokument ist für Entwickler gedacht. Es erklärt die Funktionsweise, die wichtigsten Workflows und wie man mit dem System arbeitet.
+   * **Ansatz:** Nahtloser Übergang zu einer von externen APIs unabhängigen Lösung.
+   * **Ziel:** Einsatz von selbst trainierten **spaCy-Modellen (NER, TextCat)** und einem lokalen **RAG-System (ChromaDB)**, das mit den in Phase 1 gesammelten Daten aufgebaut wird. Deine Arbeit heute bereitet diesen Übergang vor.
 
-```markdown
-# LLKJJ ML-Pipeline - Entwicklerdokumentation
+## 3. Gesamtarchitektur (Das "Wie" – High Level)
 
-**Version: 4.0 (Gemini-First)**
-
-Dieses Dokument beschreibt die Funktionsweise und den Aufbau der LLKJJ ML-Pipeline. Es richtet sich an Entwickler, die das System warten, erweitern oder in das `llkjj_backend` integrieren.
-
-## 1. Funktionsübersicht
-
-Die Pipeline ist ein eigenständiges Python-Paket (`llkjj_ml`), das darauf spezialisiert ist, PDF-Eingangsrechnungen aus dem deutschen Elektrohandwerk zu verarbeiten.
-
-**Kernfunktionen:**
--   **Direkte PDF-Analyse:** Extrahiert Rechnungsdaten (Kopf, Positionen, Summen) direkt aus PDF-Dateien.
--   **SKR03-Klassifizierung:** Ordnet jeder Rechnungsposition automatisch ein passendes Konto aus dem deutschen Standardkontenrahmen SKR03 zu.
--   **Kontinuierliches Lernen:** Jede verarbeitete Rechnung erzeugt Trainingsdaten, um zukünftige, vollständig lokale KI-Modelle (spaCy, RAG) zu trainieren.
--   **Qualitätsbewertung:** Jedes Ergebnis wird mit einem Konfidenz-Score und einer Qualitätsstufe versehen.
-
-## 2. Haupt-Workflow (Gemini-First)
-
-Der Standardprozess wird durch die Klasse `GeminiDirectProcessor` gesteuert und läuft wie folgt ab:
-
-1.  **Eingabe:** Eine PDF-Datei wird an die Methode `process_pdf_gemini_first` übergeben.
-2.  **Validierung:** Die PDF wird auf Gültigkeit und Größe geprüft.
-3.  **Gemini-Analyse:**
-    -   Die PDF wird an die Google Gemini API gesendet.
-    -   Ein speziell entwickelter Prompt (`_get_german_elektro_analysis_prompt`) instruiert das Modell, alle relevanten Daten in einem strukturierten JSON-Format zu extrahieren. Dies beinhaltet Header-Daten, alle Rechnungspositionen und Vorschläge für spaCy-Annotationen.
-4.  **Schema-Validierung:** Die JSON-Antwort von Gemini wird gegen ein strenges Pydantic-Schema (`GeminiExtractionResult`) validiert, um die Datenintegrität sicherzustellen.
-5.  **RAG-Anreicherung:**
-    -   Die von Gemini vorgeschlagenen SKR03-Konten für jede Position werden durch das lokale RAG-System (ChromaDB) verfeinert.
-    -   Das System sucht nach ähnlichen, bereits (vom Benutzer) validierten Buchungen und passt den Vorschlag und die Konfidenz bei Bedarf an.
-6.  **Qualitätsbewertung:** Der `QualityAssessor` berechnet einen finalen Konfidenz-Score basierend auf der Vollständigkeit der Extraktion und der Sicherheit der Klassifizierung.
-7.  **Trainingsdaten-Generierung:**
-    -   Der `SpacyAnnotationCorrector` korrigiert die von Gemini vorgeschlagenen Annotationen, um exakte Zeichen-Offsets für das spaCy-Training zu gewährleisten.
-    -   Die validierten Klassifizierungen werden in der ChromaDB gespeichert, um das RAG-System für die Zukunft zu verbessern.
-8.  **Ausgabe:** Ein Pydantic-validiertes `ProcessingResult`-Objekt wird zurückgegeben. Es enthält alle extrahierten Daten, Klassifizierungen, Metriken und Trainingsannotationen.
-
-**Fehlerbehandlung:** Wenn ein Schritt in der Gemini-Pipeline fehlschlägt (z.B. API-Fehler, Validierungsfehler), wird der Prozess mit einer `RuntimeError` abgebrochen. Es gibt **keinen automatischen Fallback** auf die Docling-Methode.
-
-## 3. Alternative Methode (Docling)
-
-Für Test- und Vergleichszwecke existiert eine alternative Pipeline, die `Docling` für die OCR- und Tabellenextraktion verwendet.
-
--   **Aufruf:** Muss explizit über die CLI (`process-docling`) oder programmatisch aufgerufen werden.
--   **Prozessor:** `DoclingAlternativeProcessor`.
--   **Funktionsweise:** Nutzt den bewährten, mehrstufigen Prozess aus Extraktion (`DataExtractor`), Klassifizierung (`DataClassifier`) und Qualitätsbewertung.
-
-## 4. Installation & Nutzung
-
-Das Projekt wird mit Poetry verwaltet.
-
-**Installation:**
-```bash
-poetry install
-```
-
-**Nutzung als CLI-Tool (für Entwickler):**
-
-```bash
-# Standard-Workflow (Gemini-First)
-poetry run python main.py process /pfad/zur/rechnung.pdf
-
-# Alternative (Docling)
-poetry run python main.py process-docling /pfad/zur/rechnung.pdf
-```
-
-**Nutzung als Plugin (im `llkjj_backend`):**
-
-```python
-from llkjj_ml import GeminiDirectProcessor, ProcessingResult
-from llkjj_ml.config import MLSettings
-
-# Eigene Konfiguration erstellen (optional)
-settings = MLSettings(google_api_key="...")
-
-# Prozessor instanziieren
-processor = GeminiDirectProcessor(settings)
-
-try:
-    # PDF verarbeiten
-    result: ProcessingResult = processor.process_pdf_gemini_first("rechnung.pdf")
-
-    # Mit den Ergebnissen arbeiten
-    print(result.get_summary())
-
-except RuntimeError as e:
-    print(f"Verarbeitung fehlgeschlagen: {e}")
-```
-
-## 5. Konfiguration
-
-Die Pipeline wird über Umgebungsvariablen konfiguriert, die in einer `.env`-Datei im Projekt-Root gespeichert werden können. Die wichtigste Variable ist `GOOGLE_API_KEY`. Alle verfügbaren Variablen sind in `src/config.py` in der `Config`-Klasse dokumentiert.
+Die Systemarchitektur basiert auf einer strikten Trennung zwischen einem zentralen Backend-Kern und spezialisierten, austauschbaren Plugins.
 
 ```
++---------------------------------------------------------------------------------+
+|                                 LLKJJ-System                                    |
+|                                                                                 |
+|  +---------------------------------------------------------------------------+  |
+|  |                Workspace 1: Das Backend (Core-System)                     |  |
+|  |---------------------------------------------------------------------------|  |
+|  | [FastAPI] -> API Routers -> [Service Schicht] -> [Repository] -> PostgreSQL |  |
+|  |      ^                (Business Logic)      (SQLAlchemy)      (Struktur)  |  |
+|  |      |                                                                    |  |
+|  |      +------------------(Definierte Schnittstellen)-----------------------+  |
+|  +------------------------------------|----------------------------------------+  |
+|                                       |                                         |
+|      +--------------------------------+--------------------------------+        |
+|      |                                |                                |        |
+|      v                                v                                v        |
+| +-------------------------+  +-------------------------+  +-------------------------+ |
+| | Workspace 2:            |  | Workspace 3:            |  | Workspace 4:            | |
+| | ML-Pipeline             |  | E-Invoice-System        |  | Export-System           | |
+| | (`llkjj_ml_plugin`)     |  | (`llkjj_efaktura`)      |  | (`llkjj_export`)        | |
+| |-------------------------|  |-------------------------|  |-------------------------| |
+| | - OCR (Docling)         |  | - XRechnung / UBL XML   |  | - DATEV CSV Export      | |
+| | - Gemini-First (aktiv)  |  | - PDF/A-3 Generierung   |  | - JSON / Standard CSV   | |
+| | - RAG (ChromaDB)        |  | - KoSIT-Validierung     |  | - Universelle Schemas   | |
+| +-------------------------+  +-------------------------+  +-------------------------+ |
++-------------------------------------------------------------------------------------+
+```
 
----
+- **Workspace 1: Das Backend (Core-System):** Der zentrale Orchestrator. Stellt die REST-API bereit, verwaltet Benutzer und Daten in PostgreSQL und kommuniziert mit den Plugins über definierte Schnittstellen.
+- **Workspace 2: Die ML-Pipeline (`llkjj_ml_plugin`):** Das "Gehirn". Verarbeitet eine PDF-Datei und gibt ein strukturiertes, klassifiziertes Ergebnis zurück. **Dies ist dein primärer Fokus.**
+- **Workspace 3: Das E-Invoice-System (`llkjj_efaktura`):** Spezialist für die Erstellung gesetzeskonformer E-Rechnungen (XRechnung, Factur-X).
+- **Workspace 4: Das Export-System (`llkjj_export`):** Stellt Daten in verschiedenen Formaten (z.B. DATEV-CSV) für externe Systeme bereit.
 
-### 3. `Architektur.md`
+## 4. Detailarchitektur & Workflow des ML-Plugins (`llkjj_ml_plugin`)
 
-Dieses Dokument beschreibt die übergeordnete Architektur und die Interaktion der Komponenten. Es ist ideal für das Onboarding neuer Entwickler oder um strategische Entscheidungen zu treffen.
+### 4.1. Interne Komponenten & Interaktion
 
-```markdown
-# LLKJJ ML-Pipeline - Architekturdokument
-
-**Version: 4.0 (Gemini-First)**
-
-## 1. Architektonische Vision
-
-Das LLKJJ ML-System ist als **hochgradig modulares, eigenständiges Plugin** konzipiert, das von einem zentralen `llkjj_backend` konsumiert wird. Die Architektur folgt strengen Prinzipien der **Trennung von Verantwortlichkeiten (SoC)** und **losen Kopplung**, um maximale Wartbarkeit, Testbarkeit und zukünftige Erweiterbarkeit zu gewährleisten.
-
-Die Kernphilosophie ist "Intelligenz als austauschbarer Service". Aktuell ist **Google Gemini** die primäre Intelligenz-Engine, die Architektur ist jedoch darauf ausgelegt, diese nahtlos durch eine zukünftige, **selbst trainierte spaCy/RAG-Lösung** zu ersetzen.
-
-## 2. Systemübersicht & Komponenten-Interaktion
-
-Das System ist in klar definierte Schichten und Komponenten unterteilt.
+Das ML-Plugin ist als hochgradig modulares, eigenständiges Paket konzipiert.
 
 ```mermaid
 graph TD
-    subgraph llkjj_backend [API Backend (FastAPI)]
-        A[API Endpunkte </br> z.B. /documents/upload]
+    subgraph llkjj_backend [API Backend]
+        A[API Endpunkt]
     end
 
-    subgraph llkjj_ml [ML Plugin (Dieses Projekt)]
+    subgraph llkjj_ml [ML Plugin (Dein Fokus)]
         B(Standard-Prozessor </br> GeminiDirectProcessor)
         C(Alternativ-Prozessor </br> DoclingAlternativeProcessor)
 
         subgraph Core Services
-            D[SKR03Manager </br> Regelwerk & Kontenplan]
-            E[QualityAssessor </br> Konfidenz & Qualität]
+            D[SKR03Manager]
+            E[QualityAssessor]
             F[ResourceManager </br> Singleton für Modelle]
         end
 
@@ -183,10 +98,9 @@ graph TD
             I[Docling Engine]
         end
 
-        subgraph Datenmodelle [Datenmodelle (Pydantic)]
-            J(ProcessingResult </br> Stabiler Datenvertrag)
-            K(Gemini Schemas)
-            L(Interne Modelle)
+        subgraph Datenmodelle [Pydantic]
+            J(ProcessingResult </br> **Öffentlicher Datenvertrag**)
+            K(Gemini Schemas </br> Interner KI-Vertrag)
         end
     end
 
@@ -197,81 +111,55 @@ graph TD
     B --> E
     B --> J
 
-    A -.->|ruft optional auf| C
-    C --> I
-    C --> D
-    C --> H
-    C --> E
-    C --> J
-
     B -.-> F
     H -.-> F
     I -.-> F
 ```
 
-## 3. Detaillierte Beschreibung der Komponenten
+### 4.2. Haupt-Workflow (Gemini-First)
 
-### 3.1. Prozessoren (Die Orchestratoren)
+Der Standardprozess wird durch `GeminiDirectProcessor` gesteuert:
 
-- **`GeminiDirectProcessor` (Standard):**
+1. **Eingabe & Validierung:** Eine PDF-Datei wird an `process_pdf_gemini_first` übergeben und geprüft.
+2. **Gemini-Analyse:** Die PDF wird an die Google Gemini API gesendet. Ein spezifischer Prompt instruiert das Modell, alle Daten in einem strukturierten JSON zu extrahieren.
+3. **Schema-Validierung:** Die JSON-Antwort von Gemini wird strikt gegen das Pydantic-Schema `GeminiExtractionResult` validiert. Dies ist ein kritischer Qualitätssicherungsschritt.
+4. **RAG-Anreicherung:** Die von Gemini vorgeschlagenen SKR03-Konten werden durch das lokale RAG-System (ChromaDB) verfeinert und validiert, indem ähnliche, bereits bestätigte Buchungen gesucht werden.
+5. **Qualitätsbewertung:** Der `QualityAssessor` berechnet einen finalen Konfidenz-Score.
+6. **Trainingsdaten-Generierung:** Es werden korrigierte spaCy-Annotationen erzeugt und validierte Daten in ChromaDB gespeichert, um den Feedback-Loop zu schließen und das System kontinuierlich zu verbessern.
+7. **Ausgabe:** Ein Pydantic-validiertes **`ProcessingResult`-Objekt** wird zurückgegeben. Dies ist die einzige garantierte Schnittstelle nach außen.
 
-  - **Verantwortung:** Steuert den gesamten "Gemini-First"-Workflow.
-  - **Interaktion:** Kommuniziert direkt mit der Gemini-API, dem `SKR03Manager` zur Verfeinerung, dem `RAG-System` zur Anreicherung und dem `QualityAssessor`.
-  - **Output:** Erzeugt ein `ProcessingResult`-Objekt.
-- **`DoclingAlternativeProcessor` (Optional):**
+### 4.3. Wichtige technische Details & Design-Entscheidungen
 
-  - **Verantwortung:** Steuert den alternativen, OCR-basierten Workflow.
-  - **Interaktion:** Nutzt intern den alten `UnifiedProcessor`, der auf `Docling` aufbaut.
+- **Datenvertrag:** Das `ProcessingResult`-Modell ist der **stabile, öffentliche Datenvertrag** des ML-Plugins. Interne Änderungen dürfen dieses Schema nicht brechen.
+- **Fehlerbehandlung:** Wenn ein Schritt in der Gemini-Pipeline fehlschlägt (API-Fehler, Validierungsfehler), wird der Prozess mit einer `RuntimeError` abgebrochen. **Es gibt keinen automatischen Fallback auf die Docling-Methode.** Dies ist eine bewusste Entscheidung, um Fehler in der primären Pipeline sichtbar zu machen und zu beheben, anstatt sie zu verschleiern.
+- **Ressourcen-Management:** Ein `ResourceManager` (Singleton-Pattern) stellt sicher, dass ressourcenintensive Modelle (z.B. `SentenceTransformer`) nur einmal geladen werden, um den Speicherverbrauch zu minimieren.
+- **Datenbanken:**
+  - **PostgreSQL (im Backend):** Speichert alle strukturierten Geschäftsdaten. Der Zugriff erfolgt via SQLAlchemy 2.0 (async).
+  - **ChromaDB (im ML-Plugin):** Dient als Vektordatenbank für das RAG-System und das "Langzeitgedächtnis".
+- **Sicherheit:**
+  - **Authentifizierung:** Basiert auf JWT mit Argon2-gehashten Passwörtern.
+  - **Auditing:** Eine `SecurityAuditor`-Klasse (`Bandit`, `Safety`) ist Teil der CI-Pipeline.
+  - **Secret Management:** Sensible Schlüssel werden "at rest" mit AES-256 verschlüsselt.
 
-### 3.2. Core Services (Die Helfer)
+## 5. Anweisungen für die KI-gestützte Entwicklung (Deine Mission)
 
-- **`ResourceManager`:**
+### 5.1. Generelle Anweisungen ("Golden Rules")
 
-  - **Pattern:** Singleton.
-  - **Verantwortung:** Verhindert das mehrfache Laden von ressourcenintensiven Modellen wie `SentenceTransformer` oder `DoclingProcessor`. Bietet explizite `cleanup`-Methoden für ein sauberes Speichermanagement.
-- **`SKR03Manager`:**
+1. **Sprache:** Der gesamte Code, alle Kommentare und die Dokumentation sind auf **Deutsch**, um die Domänensprache (deutsche Buchhaltung) konsistent abzubilden.
+2. **Architektur respektieren:** Halte dich strikt an die Trennung von Backend-Kern und Plugins. Keine direkten Abhängigkeiten zwischen den Workspaces, außer über die definierten Schnittstellen (`ProcessingResult` etc.).
+3. **Sicherheit zuerst:** Jeder neue Code muss sicher sein. Vermeide hartcodierte Secrets, validiere alle Eingaben und nutze die bereitgestellten Sicherheits-Utilities.
+4. **Typsicherheit:** Der gesamte Code muss `MyPy --strict` konform sein.
+5. **Testen:** Für neue Funktionen müssen entsprechende `pytest`-Tests geschrieben werden.
+6. **Fokus:** Deine Hauptaufgabe ist es, die "Gemini-First"-Pipeline zu verbessern und gleichzeitig den Übergang zu Phase 2 (lokale Modelle) vorzubereiten. Die Qualität und Konsistenz der gesammelten Trainingsdaten ist wichtiger als kurzfristige Performance-Hacks.
 
-  - **Verantwortung:** Kapselt die gesamte Logik der deutschen SKR03-Buchhaltung. Lädt und interpretiert das YAML-Regelwerk und den CSV-Kontenplan. Bietet eine einfache Methode `klassifiziere_artikel`.
-- **`QualityAssessor`:**
+### 5.2. Anweisungen für Deinen Workspace: Die ML-Pipeline (`llkjj_ml_plugin`)
 
-  - **Verantwortung:** Berechnet einen objektiven, gewichteten Konfidenz-Score für jedes Verarbeitungsergebnis. Entkoppelt die Qualitätsbewertung von der eigentlichen Extraktionslogik.
+- **Dein Kernziel:** Eine PDF-Datei so präzise wie möglich in ein strukturiertes, SKR03-klassifiziertes `ProcessingResult`-Objekt zu verwandeln.
+- **Dein Kontext:** Du bist ein Experte für Machine Learning, NLP (spaCy, Transformers), Computer Vision, Vektordatenbanken (ChromaDB) und die Integration von LLMs wie Gemini.
+- **Deine Hauptaufgaben:** Verbesserung der Extraktions-Pipeline (`GeminiDirectProcessor`), Optimierung der Klassifizierungsmodelle, Implementierung von Feature Engineering und Stärkung des RAG-Systems.
+- **Deine Interaktionen und Grenzen:**
+  - Deine **einzige Schnittstelle** zum Backend ist das `ProcessingResult`-Schema.
+  - Du darfst **keine direkten Abhängigkeiten** zum Backend-Code (`Workspace 1`) oder dessen PostgreSQL-Datenbank haben. Du agierst als eigenständige Blackbox.
+  - Deine eigene Persistenz (z.B. für `ChromaDB`) verwaltest du in deinem eigenen Verzeichnis (z.B. `data/vectors`).
 
-### 3.3. KI-Engines (Die "Gehirne")
-
-- **Gemini API Client:**
-
-  - **Verantwortung:** Schnittstelle zur Google Cloud. Sendet die PDF und den Prompt, empfängt das strukturierte JSON.
-- **RAG-System (ChromaDB + Embedding Model):**
-
-  - **Verantwortung:** Das "Langzeitgedächtnis" der Pipeline.
-  - **Ingestion:** Speichert Vektoren von validierten Rechnungspositionen.
-  - **Retrieval:** Findet semantisch ähnliche Einträge, um die KI-Vorschläge zu validieren und zu verfeinern.
-  - **Feedback-Loop:** Wird durch Benutzerkorrekturen kontinuierlich verbessert.
-
-### 3.4. Datenmodelle (Das Fundament)
-
-- **`ProcessingResult`:**
-  - **Rolle:** **Der öffentliche Datenvertrag.** Dies ist die einzige Datenstruktur, die das Plugin nach außen gibt. Ihre Stabilität ist garantiert.
-- **Gemini-Schemas:**
-  - **Rolle:** **Der interne Datenvertrag mit der KI.** Pydantic-Modelle, die die erwartete JSON-Struktur von Gemini validieren und so die Robustheit der Pipeline sicherstellen.
-
-## 4. Design-Entscheidungen & Begründungen
-
-- **Warum "Gemini-First"?**
-
-  - **Effizienz:** Ein einziger API-Aufruf ersetzt einen mehrstufigen Prozess (OCR -> Tabellenerkennung -> NLP -> Klassifizierung), was die Latenz und Komplexität drastisch reduziert.
-  - **Qualität:** Moderne multimodale LLMs übertreffen oft traditionelle OCR/Template-Methoden bei unstrukturierten Dokumenten.
-  - **Strategie:** Ermöglicht die schnelle Erfassung hochwertiger, annotierter Daten, um die zukünftigen lokalen Modelle zu trainieren.
-- **Warum kein Fallback?**
-
-  - **Robustheit und Wartbarkeit:** Ein automatischer Fallback kann Fehler in der primären Pipeline (Gemini) verschleiern. Indem wir bei einem Fehler explizit scheitern, erzwingen wir die Analyse und Behebung des Kernproblems (z.B. ein fehlerhafter Prompt, ein API-Problem), anstatt einen stillen, potenziell minderwertigen Fallback-Pfad zu gehen.
-- **Warum ein `ResourceManager`?**
-
-  - **Speicher-Effizienz:** KI-Modelle belegen oft mehrere Gigabyte im RAM. Ein Singleton stellt sicher, dass jedes Modell nur einmal geladen wird, was für den Betrieb in ressourcenbeschränkten Umgebungen (wie Docker-Containern) unerlässlich ist.
-- **Warum ein `ProcessingResult`-Modell?**
-
-  - **Stabile API:** Es entkoppelt die internen Prozesse von der externen Schnittstelle. Wir können die gesamte interne Funktionsweise ändern, solange das finale `ProcessingResult`-Objekt konsistent bleibt. Dies ist der Kern einer guten Plugin-Architektur.
-
-```
-
-```
+---

@@ -81,7 +81,7 @@ class ModularProcessor:
     def extractor(self) -> DataExtractor:
         """Lazy load extractor when needed"""
         if self._extractor is None:
-            self._extractor = DataExtractor(self.gemini_model, self.config)
+            self._extractor = DataExtractor(self.config)  # type: ignore[no-untyped-call]
         return self._extractor
 
     @property

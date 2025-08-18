@@ -90,7 +90,7 @@ class AsyncUnifiedProcessor:
 
         # Synchrone Komponenten initialisieren (werden in async Kontexten verwendet)
         self.skr03_manager = lade_skr03_manager()
-        self.extractor = DataExtractor(self.skr03_manager)
+        self.extractor = DataExtractor()  # Extractor braucht nur einen Parameter
         self.classifier = DataClassifier(
             skr03_manager=self.skr03_manager,
             vector_store=None,  # Wird async initialisiert
@@ -352,7 +352,7 @@ class AsyncUnifiedProcessor:
         errors: list[str] = []
 
         # Semaphore für parallele Verarbeitung
-        tasks = []
+        tasks: list[asyncio.Task[ProcessingResult]] = []
 
         for i, pdf_path in enumerate(pdf_paths):
             task = asyncio.create_task(
@@ -367,7 +367,9 @@ class AsyncUnifiedProcessor:
                 )
 
         # Warte auf alle Tasks
-        completed_results = await asyncio.gather(*tasks, return_exceptions=True)
+        completed_results: list[
+            ProcessingResult | BaseException
+        ] = await asyncio.gather(*tasks, return_exceptions=True)
 
         # Ergebnisse sortieren
         for result in completed_results:
@@ -441,8 +443,8 @@ class AsyncUnifiedProcessor:
             loop = asyncio.get_event_loop()
 
             # Texte für Embedding vorbereiten
-            texts_to_embed = []
-            metadata_list = []
+            texts_to_embed: list[str] = []
+            metadata_list: list[dict[str, str]] = []
 
             for classification in result.skr03_classifications:
                 text = f"{classification.get('beschreibung', '')} {classification.get('lieferant', '')}"
@@ -459,7 +461,9 @@ class AsyncUnifiedProcessor:
             if texts_to_embed:
                 # Generate embeddings in executor
                 embeddings = await loop.run_in_executor(
-                    None, self.embedding_model.encode, texts_to_embed
+                    None,
+                    self.embedding_model.encode,
+                    texts_to_embed,  # type: ignore[misc]
                 )
 
                 # Store in ChromaDB (in executor to avoid blocking)
@@ -473,7 +477,7 @@ class AsyncUnifiedProcessor:
 
                 logger.info(
                     "✅ Async Vektorisierung: %d Embeddings gespeichert",
-                    len(embeddings),
+                    len(embeddings),  # type: ignore[arg-type]
                 )
 
         except Exception as e:

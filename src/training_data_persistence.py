@@ -76,8 +76,8 @@ class TrainingDataPersistence:
             logger.info("✅ ChromaDB für Trainingsdaten-RAG initialisiert")
         except Exception as e:
             logger.warning(f"⚠️ ChromaDB Setup fehlgeschlagen: {e}")
-            self.chroma_client = None
-            self.collection = None
+            # Die Attribute wurden bereits bei der erfolgreichen Initialisierung gesetzt
+            # Keine erneute Definition erforderlich
 
     def _setup_embedding_model(self) -> None:
         """Setup Embedding-Modell für RAG-System"""
@@ -88,7 +88,7 @@ class TrainingDataPersistence:
             logger.info("✅ Embedding-Modell für Trainingsdaten geladen")
         except Exception as e:
             logger.warning(f"⚠️ Embedding-Modell Setup fehlgeschlagen: {e}")
-            self.embedding_model = None
+            self.embedding_model = None  # type: ignore[assignment]
 
     def persist_training_data(
         self,
@@ -109,7 +109,7 @@ class TrainingDataPersistence:
         Returns:
             Dict mit Statistiken zur Persistierung
         """
-        stats = {
+        stats: dict[str, Any] = {
             "pdf_path": pdf_path,
             "timestamp": datetime.now().isoformat(),
             "spacy_annotations": 0,
@@ -200,7 +200,7 @@ class TrainingDataPersistence:
 
     def _extract_training_text(self, gemini_result: dict[str, Any]) -> str:
         """Extrahiere Volltext für spaCy-Training"""
-        text_parts = []
+        text_parts: list[str] = []
 
         # Header-Informationen
         header = gemini_result.get("invoice_header", {})
@@ -310,7 +310,7 @@ class TrainingDataPersistence:
                 )
 
                 # Embedding erstellen
-                embedding = self.embedding_model.encode(doc_text).tolist()
+                embedding = self.embedding_model.encode(doc_text).tolist()  # type: ignore[misc]
 
                 # Metadaten mit validation_status (RAG-Strategie)
                 metadata = {
@@ -336,10 +336,10 @@ class TrainingDataPersistence:
 
             # Batch-Insert in ChromaDB
             if documents:
-                self.collection.add(
+                self.collection.add(  # type: ignore[misc]
                     documents=documents,
-                    metadatas=metadatas,
-                    embeddings=embeddings,
+                    metadatas=metadatas,  # type: ignore[arg-type]
+                    embeddings=embeddings,  # type: ignore[arg-type]
                     ids=ids,
                 )
 

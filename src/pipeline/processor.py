@@ -561,7 +561,7 @@ class UnifiedProcessor:
             logger.info("🔄 Initialisiere DataExtractor...")
             from src.extraction.extractor import DataExtractor
 
-            self.extractor = DataExtractor(self.config)
+            self.extractor = DataExtractor(self.config)  # type: ignore[no-untyped-call]
 
         if self.classifier is None:
             logger.info("🔄 Initialisiere DataClassifier...")

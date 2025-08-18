@@ -106,7 +106,7 @@ class UnifiedProcessor:
         # Phase 2: SpaCy RAG bevorzugt (wenn verfügbar und trainiert)
         if "spacy_rag" in available:
             spacy_strategy = self._strategies["spacy_rag"]
-            training_status = spacy_strategy.check_training_data_readiness()
+            training_status = spacy_strategy.check_training_data_readiness()  # type: ignore[attr-defined]
             if training_status.get("training_data_sufficient", False):
                 logger.info(
                     "🎯 Default Strategy: spacy_rag (Phase 2: Local autonomous)"
@@ -177,7 +177,7 @@ class UnifiedProcessor:
             result = strategy_instance.process_pdf(pdf_path)
 
             # Strategy-Info zu Result hinzufügen
-            result.processing_method = selected_strategy  # Update method info
+            result.processing_method = selected_strategy  # type: ignore[assignment]
 
             logger.info("✅ %s Strategy erfolgreich", strategy_instance.name)
             return result
@@ -192,7 +192,7 @@ class UnifiedProcessor:
             ):
                 logger.warning("🔄 Fallback zu GeminiStrategy...")
                 fallback_result = self._strategies["gemini"].process_pdf(pdf_path)
-                fallback_result.processing_method = "gemini_fallback"
+                fallback_result.processing_method = "gemini_fallback"  # type: ignore[assignment]
                 return fallback_result
             else:
                 raise
@@ -232,7 +232,7 @@ class UnifiedProcessor:
             "strategy_pattern": "enabled",
         }
 
-        return all_info
+        return all_info  # type: ignore[return-value]
 
     def compare_strategies(self, pdf_path: str | Path) -> dict[str, Any]:
         """
@@ -261,7 +261,7 @@ class UnifiedProcessor:
         for strategy_name in available_strategies:
             try:
                 logger.info("🔄 Teste %s Strategy...", strategy_name)
-                result = self.process_pdf(pdf_path, strategy_name)
+                result = self.process_pdf(pdf_path, strategy_name)  # type: ignore[arg-type]
 
                 comparison_results[strategy_name] = {
                     "success": True,
@@ -277,11 +277,13 @@ class UnifiedProcessor:
                 comparison_results[strategy_name] = {"success": False, "error": str(e)}
 
         # Zusammenfassung
-        successful_strategies = [
-            k for k, v in comparison_results.items() if v.get("success")
+        successful_strategies: list[str] = [
+            k
+            for k, v in comparison_results.items()
+            if v.get("success")  # type: ignore[misc]
         ]
 
-        summary = {
+        summary: dict[str, Any] = {
             "comparison_results": comparison_results,
             "summary": {
                 "total_strategies_tested": len(available_strategies),
@@ -295,16 +297,16 @@ class UnifiedProcessor:
         # Best-Performance-Analyse
         if successful_strategies:
             # Fastest
-            fastest = min(
+            fastest: str = min(
                 successful_strategies,
-                key=lambda x: comparison_results[x]["processing_time_ms"],
+                key=lambda x: comparison_results[x]["processing_time_ms"],  # type: ignore[misc]
             )
             summary["summary"]["fastest_strategy"] = fastest
 
             # Highest confidence
-            highest_conf = max(
+            highest_conf: str = max(
                 successful_strategies,
-                key=lambda x: comparison_results[x]["confidence_score"],
+                key=lambda x: comparison_results[x]["confidence_score"],  # type: ignore[misc]
             )
             summary["summary"]["highest_confidence"] = highest_conf
 

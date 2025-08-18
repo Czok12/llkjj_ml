@@ -28,9 +28,9 @@ from sentence_transformers import SentenceTransformer
 
 # Gemini AI Integration
 try:
-    import google.genai as genai
+    import google.genai as genai  # type: ignore[import-untyped]
 except ImportError:
-    genai = None
+    genai = None  # type: ignore[assignment]
 
 from src.config import Config
 from src.models.gemini_schemas import create_validation_report, validate_gemini_response

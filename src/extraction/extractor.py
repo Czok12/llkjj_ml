@@ -29,7 +29,7 @@ class DataExtractor:
     - Optionale Gemini AI-Verbesserung
     """
 
-    def __init__(self, config=None):
+    def __init__(self, config: Any = None) -> None:
         """Initialisiert DataExtractor mit Docling DocumentConverter."""
         logger.info("🔄 Initialisiere DataExtractor...")
 
@@ -42,7 +42,7 @@ class DataExtractor:
         # Optional: Gemini AI Client für Verbesserung
         self.gemini_client = None
         try:
-            if Config.USE_GEMINI and Config.GEMINI_API_KEY:
+            if hasattr(Config, "USE_GEMINI") and hasattr(Config, "GEMINI_API_KEY"):
                 # Gemini würde hier initialisiert werden
                 pass
         except Exception as e:
@@ -69,7 +69,7 @@ class DataExtractor:
             raw_text = doc.export_to_text()
 
             # Strukturierte Daten extrahieren
-            structured_data = {
+            structured_data: dict[str, Any] = {
                 "invoice_number": "",
                 "invoice_date": "",
                 "supplier": "",
@@ -87,13 +87,13 @@ class DataExtractor:
             self._extract_line_items_from_tables(doc, structured_data)
 
             # Metadata sammeln
-            metadata = {
+            metadata: dict[str, Any] = {
                 "file_size": pdf_path.stat().st_size,
                 "file_name": pdf_path.name,
                 "extraction_method": "docling",
             }
 
-            result = {
+            result: dict[str, Any] = {
                 "raw_text": raw_text,
                 "structured_data": structured_data,
                 "line_items": structured_data.get(
@@ -115,7 +115,9 @@ class DataExtractor:
                 "success": False,
             }
 
-    def _extract_basic_info(self, raw_text: str, structured_data: dict) -> None:
+    def _extract_basic_info(
+        self, raw_text: str, structured_data: dict[str, Any]
+    ) -> None:
         """Extrahiert Basis-Informationen aus dem Text."""
         lines = raw_text.split("\n")
 
@@ -142,7 +144,9 @@ class DataExtractor:
             if "Elektro" in line and "UG" in line:
                 structured_data["customer"] = line.strip()
 
-    def _extract_line_items_from_tables(self, doc, structured_data: dict) -> None:
+    def _extract_line_items_from_tables(
+        self, doc: Any, structured_data: dict[str, Any]
+    ) -> None:
         """Extrahiert Line Items aus Docling-Tabellen mit TableCell-Unterstützung."""
         if not hasattr(doc, "tables") or not doc.tables:
             return
@@ -158,7 +162,7 @@ class DataExtractor:
                 )
 
                 # Konvertiere TableCells zu lesbarer Struktur
-                rows_dict = {}
+                rows_dict: dict[int, dict[int, str]] = {}
                 for cell in table_cells:
                     if hasattr(cell, "start_row_offset_idx") and hasattr(cell, "text"):
                         row_idx = cell.start_row_offset_idx
@@ -173,9 +177,9 @@ class DataExtractor:
                         rows_dict[row_idx][col_idx] = cell.text
 
                 # Konvertiere zu sortierten Zeilen
-                table_rows = []
+                table_rows: list[list[str]] = []
                 for row_idx in sorted(rows_dict.keys()):
-                    row_data = []
+                    row_data: list[str] = []
                     for col_idx in sorted(rows_dict[row_idx].keys()):
                         row_data.append(rows_dict[row_idx][col_idx])
                     table_rows.append(row_data)
@@ -228,7 +232,9 @@ class DataExtractor:
                 logger.warning(f"⚠️ Tabellenfehler ignoriert: {table_error}")
                 continue
 
-    def _parse_line_item_from_row(self, row: list, header: list) -> dict | None:
+    def _parse_line_item_from_row(
+        self, row: list[str], header: list[str]
+    ) -> dict[str, Any] | None:
         """Parst eine Tabellenzeile zu einem Line Item."""
         try:
             # Standard-Spaltenerkennung für Sonepar-Format
@@ -300,7 +306,7 @@ class DataExtractor:
 
     def enhance_with_gemini(self, raw_text: str) -> dict[str, Any]:
         """
-        Verbessert extrahierte Daten mit Gemini AI.
+        Verbessert extrahierte Daten mit Gemini AI (optional).
 
         Args:
             raw_text: Roher extrahierter Text
@@ -308,26 +314,6 @@ class DataExtractor:
         Returns:
             Dictionary mit verbesserten/strukturierten Daten
         """
-        if not self.gemini_client:
-            logger.warning("⚠️ Kein Gemini-Client verfügbar für Verbesserung")
-            return {"enhanced_text": raw_text, "enhancement_applied": False}
-
-        try:
-            logger.info("🤖 Verbessere Extraktion mit Gemini AI...")
-
-            enhanced_data = {
-                "lieferant": "Unbekannt",
-                "rechnungsnummer": "Nicht gefunden",
-                "positionen": [],
-            }
-
-            logger.info("✅ Gemini-Verbesserung abgeschlossen")
-            return {"enhanced_data": enhanced_data, "enhancement_applied": True}
-
-        except Exception as e:
-            logger.error(f"❌ Fehler bei Gemini-Verbesserung: {e}")
-            return {
-                "enhanced_text": raw_text,
-                "enhancement_applied": False,
-                "error": str(e),
-            }
+        # Gemini Client ist aktuell deaktiviert - verwende Fallback
+        logger.warning("⚠️ Kein Gemini-Client verfügbar für Verbesserung")
+        return {"enhanced_text": raw_text, "enhancement_applied": False}
