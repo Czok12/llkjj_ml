@@ -162,7 +162,7 @@ class PerformanceMonitor:
             extraction_quality=result.extraction_quality,
             skr03_classifications_count=len(result.skr03_classifications),
             cache_hit=cache_hit,
-            gemini_model=getattr(result, "gemini_model", "gemini-1.5-flash"),
+            gemini_model=getattr(result, "gemini_model", "gemini-2.5-flash"),
             error_occurred=error_occurred,
             error_message=error_message,
             estimated_cost_usd=estimated_cost,

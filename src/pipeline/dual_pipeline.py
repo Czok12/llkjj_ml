@@ -206,7 +206,7 @@ WICHTIG:
             if hasattr(self.config, "gemini_model"):
                 model = self.config.gemini_model
             else:
-                model = "gemini-1.5-flash"
+                model = "gemini-2.5-flash"
 
             # _gemini_client is guaranteed to be not None since this method is only called when it's truthy
             assert self._gemini_client is not None, "Gemini client should be available"

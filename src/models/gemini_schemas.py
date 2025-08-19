@@ -88,15 +88,36 @@ class GeminiLineItem(BaseModel):
     marke: str | None = Field(
         None, max_length=100, description="Herstellermarke (GIRA, Hager, etc.)"
     )
-    menge: float = Field(..., gt=0, le=99999, description="Menge (positiv, max 99999)")
+    menge: float = Field(
+        ...,
+        ge=-99999,
+        le=99999,
+        description="Menge (-99999 bis 99999, negativ bei Retouren/Gutschriften)",
+    )
+
+    @field_validator("menge")
+    @classmethod
+    def validate_quantity(cls, v: float) -> float:
+        """Handle zero quantities by converting to minimal value"""
+        if v == 0:
+            logger.warning(f"⚠️ Zero quantity converted to 1.0: {v} -> 1.0")
+            return 1.0
+        return v
+
     einheit: str = Field(
         ..., max_length=20, description="Mengeneinheit (Stk, m, kg, etc.)"
     )
     einzelpreis: float = Field(
-        ..., ge=0, le=999999, description="Einzelpreis in EUR (0-999999)"
+        ...,
+        ge=-999999,
+        le=999999,
+        description="Einzelpreis in EUR (-999999 bis 999999, negativ bei Gutschriften)",
     )
     gesamtpreis: float = Field(
-        ..., ge=0, le=9999999, description="Gesamtpreis in EUR (0-9999999)"
+        ...,
+        ge=-9999999,
+        le=9999999,
+        description="Gesamtpreis in EUR (-9999999 bis 9999999, negativ bei Gutschriften)",
     )
     elektro_kategorie: str | None = Field(
         None, max_length=100, description="Elektrotechnik-Kategorie"
@@ -116,14 +137,27 @@ class GeminiTotals(BaseModel):
     Validiert Rechnungssummen aus Gemini AI Response.
     """
 
-    nettosumme: float = Field(..., ge=0, le=9999999, description="Nettosumme in EUR")
+    nettosumme: float = Field(
+        ...,
+        ge=-9999999,
+        le=9999999,
+        description="Nettosumme in EUR (negativ bei Gutschriften)",
+    )
     mwst_betrag: float = Field(
-        ..., ge=0, le=9999999, description="Mehrwertsteuerbetrag in EUR"
+        ...,
+        ge=-9999999,
+        le=9999999,
+        description="Mehrwertsteuerbetrag in EUR (negativ bei Gutschriften)",
     )
     mwst_satz: float = Field(
         ..., ge=0, le=100, description="Mehrwertsteuersatz in Prozent"
     )
-    bruttosumme: float = Field(..., ge=0, le=9999999, description="Bruttosumme in EUR")
+    bruttosumme: float = Field(
+        ...,
+        ge=-9999999,
+        le=9999999,
+        description="Bruttosumme in EUR (negativ bei Gutschriften)",
+    )
 
 
 class GeminiZusatzinfos(BaseModel):

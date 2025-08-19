@@ -168,6 +168,8 @@ class CacheInvalidationManager:
 
             with open(skr03_config_path, encoding="utf-8") as f:
                 skr03_data = yaml.safe_load(f)
+                if skr03_data is None:
+                    skr03_data = {}
                 rules_count = len(skr03_data.get("kontierungsregeln", []))
 
             # Letzten bekannten Hash abrufen

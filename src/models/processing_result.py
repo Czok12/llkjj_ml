@@ -141,6 +141,13 @@ class ProcessingResult(BaseModel):
         examples=[1443],
     )
 
+    # === MODEL INFORMATION ===
+    gemini_model: str = Field(
+        default="gemini-2.5-flash",
+        description="Verwendetes Gemini-Modell für die Verarbeitung",
+        examples=["gemini-2.5-flash", "gemini-1.5-flash"],
+    )
+
     # === QUALITY INDICATORS ===
     confidence_score: float = Field(
         ...,
@@ -355,7 +362,7 @@ for item in result.skr03_classifications:
         processing_time_ms: int,
         gemini_time_ms: int,
         classification_time_ms: int,
-        gemini_model: str = "gemini-2.0-flash-exp",
+        gemini_model: str = "gemini-2.5-flash",
     ) -> "ProcessingResult":
         """
         Factory method für Gemini-First Pipeline Results.
@@ -404,6 +411,8 @@ for item in result.skr03_classifications:
             gemini_time_ms=gemini_time_ms,
             ocr_time_ms=0,  # No OCR in Gemini-First
             classification_time_ms=classification_time_ms,
+            # Model Information
+            gemini_model=gemini_model,
             # Quality Indicators
             confidence_score=confidence_score,
             extraction_quality=validated_quality,

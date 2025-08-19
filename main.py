@@ -29,6 +29,14 @@ from src.features.ml_integration import create_feature_pipeline
 
 # Import ProcessingResult for type-safe results
 from src.models.processing_result import ProcessingResult
+from src.optimization.cache_warming import (
+    IntelligentCacheWarming,
+    get_warming_recommendations,
+    warm_cache_intelligent,
+)
+
+# Import Performance Optimization
+from src.pipeline.async_gemini_processor import AsyncGeminiDirectProcessor
 
 # Dual-Purpose Pipeline Import
 from src.pipeline.unified_processor import UnifiedProcessor
@@ -90,7 +98,7 @@ def process_pdfs(args: argparse.Namespace) -> None:
             print(f"💾 Quality: {result.extraction_quality}")
             print(f"⚡ Processing time: {result.processing_time_ms}ms")
             print(
-                f"🤖 Gemini model: {getattr(result.structured_data, 'gemini_model', 'gemini-2.0-flash-exp')}"
+                f"🤖 Gemini model: {getattr(result, 'gemini_model', 'gemini-2.5-flash')}"
             )
 
             # Speichere Ergebnis
@@ -2064,6 +2072,88 @@ Beispiele:
         "maintenance", help="Geplante Cache-Wartung (alle Regeln)"
     )
 
+    # 🔥 CACHE WARMING COMMANDS (Performance Optimization)
+    warming_parser = cache_subparsers.add_parser(
+        "warm",
+        help="🔥 Intelligentes Cache-Warming für Performance-Optimierung",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description="""Intelligentes Cache-Warming System für LLKJJ ML Pipeline.
+
+Cache-Warming Features:
+- Supplier-spezifische Priorisierung (Sonepar, Amazon, FAMO)
+- Pattern-basierte Cache-Erwärmung für häufige Dokumente
+- Predictive Warming basierend auf Usage-History
+- Business Logic für deutsche Elektrotechnik-UGs
+
+Beispiele:
+    # Intelligent warming für alle Suppliers
+    poetry run python main.py cache warm intelligent test_pdfs/
+
+    # Warming für spezifische Suppliers
+    poetry run python main.py cache warm supplier --supplier sonepar --max-files 20
+
+    # Analytics und Empfehlungen
+    poetry run python main.py cache warm analytics
+    poetry run python main.py cache warm recommendations
+""",
+    )
+    warming_subparsers = warming_parser.add_subparsers(
+        dest="warming_command", help="Cache warming commands"
+    )
+
+    # Intelligent Warming
+    intelligent_parser = warming_subparsers.add_parser(
+        "intelligent", help="Intelligentes Warming basierend auf Supplier-Prioritäten"
+    )
+    intelligent_parser.add_argument(
+        "pdf_directory", type=Path, help="Verzeichnis mit PDF-Dateien zum Analysieren"
+    )
+    intelligent_parser.add_argument(
+        "--max-files",
+        type=int,
+        default=10,
+        help="Maximum PDFs pro Supplier (default: 10)",
+    )
+
+    # Supplier-spezifisches Warming
+    supplier_parser = warming_subparsers.add_parser(
+        "supplier", help="Warming für spezifischen Supplier"
+    )
+    supplier_parser.add_argument(
+        "--supplier",
+        choices=["sonepar", "amazon", "famo", "würth", "gira", "hager", "siemens"],
+        required=True,
+        help="Supplier für Cache-Warming",
+    )
+    supplier_parser.add_argument(
+        "--directory",
+        type=Path,
+        default=Path("test_pdfs"),
+        help="PDF-Verzeichnis (default: test_pdfs/)",
+    )
+    supplier_parser.add_argument(
+        "--max-files",
+        type=int,
+        default=20,
+        help="Maximum PDFs für diesen Supplier (default: 20)",
+    )
+
+    # Warming Analytics
+    warming_subparsers.add_parser(
+        "analytics", help="Cache-Warming Analytics und Performance-Metriken"
+    )
+
+    # Warming Recommendations
+    recommendations_parser = warming_subparsers.add_parser(
+        "recommendations", help="Predictive Warming-Empfehlungen"
+    )
+    recommendations_parser.add_argument(
+        "--days",
+        type=int,
+        default=30,
+        help="Anzahl Tage für historische Analyse (default: 30)",
+    )
+
     return parser
 
 
@@ -2139,6 +2229,138 @@ def command_security_key_manager(args: argparse.Namespace) -> None:
         else:
             print(f"❌ API-Key für {args.service} nicht gefunden")
             sys.exit(1)
+
+
+def run_cache_warming(args: argparse.Namespace) -> None:
+    """
+    🔥 Cache-Warming Command Handler für Performance-Optimierung.
+
+    Führt intelligentes Cache-Warming basierend auf Kommando-Typ durch.
+    """
+    print("🔥 Starte Cache-Warming für Performance-Optimierung...")
+
+    if not hasattr(args, "warming_command") or not args.warming_command:
+        print("❌ Warming command erforderlich. Use 'cache warm -h' for help.")
+        return
+
+    # AsyncGeminiDirectProcessor für Warming erstellen
+    config = Config()
+    async_processor = AsyncGeminiDirectProcessor(config)
+
+    async def _handle_warming_command():
+        """Async handler für warming commands."""
+        if args.warming_command == "intelligent":
+            print(f"🧠 Intelligentes Warming für Verzeichnis: {args.pdf_directory}")
+
+            stats = await warm_cache_intelligent(
+                pdf_directory=args.pdf_directory,
+                async_processor=async_processor,
+                config=config,
+            )
+
+            # Ergebnisse anzeigen
+            print("\n✅ Intelligentes Warming abgeschlossen:")
+            print(f"   📁 {stats['total_files_warmed']} Dateien erwärmt")
+            print(f"   ⚡ {stats['total_cache_hits']} Cache-Hits")
+            print(f"   🏢 {stats['total_suppliers']} Suppliers")
+            print(f"   ⏱️  {stats['warming_time_seconds']:.1f}s Verarbeitungszeit")
+            print(f"   💾 {stats['efficiency_overall']:.1%} Cache-Effizienz")
+            print(
+                f"   ⏰ ~{stats['performance_improvement_estimate']:.0f}s gespart bei zukünftigen Zugriffen"
+            )
+
+            # Top-Supplier anzeigen
+            if stats["supplier_results"]:
+                print("\n📊 Top-Suppliers nach Performance:")
+                for supplier, result in sorted(
+                    stats["supplier_results"].items(),
+                    key=lambda x: x[1]["priority"],
+                    reverse=True,
+                )[:5]:
+                    print(
+                        f"   🏢 {supplier.upper()}: {result['files_processed']} erwärmt, "
+                        f"Priorität {result['priority']}, "
+                        f"{result['efficiency']:.1%} Effizienz"
+                    )
+
+        elif args.warming_command == "supplier":
+            print(f"🏢 Supplier-spezifisches Warming: {args.supplier}")
+
+            # Analysiere PDFs für spezifischen Supplier
+            warming_system = IntelligentCacheWarming(config)
+            supplier_files = await warming_system.analyze_supplier_patterns(
+                args.directory
+            )
+
+            if args.supplier in supplier_files:
+                supplier_pdfs = supplier_files[args.supplier][: args.max_files]
+                print(f"📄 Gefundene PDFs für {args.supplier}: {len(supplier_pdfs)}")
+
+                # Warming ausführen
+                warming_count = await async_processor.warm_cache_for_patterns(
+                    supplier_pdfs
+                )
+
+                print(
+                    f"✅ Supplier-Warming abgeschlossen: {warming_count} neue PDFs gecacht"
+                )
+            else:
+                print(
+                    f"⚠️  Keine PDFs für Supplier '{args.supplier}' gefunden in {args.directory}"
+                )
+
+        elif args.warming_command == "analytics":
+            print("📊 Lade Warming-Analytics...")
+
+            warming_system = IntelligentCacheWarming(config)
+            analytics = await warming_system.get_warming_analytics()
+
+            # Anzeige der Analytics
+            overall = analytics["overall_statistics"]
+            print("\n📈 Cache-Warming Analytics:")
+            print(f"   🔄 {overall['total_sessions']} Warming-Sessions")
+            print(f"   📁 {overall['total_files_warmed']} Dateien erwärmt")
+            print(f"   ⚡ {overall['total_cache_hits']} Cache-Hits generiert")
+            print(f"   ⏰ {overall['total_time_saved']/3600:.1f} Stunden gespart")
+
+            # Top-Suppliers
+            if analytics["top_suppliers"]:
+                print("\n🏆 Top-Suppliers:")
+                for supplier in analytics["top_suppliers"][:5]:
+                    print(
+                        f"   🏢 {supplier['supplier_name'].upper()}: "
+                        f"{supplier['total_warmed']} erwärmt, "
+                        f"⏱️ {supplier['avg_time_saved']:.1f}s Ø gespart"
+                    )
+
+        elif args.warming_command == "recommendations":
+            print("🎯 Generiere Warming-Empfehlungen...")
+
+            recommendations = await get_warming_recommendations(config)
+
+            if recommendations:
+                print(f"\n💡 Predictive Warming-Empfehlungen ({len(recommendations)}):")
+                for i, rec in enumerate(recommendations[:10], 1):
+                    print(
+                        f"\n{i}. {rec['supplier_name'].upper()} "
+                        f"(Impact: {rec['business_impact_score']:.1f})"
+                    )
+                    print(
+                        f"   📊 {rec['frequency']}x verwendet, "
+                        f"⏱️ {rec['avg_time_saved']:.1f}s Ø gespart"
+                    )
+                    print(f"   💡 {rec['recommendation']}")
+            else:
+                print(
+                    "ℹ️  Keine Empfehlungen verfügbar. Benötigt historische Warming-Daten."
+                )
+
+    # Async Loop ausführen
+    try:
+        asyncio.run(_handle_warming_command())
+    except Exception as e:
+        print(f"❌ Cache-Warming fehlgeschlagen: {e}")
+        logging.error("Cache-Warming Error: %s", e, exc_info=True)
 
 
 def main() -> None:
@@ -2231,6 +2453,8 @@ def main() -> None:
                     print("❌ Unknown cleanup type. Use 'cache cleanup -h' for help.")
             elif args.cache_command == "maintenance":
                 run_cache_maintenance(args)
+            elif args.cache_command == "warm":
+                run_cache_warming(args)
             else:
                 print("❌ Unknown cache command. Use 'cache -h' for help.")
 

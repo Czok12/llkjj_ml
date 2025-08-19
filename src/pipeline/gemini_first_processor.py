@@ -789,6 +789,12 @@ EXTRAHIERE ALLE sichtbaren Positionen vollständig und präzise!
 
                 # 🎯 NEUE PYDANTIC-VALIDIERUNG (A1 TODO-Item)
                 logger.info("🔍 Validiere Gemini-Response mit Pydantic...")
+
+                # DEBUG: Log raw result for debugging
+                logger.debug(
+                    "🐛 DEBUG: Raw Gemini Response: %s", str(raw_result)[:1000]
+                )
+
                 validated_result, validation_errors = validate_gemini_response(
                     raw_result
                 )

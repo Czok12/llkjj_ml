@@ -26,6 +26,7 @@ from typing import Any
 
 from src.config import Config
 from src.models.processing_result import ProcessingResult
+from src.optimization.gemini_rate_limiting import EnhancedGeminiRateLimiter
 from src.pipeline.gemini_first_processor import GeminiDirectProcessor
 
 logger = logging.getLogger(__name__)
@@ -44,9 +45,22 @@ class AsyncGeminiDirectProcessor(GeminiDirectProcessor):
 
     def __init__(self, config: Config | None = None):
         super().__init__(config)
-        self.rate_limiter = asyncio.Semaphore(
-            5
-        )  # 🚀 Erhöht: 3→5 concurrent Gemini calls
+
+        # 🚀 ENHANCED RATE LIMITING: Ersetzt einfaches Semaphore
+        self.enhanced_rate_limiter = EnhancedGeminiRateLimiter(
+            initial_concurrent_requests=5,  # Erhöht von 3→5
+            max_concurrent_requests=10,  # Höhere maximale Parallelität
+            min_concurrent_requests=2,  # Mindest-Parallelität
+            cost_threshold_per_hour=10.0,  # $10/Stunde Budget
+            adaptive_window_minutes=5,  # 5 Minuten Anpassungsfenster
+        )
+        logger.info(
+            "🎯 Enhanced Rate Limiter initialisiert: 5→10 concurrent, $10/h Budget"
+        )
+
+        # Behalte legacy rate_limiter für Rückwärtskompatibilität
+        self.rate_limiter = asyncio.Semaphore(5)
+
         self.cache_db_path = Path("data/cache/pdf_hash_cache.db")
         self._setup_cache_database()
 
@@ -65,7 +79,7 @@ class AsyncGeminiDirectProcessor(GeminiDirectProcessor):
         self.base_timeout = 30  # Sekunden für kleine PDFs
 
         logger.info(
-            "✅ AsyncGeminiDirectProcessor initialisiert (Rate-Limited + Memory-Optimized + Smart-Detection)"
+            "✅ AsyncGeminiDirectProcessor initialisiert (Enhanced Rate Limited + Memory-Optimized + Smart-Detection)"
         )
 
     def _setup_cache_database(self) -> None:
@@ -233,6 +247,76 @@ class AsyncGeminiDirectProcessor(GeminiDirectProcessor):
 
         logger.info("💾 PDF-Resultat gecacht für Hash: %s", pdf_hash[:12])
 
+    def get_performance_statistics(self) -> dict[str, Any]:
+        """
+        🎯 PERFORMANCE MONITORING: Enhanced Rate Limiting-Statistiken.
+
+        Returns:
+            Dictionary mit Rate Limiter-Performance-Metriken
+        """
+        metrics = self.enhanced_rate_limiter.metrics
+
+        stats: dict[str, Any] = {
+            "enhanced_rate_limiter": {
+                "current_limit": self.enhanced_rate_limiter.current_limit,
+                "max_limit": self.enhanced_rate_limiter.max_limit,
+                "min_limit": self.enhanced_rate_limiter.min_limit,
+                "cost_threshold": self.enhanced_rate_limiter.cost_threshold,
+                "total_requests": metrics.request_count,
+                "successful_requests": metrics.successful_requests,
+                "failed_requests": metrics.failed_requests,
+                "rate_limited_requests": metrics.rate_limited_requests,
+                "success_rate": metrics.success_rate,
+                "average_response_time": metrics.average_response_time,
+                "total_cost_estimated": metrics.total_cost_estimated,
+                "cost_per_request": metrics.cost_per_request,
+            },
+            "performance_insights": {
+                "requests_per_minute": (
+                    (
+                        metrics.successful_requests
+                        / max(1, metrics.total_response_time / 60000)
+                    )
+                    if metrics.total_response_time > 0
+                    else 0
+                ),
+                "cost_efficiency": f"${metrics.cost_per_request:.4f}/request",
+                "rate_limit_pressure": f"{metrics.rate_limited_requests}/{metrics.request_count}",
+                "adaptive_status": (
+                    "optimized" if metrics.success_rate > 0.95 else "adapting"
+                ),
+            },
+        }
+
+        return stats
+
+    def log_performance_summary(self) -> None:
+        """📊 Performance-Summary in Logs ausgeben."""
+        stats = self.get_performance_statistics()
+        enhanced = stats["enhanced_rate_limiter"]
+        insights = stats["performance_insights"]
+
+        logger.info("📊 Enhanced Rate Limiter Performance Summary:")
+        logger.info(
+            "   🎯 Current Limit: %d/%d requests",
+            enhanced["current_limit"],
+            enhanced["max_limit"],
+        )
+        logger.info(
+            "   ✅ Success Rate: %.1f%% (%d/%d)",
+            enhanced["success_rate"] * 100,
+            enhanced["successful_requests"],
+            enhanced["total_requests"],
+        )
+        logger.info("   ⚡ Avg Response: %.1fms", enhanced["average_response_time"])
+        logger.info(
+            "   💰 Total Cost: $%.4f (%.4f/req)",
+            enhanced["total_cost_estimated"],
+            enhanced["cost_per_request"],
+        )
+        logger.info("   🚀 Throughput: %.1f req/min", insights["requests_per_minute"])
+        logger.info("   📈 Status: %s", insights["adaptive_status"])
+
     async def process_pdf_async(self, pdf_path: str | Path) -> ProcessingResult:
         """
         Async-Version der PDF-Verarbeitung mit Caching.
@@ -283,15 +367,50 @@ class AsyncGeminiDirectProcessor(GeminiDirectProcessor):
                     processing_time_ms=cache_time_ms,
                 )
 
-        # 3. Rate-Limited Gemini-Processing (Cache-Miss)
-        async with self.rate_limiter:
-            logger.info("🚀 Processing PDF mit Rate-Limiting: %s", pdf_path.name)
+        # 3. Enhanced Rate-Limited Gemini-Processing (Cache-Miss)
+        processing_start = time.time()
+        estimated_cost = 0.1  # Geschätzte Kosten pro PDF-Request
+
+        # Acquire enhanced rate limiter with cost tracking
+        if not await self.enhanced_rate_limiter.acquire_with_metrics(estimated_cost):
+            logger.error("💰 Request abgelehnt: Cost-Throttling aktiv")
+            # Fallback to basic result
+            return ProcessingResult(
+                pdf_path=str(pdf_path),
+                processing_timestamp=datetime.now().isoformat(),
+                processing_method="gemini_fallback",
+                structured_data={},
+                skr03_classifications=[],
+                confidence_score=0.0,
+                extraction_quality="poor",
+                processing_time_ms=int((time.time() - start_time) * 1000),
+            )
+
+        try:
+            logger.info(
+                "🚀 Processing PDF mit Enhanced Rate-Limiting: %s", pdf_path.name
+            )
 
             # Verwende synchronen Processor in Thread Pool
             loop = asyncio.get_event_loop()
             result = await loop.run_in_executor(
                 None, super().process_pdf_gemini_first, pdf_path
             )
+
+            # Enhanced Rate Limiter: Successful request metrics
+            processing_time_ms = (time.time() - processing_start) * 1000
+            self.enhanced_rate_limiter.release_with_metrics(
+                response_time_ms=processing_time_ms, success=True, rate_limited=False
+            )
+
+        except Exception as e:
+            # Enhanced Rate Limiter: Failed request metrics
+            processing_time_ms = (time.time() - processing_start) * 1000
+            self.enhanced_rate_limiter.release_with_metrics(
+                response_time_ms=processing_time_ms, success=False, rate_limited=False
+            )
+            logger.error("🚨 Enhanced Rate Limited Processing fehlgeschlagen: %s", e)
+            raise
 
         # 4. Ergebnis in Cache speichern
         if pdf_hash and result:
@@ -444,6 +563,9 @@ class AsyncGeminiDirectProcessor(GeminiDirectProcessor):
             batch_time_ms,
             memory_efficiency,
         )
+
+        # 📊 ENHANCED RATE LIMITER PERFORMANCE SUMMARY nach Batch
+        self.log_performance_summary()
 
         return results
 
