@@ -30,13 +30,17 @@ Author: LLKJJ ML Pipeline Team
 Version: 3.0.0 (Blackbox Interface)
 """
 
+import logging
 from pathlib import Path
 
 from src.config import Config
 from src.pipeline.processor import ProcessingResult, UnifiedProcessor
+from src.security.manager import validate_production_environment
+
+logger = logging.getLogger(__name__)
 
 __version__ = "3.0.0"
-__all__ = ["MLPlugin", "ProcessingResult"]
+__all__ = ["MLPlugin", "ProcessingResult", "process_pdf_simple"]
 
 
 class MLPlugin:
@@ -58,20 +62,50 @@ class MLPlugin:
     - German optimization: Specialized for German electrical trade
     """
 
-    def __init__(self, config: Config | None = None) -> None:
+    def __init__(self, config: Config | None = None, validate_env: bool = True) -> None:
         """
         Initialize ML Plugin with internal configuration.
 
         Args:
             config: Optional configuration override. If None, uses default
                    internal configuration optimized for German invoices.
+            validate_env: If True (default), validates critical environment
+                         variables like GOOGLE_API_KEY at startup.
+
+        Raises:
+            RuntimeError: If critical environment variables are missing
+                         and validate_env=True
 
         Note:
             All heavy ML models (Docling, Gemini, ChromaDB, spaCy) are
             lazy-loaded on first use via internal ResourceManager singleton.
         """
+        # Critical environment validation for production readiness
+        if validate_env:
+            self._validate_critical_environment()
+
         self._config = config or Config()
         self._processor = UnifiedProcessor(self._config)
+
+    def _validate_critical_environment(self) -> None:
+        """
+        Validate critical environment variables for production readiness.
+
+        Raises:
+            RuntimeError: If critical environment variables are missing
+        """
+        logger.info("🔍 Validating critical environment variables...")
+
+        if not validate_production_environment():
+            error_msg = (
+                "❌ Critical environment validation failed! "
+                "Missing required environment variables like GOOGLE_API_KEY. "
+                "Set validate_env=False to skip validation in development."
+            )
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
+
+        logger.info("✅ Environment validation passed - production ready")
 
     def process_pdf(self, pdf_path: str | Path) -> ProcessingResult:
         """

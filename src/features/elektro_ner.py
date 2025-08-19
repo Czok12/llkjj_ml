@@ -1,500 +1,328 @@
-#!/usr/bin/env python3
 """
-LLKJJ ML Pipeline - Deutsche Elektrotechnik NER-Spezialisierung
-===============================================================
-
-🇩🇪 Domain-spezifische Named Entity Recognition für deutsches Elektrohandwerk
-
-Spezialisierte NER-Funktionalitäten:
-- GIRA, Hager, Siemens → Hersteller-Entitäten
-- Artikelnummer-Pattern-Learning: Elektriker-spezifische SKU-Formate
-- Mengen-Unit-Normalization: "5 St" vs "5 Stück" vs "5x" → einheitliche Erkennung
-- Price-Extraction-Robustness: Euro-Zeichen, Komma vs. Punkt, Netto/Brutto
-
-Autor: LLKJJ ML Pipeline Team
-Version: 1.0.0 (Deutsche Elektrotechnik-Spezialisierung)
-Datum: 18. August 2025
+Vereinfachte Elektrotechnik NER-Implementierung mit vollständiger Type-Safety
+Spezialisiert auf deutschen Elektrohandel mit mypy --strict Compliance
 """
 
 import logging
 import re
+from dataclasses import dataclass
+from re import Pattern
 from typing import Any
-
-import spacy
-from pydantic import BaseModel, Field
-from spacy.tokens import Doc
-
-from src.config import Config
 
 logger = logging.getLogger(__name__)
 
 
-class ElektroEntität(BaseModel):
-    """Elektrotechnik-spezifische Entität."""
+@dataclass
+class ElektroEntität:
+    """Type-safe Elektro-Entität für Named Entity Recognition"""
 
-    text: str = Field(..., description="Entitäts-Text")
-    label: str = Field(..., description="Entitäts-Label (HERSTELLER, ARTIKEL, etc.)")
-    start: int = Field(..., description="Start-Position im Text")
-    end: int = Field(..., description="End-Position im Text")
-    confidence: float = Field(default=1.0, description="Erkennungs-Konfidenz")
-    normalized: str = Field(default="", description="Normalisierte Form")
-    category: str = Field(default="", description="Elektro-Kategorie")
-
-
-class ElektroNERResult(BaseModel):
-    """Ergebnis der Elektrotechnik NER-Analyse."""
-
-    text: str = Field(..., description="Ursprünglicher Text")
-    entities: list[ElektroEntität] = Field(..., description="Erkannte Entitäten")
-    hersteller: list[str] = Field(
-        default_factory=list, description="Erkannte Hersteller"
-    )
-    artikel_nummern: list[str] = Field(
-        default_factory=list, description="Artikel-Nummern"
-    )
-    mengen: list[dict[str, Any]] = Field(
-        default_factory=list, description="Normalisierte Mengen"
-    )
-    preise: list[dict[str, Any]] = Field(
-        default_factory=list, description="Extrahierte Preise"
-    )
+    text: str
+    label: str
+    start: int
+    end: int
+    confidence: float
+    zusatz_info: dict[str, Any]
 
 
-class DeutscheElektrotechnikNER:
+@dataclass
+class ElektroNERResult:
+    """Type-safe Ergebnis der Elektro-NER Analyse"""
+
+    original_text: str
+    entities: list[ElektroEntität]
+    hersteller: list[str]
+    artikel_nummern: list[str]
+    mengen: list[dict[str, Any]]
+    preise: list[dict[str, Any]]
+    elektro_begriffe: list[str]
+    confidence_score: float
+    verarbeitungszeit: float
+    metadaten: dict[str, Any]
+
+
+class VereinfachteElektrotechnikNER:
     """
-    🔌 Deutsche Elektrotechnik Named Entity Recognition
-
-    Spezialisiert auf deutsches Elektrohandwerk mit branchenspezifischen
-    Entitäten, Mustern und Normalisierungen.
+    Vereinfachte Elektrotechnik Named Entity Recognition mit Type-Safety
+    Optimiert für deutschen Elektrohandel und mypy --strict Compliance
     """
 
-    def __init__(self, config: Config | None = None):
-        self.config = config or Config()
-        self.nlp = self._load_spacy_model()
-        self._setup_patterns()
-        logger.info("🔌 Deutsche Elektrotechnik NER initialisiert")
+    def __init__(self) -> None:
+        """Initialisierung mit kompilierten Regex-Patterns"""
+        self.patterns = self._compile_patterns()
+        self.hersteller_mapping = self._build_hersteller_mapping()
 
-    def _load_spacy_model(self) -> Any:
-        """Lädt und konfiguriert das deutsche spaCy-Modell."""
-        try:
-            nlp = spacy.load(self.config.spacy_model_name)
+    def _compile_patterns(self) -> dict[str, Pattern[str]]:
+        """Kompiliert alle Regex-Patterns mit Type-Safety"""
+        patterns: dict[str, Pattern[str]] = {}
 
-            # Custom pipeline components hinzufügen
-            if "elektro_ner" not in nlp.pipe_names:
-                nlp.add_pipe("elektro_ner", after="ner")
+        # Hersteller Pattern (einfach)
+        hersteller_pattern = (
+            r"\b(SIEMENS|ABB|SCHNEIDER|LEGRAND|GIRA|JUNG|WAGO|PHOENIX|EATON|RITTAL)\b"
+        )
+        patterns["hersteller"] = re.compile(hersteller_pattern, re.IGNORECASE)
 
-            return nlp
+        # Artikel-Nummern (kombiniert)
+        artikel_pattern = (
+            r"\b(?:[A-Z]{2,6}[-\s]?\d{4,8}|[A-Z]\d{6,10}|\d{6,12}[A-Z]{0,3})\b"
+        )
+        patterns["artikel_nummern"] = re.compile(artikel_pattern)
 
-        except OSError:
-            logger.warning("⚠️ Deutsches spaCy-Modell nicht gefunden, lade Basis-Modell")
-            return spacy.load("de_core_web_sm")
+        # Elektro-Begriffe (kombiniert)
+        elektro_begriffe = [
+            "Kabel",
+            "Leitung",
+            "Schalter",
+            "Steckdose",
+            "Sicherung",
+            "Automat",
+            "Verteiler",
+            "Schrank",
+            "Klemme",
+            "Kontakt",
+            "Relais",
+            "Schütz",
+            "Motor",
+            "Trafo",
+            "Netzteil",
+            "LED",
+            "Lampe",
+            "Leuchte",
+        ]
+        elektro_pattern = r"\b(" + "|".join(elektro_begriffe) + r")\b"
+        patterns["elektro_begriffe"] = re.compile(elektro_pattern, re.IGNORECASE)
 
-    def _setup_patterns(self) -> None:
-        """Setup für Elektrotechnik-spezifische Pattern."""
+        # Mengen-Pattern
+        mengen_pattern = (
+            r"(\d+(?:[.,]\d+)?)\s*(St(?:ück)?|m|Meter|km|mm|cm|kg|g|Liter?|l)\b"
+        )
+        patterns["mengen"] = re.compile(mengen_pattern, re.IGNORECASE)
 
-        # Deutsche Elektro-Hersteller (erweiterte Liste)
-        self.elektro_hersteller = {
-            # Premium-Marken
-            "GIRA",
-            "Hager",
-            "Siemens",
-            "ABB",
-            "Schneider Electric",
-            "Legrand",
-            "Busch-Jaeger",
-            "Merten",
-            "Jung",
-            "Berker",
-            # Installations-Material
-            "Wago",
-            "Phoenix Contact",
-            "Weidmüller",
-            "Wieland",
-            "Hensel",
-            "Spelsberg",
-            "OBO Bettermann",
-            "Lapp Kabel",
-            # Beleuchtung & LED
-            "Osram",
-            "Philips",
-            "Ledvance",
-            "Paulmann",
-            "SLV",
-            "Trilux",
-            # Mess & Prüftechnik
-            "Fluke",
-            "Benning",
-            "Gossen Metrawatt",
-            "Chauvin Arnoux",
-            # Installation & Werkzeug
-            "Rennsteig",
-            "Knipex",
-            "Wiha",
-            "Wera",
-            "Klauke",
-            # Größere Lieferanten
-            "Sonepar",
-            "Rexel",
-            "Conrad",
-            "ELV",
-            "Reichelt",
+        # Preis-Pattern
+        preis_pattern = r"(\d+(?:[.,]\d{2})?)[\s]*(?:€|EUR|Euro)\b"
+        patterns["preise"] = re.compile(preis_pattern, re.IGNORECASE)
+
+        return patterns
+
+    def _build_hersteller_mapping(self) -> dict[str, dict[str, Any]]:
+        """Erstellt Hersteller-Metadaten Mapping"""
+        return {
+            "SIEMENS": {"land": "Deutschland", "kategorie": "Automation"},
+            "ABB": {"land": "Schweiz", "kategorie": "Energietechnik"},
+            "SCHNEIDER": {"land": "Frankreich", "kategorie": "Automation"},
+            "LEGRAND": {"land": "Frankreich", "kategorie": "Elektroinstallation"},
+            "GIRA": {"land": "Deutschland", "kategorie": "Gebäudetechnik"},
+            "JUNG": {"land": "Deutschland", "kategorie": "Schalter"},
+            "WAGO": {"land": "Deutschland", "kategorie": "Klemmen"},
+            "PHOENIX": {"land": "Deutschland", "kategorie": "Verbindungstechnik"},
+            "EATON": {"land": "USA", "kategorie": "Energiemanagement"},
+            "RITTAL": {"land": "Deutschland", "kategorie": "Schaltschränke"},
         }
 
-        # Artikelnummer-Pattern für deutsches Elektrohandwerk
-        self.artikel_patterns = [
-            r"\b\d{6,12}\b",  # 6-12 stellige Nummern (Standard)
-            r"\b[A-Z]{2,4}\d{4,8}\b",  # Hersteller-Prefix + Nummer
-            r"\b\d{3}[-\.]\d{3}[-\.]\d{3}\b",  # xxx-xxx-xxx Format
-            r"\bEAN\s*:?\s*\d{13}\b",  # EAN-Codes
-            r"\b[A-Z]\d{6,8}[A-Z]?\b",  # Letter-Number-Letter Format
-        ]
-
-        # Mengen-Unit-Pattern (deutsch)
-        self.mengen_patterns = [
-            r"(\d+(?:,\d+)?)\s*(St\.?|Stück|Stk\.?|x|mal|×)",  # Stück
-            r"(\d+(?:,\d+)?)\s*(m|Meter|mm|cm)",  # Länge
-            r"(\d+(?:,\d+)?)\s*(kg|g|Gramm|Kilogramm)",  # Gewicht
-            r"(\d+(?:,\d+)?)\s*(l|Liter|ml)",  # Volumen
-            r"(\d+(?:,\d+)?)\s*(m²|qm|Quadratmeter)",  # Fläche
-            r"(\d+(?:,\d+)?)\s*(Paar|paar|Pck\.?|Pack|Packung)",  # Verpackung
-        ]
-
-        # Preis-Pattern (deutsche Formate)
-        self.preis_patterns = [
-            r"(\d{1,3}(?:\.\d{3})*,\d{2})\s*€",  # 1.234,56 €
-            r"€\s*(\d{1,3}(?:\.\d{3})*,\d{2})",  # € 1.234,56
-            r"(\d+,\d{2})\s*EUR",  # 123,45 EUR
-            r"(\d+\.\d{2})\s*€",  # Englisches Format 123.45 €
-            r"(\d+(?:,\d{2})?)\s*€(?:/[A-Za-z]+)?",  # 123€ oder 123€/Stk
-        ]
-
-        # Kompilierte Regex-Pattern
-        self.compiled_patterns = {
-            "artikel": [re.compile(pattern) for pattern in self.artikel_patterns],
-            "mengen": [
-                re.compile(pattern, re.IGNORECASE) for pattern in self.mengen_patterns
-            ],
-            "preise": [re.compile(pattern) for pattern in self.preis_patterns],
-        }
-
-    # @spacy.Language.component("elektro_ner")  # Deaktiviert für Kompatibilität
-    def elektro_ner_component(self, doc: Doc) -> Doc:
-        """Custom spaCy-Pipeline-Component für Elektrotechnik-NER."""
-        spans = []
-
-        # Hersteller-Erkennung
-        for hersteller in self.elektro_hersteller:
-            pattern = re.compile(rf"\b{re.escape(hersteller)}\b", re.IGNORECASE)
-            for match in pattern.finditer(doc.text):
-                start_char = match.start()
-                end_char = match.end()
-                span = doc.char_span(start_char, end_char, label="HERSTELLER")
-                if span:
-                    spans.append(span)
-
-        # Artikel-Nummern
-        for pattern in self.compiled_patterns["artikel"]:
-            for match in pattern.finditer(doc.text):
-                start_char = match.start()
-                end_char = match.end()
-                span = doc.char_span(start_char, end_char, label="ARTIKEL_NR")
-                if span:
-                    spans.append(span)
-
-        # Spans zu doc hinzufügen
-        doc.spans["elektro_entities"] = spans
-        return doc
-
-    def extract_entities(self, text: str) -> ElektroNERResult:
+    def analyze_text(self, text: str) -> ElektroNERResult:
         """
-        🔍 Hauptfunktion für Entitäts-Extraktion
+        Analysiert Text und extrahiert Elektro-Entitäten
 
         Args:
             text: Zu analysierender Text
 
         Returns:
-            ElektroNERResult: Alle erkannten Elektrotechnik-Entitäten
+            ElektroNERResult mit allen extrahierten Entitäten
         """
-        try:
-            # spaCy-Processing
-            doc = self.nlp(text)
+        import time
 
-            entities = []
-            hersteller = []
-            artikel_nummern = []
+        start_time = time.time()
 
-            # Standard spaCy-Entitäten
-            for ent in doc.ents:
-                elektro_ent = ElektroEntität(
-                    text=ent.text,
-                    label=ent.label_,
-                    start=ent.start_char,
-                    end=ent.end_char,
-                    confidence=0.9,  # spaCy-Confidence
+        entities: list[ElektroEntität] = []
+        hersteller: list[str] = []
+        artikel_nummern: list[str] = []
+        mengen: list[dict[str, Any]] = []
+        preise: list[dict[str, Any]] = []
+        elektro_begriffe: list[str] = []
+
+        # Hersteller extrahieren
+        for match in self.patterns["hersteller"].finditer(text):
+            hersteller_name = match.group(1).upper()
+            hersteller.append(hersteller_name)
+
+            zusatz_info = self.hersteller_mapping.get(hersteller_name, {})
+
+            entities.append(
+                ElektroEntität(
+                    text=match.group(1),
+                    label="HERSTELLER",
+                    start=match.start(),
+                    end=match.end(),
+                    confidence=0.95,
+                    zusatz_info=zusatz_info,
                 )
-                entities.append(elektro_ent)
-
-            # Custom Elektro-Entitäten
-            if "elektro_entities" in doc.spans:
-                for span in doc.spans["elektro_entities"]:
-                    elektro_ent = ElektroEntität(
-                        text=span.text,
-                        label=span.label_,
-                        start=span.start_char,
-                        end=span.end_char,
-                        confidence=1.0,  # Custom Pattern = hohe Konfidenz
-                    )
-                    entities.append(elektro_ent)
-
-                    # Kategorie-spezifische Listen
-                    if span.label_ == "HERSTELLER":
-                        hersteller.append(span.text)
-                    elif span.label_ == "ARTIKEL_NR":
-                        artikel_nummern.append(span.text)
-
-            # Mengen-Extraktion
-            mengen = self._extract_mengen(text)
-
-            # Preis-Extraktion
-            preise = self._extract_preise(text)
-
-            return ElektroNERResult(
-                text=text,
-                entities=entities,
-                hersteller=list(set(hersteller)),  # Duplikate entfernen
-                artikel_nummern=list(set(artikel_nummern)),
-                mengen=mengen,
-                preise=preise,
             )
 
-        except Exception as e:
-            logger.error("❌ Elektrotechnik NER-Extraktion fehlgeschlagen: %s", e)
-            return ElektroNERResult(
-                text=text,
-                entities=[],
-                hersteller=[],
-                artikel_nummern=[],
-                mengen=[],
-                preise=[],
+        # Artikel-Nummern extrahieren
+        for match in self.patterns["artikel_nummern"].finditer(text):
+            artikel_nr = match.group(0)
+            artikel_nummern.append(artikel_nr)
+
+            entities.append(
+                ElektroEntität(
+                    text=artikel_nr,
+                    label="ARTIKEL_NUMMER",
+                    start=match.start(),
+                    end=match.end(),
+                    confidence=0.85,
+                    zusatz_info={"pattern_type": "elektro_artikelnummer"},
+                )
             )
 
-    def _extract_mengen(self, text: str) -> list[dict[str, Any]]:
-        """
-        📏 Extrahiert und normalisiert Mengen-Angaben
+        # Elektro-Begriffe extrahieren
+        for match in self.patterns["elektro_begriffe"].finditer(text):
+            begriff = match.group(0)
+            elektro_begriffe.append(begriff)
 
-        Args:
-            text: Text zur Analyse
+            entities.append(
+                ElektroEntität(
+                    text=begriff,
+                    label="ELEKTRO_BEGRIFF",
+                    start=match.start(),
+                    end=match.end(),
+                    confidence=0.80,
+                    zusatz_info={"kategorie": "elektro_terminologie"},
+                )
+            )
 
-        Returns:
-            list: Normalisierte Mengen mit Einheit
-        """
-        mengen = []
+        # Mengen extrahieren
+        for match in self.patterns["mengen"].finditer(text):
+            value_str = match.group(1).replace(",", ".")
+            unit = match.group(2)
 
-        for pattern in self.compiled_patterns["mengen"]:
-            for match in pattern.finditer(text):
-                value_str = match.group(1).replace(
-                    ",", "."
-                )  # Deutsche → Englische Dezimal
-                unit = match.group(2)
+            try:
+                value = float(value_str)
+                normalized_unit = self._normalize_unit(unit)
 
-                try:
-                    value = float(value_str)
+                menge_data: dict[str, Any] = {
+                    "wert": value,
+                    "einheit": unit,
+                    "normalisierte_einheit": normalized_unit,
+                    "text": match.group(0),
+                }
+                mengen.append(menge_data)
 
-                    # Unit-Normalisierung
-                    normalized_unit = self._normalize_unit(unit)
-
-                    mengen.append(
-                        {
-                            "original_text": match.group(0),
-                            "value": value,
-                            "original_unit": unit,
-                            "normalized_unit": normalized_unit,
-                            "start": match.start(),
-                            "end": match.end(),
-                        }
+                entities.append(
+                    ElektroEntität(
+                        text=match.group(0),
+                        label="MENGE",
+                        start=match.start(),
+                        end=match.end(),
+                        confidence=0.90,
+                        zusatz_info=menge_data,
                     )
+                )
+            except ValueError:
+                logger.warning("Konnte Menge nicht parsen: %s", value_str)
 
-                except ValueError:
-                    logger.warning("⚠️ Konnte Menge nicht parsen: %s", match.group(0))
+        # Preise extrahieren
+        for match in self.patterns["preise"].finditer(text):
+            preis_str = match.group(1).replace(",", ".")
 
-        return mengen
+            try:
+                preis_value = float(preis_str)
 
-    def _extract_preise(self, text: str) -> list[dict[str, Any]]:
-        """
-        💰 Extrahiert und normalisiert Preis-Angaben
+                preis_data: dict[str, Any] = {
+                    "betrag": preis_value,
+                    "währung": "EUR",
+                    "text": match.group(0),
+                }
+                preise.append(preis_data)
 
-        Args:
-            text: Text zur Analyse
-
-        Returns:
-            list: Normalisierte Preise in Euro
-        """
-        preise = []
-
-        for pattern in self.compiled_patterns["preise"]:
-            for match in pattern.finditer(text):
-                price_str = match.group(1)
-
-                try:
-                    # Deutsche Dezimal-Notation → Float
-                    if "," in price_str and "." in price_str:
-                        # Format: 1.234,56
-                        price_str = price_str.replace(".", "").replace(",", ".")
-                    elif "," in price_str:
-                        # Format: 123,45
-                        price_str = price_str.replace(",", ".")
-
-                    price = float(price_str)
-
-                    preise.append(
-                        {
-                            "original_text": match.group(0),
-                            "value": price,
-                            "currency": "EUR",
-                            "start": match.start(),
-                            "end": match.end(),
-                        }
+                entities.append(
+                    ElektroEntität(
+                        text=match.group(0),
+                        label="PREIS",
+                        start=match.start(),
+                        end=match.end(),
+                        confidence=0.88,
+                        zusatz_info=preis_data,
                     )
+                )
+            except ValueError:
+                logger.warning("Konnte Preis nicht parsen: %s", preis_str)
 
-                except ValueError:
-                    logger.warning("⚠️ Konnte Preis nicht parsen: %s", match.group(0))
+        verarbeitungszeit = time.time() - start_time
+        confidence_score = self._calculate_confidence(entities)
 
-        return preise
+        return ElektroNERResult(
+            original_text=text,
+            entities=entities,
+            hersteller=hersteller,
+            artikel_nummern=artikel_nummern,
+            mengen=mengen,
+            preise=preise,
+            elektro_begriffe=elektro_begriffe,
+            confidence_score=confidence_score,
+            verarbeitungszeit=verarbeitungszeit,
+            metadaten={
+                "pattern_count": len(self.patterns),
+                "entity_count": len(entities),
+                "text_length": len(text),
+            },
+        )
 
     def _normalize_unit(self, unit: str) -> str:
-        """
-        🔄 Normalisiert Einheiten zu Standardformen
-
-        Args:
-            unit: Original-Einheit
-
-        Returns:
-            str: Normalisierte Einheit
-        """
+        """Normalisiert Einheiten auf Standardform"""
         unit_mapping = {
-            # Stück-Varianten
-            "St.": "Stück",
-            "St": "Stück",
-            "Stk.": "Stück",
-            "Stk": "Stück",
-            "x": "Stück",
-            "mal": "Stück",
-            "×": "Stück",
-            # Längen-Varianten
+            "st": "Stück",
+            "stück": "Stück",
+            "stk": "Stück",
             "m": "Meter",
+            "meter": "Meter",
             "mm": "Millimeter",
             "cm": "Zentimeter",
-            # Gewicht-Varianten
+            "km": "Kilometer",
             "kg": "Kilogramm",
             "g": "Gramm",
-            # Volumen-Varianten
             "l": "Liter",
-            "ml": "Milliliter",
-            # Flächen-Varianten
-            "m²": "Quadratmeter",
-            "qm": "Quadratmeter",
-            # Verpackung-Varianten
-            "Pck.": "Packung",
-            "Pck": "Packung",
-            "Pack": "Packung",
+            "liter": "Liter",
         }
+        return unit_mapping.get(unit.lower(), unit)
 
-        return unit_mapping.get(unit, unit)
+    def _calculate_confidence(self, entities: list[ElektroEntität]) -> float:
+        """Berechnet Gesamt-Confidence Score"""
+        if not entities:
+            return 0.0
 
-    def get_hersteller_context(self, text: str) -> dict[str, Any]:
-        """
-        🏭 Extrahiert Hersteller-Kontext für SKR03-Klassifizierung
+        total_confidence = sum(entity.confidence for entity in entities)
+        return total_confidence / len(entities)
 
-        Args:
-            text: Text zur Analyse
+    def get_statistics(self, results: list[ElektroNERResult]) -> dict[str, Any]:
+        """Erstellt Statistiken über mehrere Analyse-Ergebnisse"""
+        if not results:
+            return {"error": "Keine Ergebnisse verfügbar"}
 
-        Returns:
-            dict: Hersteller-Kontext mit Kategorisierung
-        """
-        result = self.extract_entities(text)
+        entity_counts: dict[str, int] = {}
+        total_entities = 0
+        total_confidence = 0.0
+        total_time = 0.0
 
-        # Hersteller-Kategorisierung für SKR03
-        hersteller_kategorien = {
-            "installation": [
-                "GIRA",
-                "Hager",
-                "Busch-Jaeger",
-                "Merten",
-                "Jung",
-                "Berker",
-            ],
-            "kabel_verbindung": ["Wago", "Phoenix Contact", "Lapp Kabel", "Hensel"],
-            "beleuchtung": ["Osram", "Philips", "Ledvance", "Paulmann", "SLV"],
-            "messtechnik": ["Fluke", "Benning", "Gossen Metrawatt"],
-            "werkzeug": ["Knipex", "Wiha", "Wera", "Klauke"],
-        }
+        for result in results:
+            total_entities += len(result.entities)
+            total_confidence += result.confidence_score
+            total_time += result.verarbeitungszeit
 
-        erkannte_kategorien = []
-        for hersteller in result.hersteller:
-            for kategorie, hersteller_liste in hersteller_kategorien.items():
-                if hersteller.upper() in [h.upper() for h in hersteller_liste]:
-                    erkannte_kategorien.append(kategorie)
+            for entity in result.entities:
+                entity_counts[entity.label] = entity_counts.get(entity.label, 0) + 1
+
+        avg_confidence = total_confidence / len(results) if results else 0.0
+        avg_time = total_time / len(results) if results else 0.0
 
         return {
-            "hersteller": result.hersteller,
-            "kategorien": list(set(erkannte_kategorien)),
-            "artikel_count": len(result.artikel_nummern),
-            "durchschnittspreis": (
-                sum(p["value"] for p in result.preise) / len(result.preise)
-                if result.preise
-                else 0.0
-            ),
-            "empfohlene_skr03_kategorien": self._get_skr03_empfehlungen(
-                erkannte_kategorien
-            ),
+            "total_documents": len(results),
+            "total_entities": total_entities,
+            "avg_entities_per_doc": total_entities / len(results),
+            "entity_type_distribution": entity_counts,
+            "avg_confidence": avg_confidence,
+            "avg_processing_time": avg_time,
+            "performance_metrics": {
+                "entities_per_second": (
+                    total_entities / total_time if total_time > 0 else 0
+                )
+            },
         }
-
-    def _get_skr03_empfehlungen(self, kategorien: list[str]) -> list[str]:
-        """SKR03-Empfehlungen basierend auf Hersteller-Kategorien."""
-        kategorie_mapping = {
-            "installation": ["3400"],  # Elektro-Installation
-            "kabel_verbindung": ["3410"],  # Kabel und Verbindungen
-            "beleuchtung": ["3420"],  # Beleuchtung
-            "messtechnik": ["4985"],  # Mess- und Prüfgeräte
-            "werkzeug": ["4985"],  # Werkzeuge
-        }
-
-        empfehlungen = []
-        for kategorie in kategorien:
-            empfehlungen.extend(kategorie_mapping.get(kategorie, []))
-
-        return list(set(empfehlungen)) if empfehlungen else ["3400"]  # Default: Elektro
-
-
-# Convenience Functions
-def create_elektro_ner(config: Config | None = None) -> DeutscheElektrotechnikNER:
-    """Factory-Function für DeutscheElektrotechnikNER."""
-    return DeutscheElektrotechnikNER(config)
-
-
-def analyze_elektro_text(text: str) -> ElektroNERResult:
-    """
-    Schnelle Elektrotechnik-Analyse ohne Instanz-Erstellung.
-
-    Args:
-        text: Zu analysierender Text
-
-    Returns:
-        ElektroNERResult: Analyseergebnis
-    """
-    ner = create_elektro_ner()
-    return ner.extract_entities(text)
-
-
-def get_hersteller_from_text(text: str) -> list[str]:
-    """
-    Extrahiert nur Hersteller aus Text.
-
-    Args:
-        text: Text zur Analyse
-
-    Returns:
-        list[str]: Erkannte Hersteller
-    """
-    result = analyze_elektro_text(text)
-    return result.hersteller

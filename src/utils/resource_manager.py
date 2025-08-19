@@ -312,11 +312,120 @@ class ResourceManager:
             finally:
                 self._chroma_client = None
 
+    @classmethod
+    def reset_singleton(cls) -> None:
+        """
+        🔄 CRITICAL: Reset Singleton für Memory Leak Prevention
 
-# 🏭 GLOBAL RESOURCE MANAGER
-_resource_manager = ResourceManager()
+        Diese Methode ist essentiell für Long-Running Processes um
+        Memory Leaks durch das Singleton Pattern zu verhindern.
+
+        Usage:
+            ResourceManager.reset_singleton()
+            new_manager = ResourceManager()  # Fresh instance
+        """
+        logger.warning(
+            "🔄 RESETTING ResourceManager Singleton - potential memory leak fix"
+        )
+
+        if cls._instance is not None:
+            # Clean up existing instance
+            try:
+                cls._instance.cleanup()
+                logger.info("✅ Existing ResourceManager cleaned up")
+            except Exception as e:
+                logger.error(f"❌ Error during singleton cleanup: {e}")
+
+            # Reset class variables
+            cls._instance = None
+            cls._initialized = False
+
+            # Force garbage collection
+            import gc
+
+            collected = gc.collect()
+            logger.info(f"🧹 Singleton reset complete - {collected} objects collected")
+        else:
+            logger.info("ℹ️ No existing ResourceManager singleton to reset")
+
+    @classmethod
+    def cleanup_all(cls) -> dict[str, Any]:
+        """
+        🧹 PRODUCTION: Complete cleanup including singleton reset
+
+        This method should be called in production environments
+        during graceful shutdowns or periodic memory cleanup cycles.
+
+        Returns:
+            Dict with cleanup statistics
+        """
+        logger.info("🧹 PRODUCTION CLEANUP: Starting complete ResourceManager cleanup")
+
+        cleanup_stats = {
+            "singleton_existed": cls._instance is not None,
+            "cleanup_results": {},
+            "reset_successful": False,
+        }
+
+        if cls._instance is not None:
+            try:
+                cleanup_stats["cleanup_results"] = cls._instance.cleanup()
+            except Exception as e:
+                logger.error(
+                    f"❌ PRODUCTION CLEANUP: Error during instance cleanup: {e}"
+                )
+                cleanup_stats["cleanup_error"] = str(e)
+
+        try:
+            cls.reset_singleton()
+            cleanup_stats["reset_successful"] = True
+            logger.info(
+                "✅ PRODUCTION CLEANUP: Complete ResourceManager cleanup successful"
+            )
+        except Exception as e:
+            logger.error(f"❌ PRODUCTION CLEANUP: Error during singleton reset: {e}")
+            cleanup_stats["reset_error"] = str(e)
+
+        return cleanup_stats
+
+
+# 🏭 GLOBAL RESOURCE MANAGER - Now with proper cleanup support
+_resource_manager: ResourceManager | None = None
 
 
 def get_resource_manager() -> ResourceManager:
-    """Get the global ResourceManager singleton"""
+    """
+    Get the global ResourceManager singleton
+
+    Note: In production, call ResourceManager.cleanup_all() periodically
+    to prevent memory leaks in long-running processes.
+    """
+    global _resource_manager
+    if _resource_manager is None:
+        _resource_manager = ResourceManager()
     return _resource_manager
+
+
+def reset_global_resource_manager() -> None:
+    """
+    Reset the global resource manager for memory leak prevention
+
+    This function should be called during:
+    - Graceful shutdowns
+    - Memory pressure situations
+    - Testing scenarios
+    - Long-running process maintenance
+    """
+    global _resource_manager
+
+    if _resource_manager is not None:
+        try:
+            _resource_manager.cleanup()
+            logger.info("🧹 Global ResourceManager cleaned up")
+        except Exception as e:
+            logger.error(f"❌ Error cleaning up global ResourceManager: {e}")
+
+    _resource_manager = None
+    ResourceManager.reset_singleton()
+
+    logger.info("✅ Global ResourceManager reset complete")

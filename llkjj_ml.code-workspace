@@ -1,0 +1,49 @@
+{
+  "folders": [
+    {
+      "name": "LLKJJ ML Pipeline",
+      "path": "."
+    }
+  ],
+  "settings": {
+    // === Workspace-spezifische Einstellungen ===
+    "python.defaultInterpreterPath": "/Users/czok/Library/Caches/pypoetry/virtualenvs/llkjj-ml-X5f1ai6Z-py3.12/bin/python",
+
+    // === Claude Code Optimierungen ===
+    "workbench.colorTheme": "Default Dark+",
+    "workbench.editor.highlightModifiedTabs": true,
+    "workbench.editor.enablePreview": false,
+    "workbench.startupEditor": "readme",
+
+    // === ML/AI Development Context ===
+    "workbench.colorCustomizations": {
+      "activityBar.background": "#1e3a8a",
+      "activityBar.foreground": "#ffffff",
+      "statusBar.background": "#1e40af",
+      "statusBar.foreground": "#ffffff"
+    },
+
+    // === Projekt-spezifische Einstellungen ===
+    "files.associations": {
+      "*.md": "markdown",
+      "*.yml": "yaml",
+      "*.yaml": "yaml",
+      "Dockerfile*": "dockerfile"
+    },
+
+    // === Task-Integration ===
+    "tasks.showStale": true,
+    "tasks.showQuickActions": true
+  },
+  "extensions": {
+    "recommendations": [
+      "ms-python.python",
+      "ms-python.vscode-pylance",
+      "charliermarsh.ruff",
+      "ms-toolsai.jupyter",
+      "github.copilot",
+      "github.copilot-chat",
+      "ms-python.mypy-type-checker"
+    ]
+  }
+}

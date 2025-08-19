@@ -106,12 +106,7 @@ class UnifiedProcessor:
         # Phase 2: SpaCy RAG bevorzugt (wenn verfügbar und trainiert)
         if "spacy_rag" in available:
             spacy_strategy = self._strategies["spacy_rag"]
-            # TODO: Implement check_training_data_readiness method
-            training_status = getattr(
-                spacy_strategy,
-                "check_training_data_readiness",
-                lambda: {"training_data_sufficient": False},
-            )()
+            training_status = spacy_strategy.check_training_data_readiness()
             if training_status.get("training_data_sufficient", False):
                 logger.info(
                     "🎯 Default Strategy: spacy_rag (Phase 2: Local autonomous)"
