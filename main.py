@@ -2247,7 +2247,7 @@ def run_cache_warming(args: argparse.Namespace) -> None:
     config = Config()
     async_processor = AsyncGeminiDirectProcessor(config)
 
-    async def _handle_warming_command():
+    async def _handle_warming_command() -> None:
         """Async handler für warming commands."""
         if args.warming_command == "intelligent":
             print(f"🧠 Intelligentes Warming für Verzeichnis: {args.pdf_directory}")

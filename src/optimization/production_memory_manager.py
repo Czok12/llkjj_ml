@@ -20,7 +20,7 @@ import gc
 import logging
 import threading
 import time
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any
@@ -430,7 +430,7 @@ def get_memory_manager() -> ProductionMemoryManager:
 # 🚀 CONVENIENCE FUNCTIONS
 
 
-def track_memory_operation(operation_name: str):
+def track_memory_operation(operation_name: str) -> Callable[..., Any]:
     """
     📊 Decorator für automatisches Memory-Tracking
 

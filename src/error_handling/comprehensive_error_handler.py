@@ -94,6 +94,24 @@ class MLPipelineError(Exception):
         }
 
 
+class ErrorRecoveryResult:
+    """Result of error recovery attempt."""
+
+    def __init__(
+        self,
+        success: bool,
+        message: str,
+        actions_taken: list[str] | None = None,
+        suggested_retry: bool = False,
+        fallback_result: ProcessingResult | None = None,
+    ):
+        self.success = success
+        self.message = message
+        self.actions_taken = actions_taken or []
+        self.suggested_retry = suggested_retry
+        self.fallback_result = fallback_result
+
+
 class ErrorRecoveryManager:
     """
     🔄 ERROR RECOVERY MANAGER
@@ -102,7 +120,9 @@ class ErrorRecoveryManager:
     """
 
     def __init__(self) -> None:
-        self.recovery_strategies: dict[ErrorCategory, Callable] = {
+        self.recovery_strategies: dict[
+            ErrorCategory, Callable[..., ErrorRecoveryResult]
+        ] = {
             ErrorCategory.PDF_PROCESSING: self._recover_pdf_processing,
             ErrorCategory.API_ERROR: self._recover_api_error,
             ErrorCategory.MODEL_ERROR: self._recover_model_error,
@@ -254,13 +274,13 @@ class ErrorRecoveryManager:
                 "recovery_error": str(e),
             }
 
-    def _recover_pdf_processing(self, ml_error: MLPipelineError) -> dict[str, Any]:
+    def _recover_pdf_processing(self, ml_error: MLPipelineError) -> ErrorRecoveryResult:
         """Recovery-Strategie für PDF-Processing-Fehler."""
 
         context = ml_error.context
         pdf_path = context.get("pdf_path")
 
-        recovery_actions = []
+        recovery_actions: list[str] = []
 
         if pdf_path and Path(pdf_path).exists():
             # Prüfe PDF-Größe
@@ -271,78 +291,86 @@ class ErrorRecoveryManager:
             # Fallback zu alternativer PDF-Extraktion
             recovery_actions.append("Aktiviere Fallback PDF-Processor")
 
-        return {
-            "strategy": "pdf_processing_recovery",
-            "actions": recovery_actions,
-            "fallback_available": True,
-        }
+        return ErrorRecoveryResult(
+            success=True,
+            message="PDF processing recovery applied",
+            actions_taken=recovery_actions,
+            suggested_retry=True,
+        )
 
-    def _recover_api_error(self, ml_error: MLPipelineError) -> dict[str, Any]:
+    def _recover_api_error(self, ml_error: MLPipelineError) -> ErrorRecoveryResult:
         """Recovery-Strategie für API-Fehler."""
 
         # Rate-Limiting-Detection
         if "rate" in ml_error.message.lower() or "429" in ml_error.message:
-            return {
-                "strategy": "rate_limit_recovery",
-                "action": "Implementiere exponential backoff",
-                "suggested_delay": "30-120 Sekunden",
-            }
+            return ErrorRecoveryResult(
+                success=True,
+                message="Rate limit recovery applied",
+                actions_taken=["Implementiere exponential backoff"],
+                suggested_retry=True,
+            )
 
         # Network-Error-Detection
         if any(
             term in ml_error.message.lower()
             for term in ["timeout", "connection", "network"]
         ):
-            return {
-                "strategy": "network_recovery",
-                "action": "Retry mit erhöhtem Timeout",
-                "offline_fallback": True,
-            }
+            return ErrorRecoveryResult(
+                success=True,
+                message="Network recovery applied",
+                actions_taken=["Retry mit erhöhtem Timeout"],
+                suggested_retry=True,
+            )
 
-        return {
-            "strategy": "generic_api_recovery",
-            "action": "Fallback zu alternativer Verarbeitungslogik",
-        }
+        return ErrorRecoveryResult(
+            success=True,
+            message="Generic API recovery applied",
+            actions_taken=["Fallback zu alternativer Verarbeitungslogik"],
+            suggested_retry=False,
+        )
 
-    def _recover_model_error(self, ml_error: MLPipelineError) -> dict[str, Any]:
+    def _recover_model_error(self, ml_error: MLPipelineError) -> ErrorRecoveryResult:
         """Recovery-Strategie für Modell-Fehler."""
 
-        return {
-            "strategy": "model_recovery",
-            "actions": [
+        return ErrorRecoveryResult(
+            success=True,
+            message="Model recovery applied",
+            actions_taken=[
                 "Fallback zu Docling-Pipeline",
                 "Reduziere Modell-Komplexität",
                 "Verwende CPU-Backend",
             ],
-            "fallback_available": True,
-        }
+            suggested_retry=True,
+        )
 
-    def _recover_memory_error(self, ml_error: MLPipelineError) -> dict[str, Any]:
+    def _recover_memory_error(self, ml_error: MLPipelineError) -> ErrorRecoveryResult:
         """Recovery-Strategie für Memory-Fehler."""
 
-        return {
-            "strategy": "memory_recovery",
-            "actions": [
+        return ErrorRecoveryResult(
+            success=True,
+            message="Memory recovery applied",
+            actions_taken=[
                 "Garbage Collection ausführen",
                 "Batch-Größe reduzieren",
                 "ChromaDB Cache leeren",
                 "PyTorch Cache bereinigen",
             ],
-            "immediate_action_required": True,
-        }
+            suggested_retry=True,
+        )
 
-    def _recover_network_error(self, ml_error: MLPipelineError) -> dict[str, Any]:
+    def _recover_network_error(self, ml_error: MLPipelineError) -> ErrorRecoveryResult:
         """Recovery-Strategie für Netzwerk-Fehler."""
 
-        return {
-            "strategy": "network_recovery",
-            "actions": [
+        return ErrorRecoveryResult(
+            success=True,
+            message="Network recovery applied",
+            actions_taken=[
                 "Offline-Modus aktivieren",
                 "Lokale Modelle verwenden",
                 "Cached Results nutzen",
             ],
-            "offline_capable": True,
-        }
+            suggested_retry=False,
+        )
 
     def _recommend_next_action(
         self, ml_error: MLPipelineError, recovery_result: dict[str, Any]
@@ -380,7 +408,7 @@ def error_handler(
 
             except Exception as e:
                 # Error-Handling mit Context
-                context = {
+                context: dict[str, Any] = {
                     "function": func.__name__,
                     "args_count": len(args),
                     "kwargs_keys": list(kwargs.keys()),

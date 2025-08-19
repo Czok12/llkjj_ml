@@ -281,7 +281,7 @@ class GeminiAPIOptimizer:
         api_call_func: Callable[..., Any],
         estimated_cost: float = 0.1,
         max_retries: int = 3,
-        **api_kwargs,
+        **api_kwargs: Any,
     ) -> tuple[Any, dict[str, Any]]:
         """
         Führt Gemini API-Call mit vollständiger Optimierung durch.
@@ -378,7 +378,7 @@ class GeminiAPIOptimizer:
 
 
 # Convenience-Funktionen für Integration
-def create_optimized_rate_limiter(**kwargs) -> EnhancedGeminiRateLimiter:
+def create_optimized_rate_limiter(**kwargs: Any) -> EnhancedGeminiRateLimiter:
     """Factory function für optimierte Rate-Limiter-Erstellung."""
     return EnhancedGeminiRateLimiter(**kwargs)
 

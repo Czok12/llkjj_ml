@@ -16,15 +16,103 @@ import os
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, TypedDict
+
+
+class SecurityStatistics(TypedDict):
+    """Statistics for security findings."""
+
+    total_issues: int
+    critical_issues: int
+    high_issues: int
+    medium_issues: int
+    low_issues: int
+    info_issues: int
+
+
+class BanditFinding(TypedDict):
+    """Bandit security finding."""
+
+    source: str
+    file: str
+    test_id: str
+    test_name: str
+    filename: str
+    line_number: int
+    issue_severity: str
+    issue_confidence: str
+    issue_text: str
+    code: str
+
+
+class SafetyFinding(TypedDict):
+    """Safety vulnerability finding."""
+
+    source: str
+    file: str
+    package: str
+    installed_version: str
+    affected_versions: str
+    vulnerability_id: str
+    advisory: str
+    cve: str
+    severity: str
+
+
+class CustomAuditFinding(TypedDict):
+    """Custom audit finding."""
+
+    source: str
+    file: str
+    category: str
+    description: str
+    severity: str
+    confidence: str
+    location: str
+    recommendation: str
+
+
+class RuffFinding(TypedDict):
+    """Ruff security finding."""
+
+    source: str
+    file: str
+    filename: str
+    row: int
+    column: int
+    code: str
+    message: str
+    severity: str
+
+
+class Recommendation(TypedDict):
+    """Security recommendation."""
+
+    priority: str
+    action: str
+    details: str
+
+
+class SecuritySummary(TypedDict):
+    """Complete security summary structure."""
+
+    metadata: dict[str, Any]
+    bandit_findings: list[BanditFinding]
+    safety_findings: list[SafetyFinding]
+    custom_audit_findings: list[CustomAuditFinding]
+    ruff_findings: list[RuffFinding]
+    mypy_findings: list[dict[str, Any]]
+    overall_risk_assessment: str
+    recommendations: list[Recommendation]
+    statistics: SecurityStatistics
 
 
 class SecuritySummaryGenerator:
     """Generiert umfassende Security-Zusammenfassungen aus verschiedenen Quellen."""
 
-    def __init__(self, reports_dir: str):
+    def __init__(self, reports_dir: str) -> None:
         self.reports_dir = Path(reports_dir)
-        self.summary = {
+        self.summary: SecuritySummary = {
             "metadata": {
                 "generated_at": datetime.now().isoformat(),
                 "reports_directory": str(self.reports_dir),
@@ -58,7 +146,7 @@ class SecuritySummaryGenerator:
 
                 if "results" in bandit_data:
                     for result in bandit_data["results"]:
-                        finding = {
+                        finding: BanditFinding = {
                             "source": "bandit",
                             "file": file_path,
                             "test_id": result.get("test_id", "unknown"),
@@ -98,7 +186,7 @@ class SecuritySummaryGenerator:
                     continue
 
                 for vuln in vulnerabilities:
-                    finding = {
+                    finding: SafetyFinding = {
                         "source": "safety",
                         "file": file_path,
                         "package": vuln.get("package_name", "unknown"),
@@ -130,7 +218,7 @@ class SecuritySummaryGenerator:
 
                 if "findings" in custom_data:
                     for finding in custom_data["findings"]:
-                        audit_finding = {
+                        audit_finding: CustomAuditFinding = {
                             "source": "custom_audit",
                             "file": file_path,
                             "category": finding.get("category", "unknown"),
@@ -158,7 +246,7 @@ class SecuritySummaryGenerator:
                     ruff_data = json.load(f)
 
                 for finding in ruff_data:
-                    ruff_finding = {
+                    ruff_finding: RuffFinding = {
                         "source": "ruff",
                         "file": file_path,
                         "filename": finding.get("filename", "unknown"),
@@ -225,7 +313,7 @@ class SecuritySummaryGenerator:
 
     def generate_recommendations(self) -> None:
         """Generiert Empfehlungen basierend auf gefundenen Issues."""
-        recommendations = []
+        recommendations: list[Recommendation] = []
         stats = self.summary["statistics"]
 
         if stats["critical_issues"] > 0:
@@ -287,7 +375,7 @@ class SecuritySummaryGenerator:
 
         self.summary["recommendations"] = recommendations
 
-    def generate_comprehensive_report(self) -> dict[str, Any]:
+    def generate_comprehensive_report(self) -> SecuritySummary:
         """Generiert den umfassenden Security-Report."""
         print("🔍 Verarbeite Bandit-Reports...")
         self.process_bandit_reports()
@@ -337,7 +425,7 @@ class SecuritySummaryGenerator:
         print("\n" + "=" * 60)
 
 
-def main():
+def main() -> None:
     """Main-Funktion für Command-Line-Ausführung."""
     if len(sys.argv) != 2:
         print(

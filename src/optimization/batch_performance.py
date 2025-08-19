@@ -26,13 +26,21 @@ from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 import psutil
 
 from src.models.processing_result import ProcessingResult
 
 logger = logging.getLogger(__name__)
+
+
+class AsyncProcessor(Protocol):
+    """Protocol für Async-PDF-Processors."""
+
+    async def process_pdf_async(self, pdf_path: str | Path) -> ProcessingResult:
+        """Verarbeitet PDF asynchron und gibt ProcessingResult zurück."""
+        ...
 
 
 @dataclass
@@ -90,7 +98,6 @@ class BatchPerformanceOptimizer:
 
         # 🔄 Worker-Pool-Management
         self.thread_executor = ThreadPoolExecutor(max_workers=self.max_workers)
-        self.process_executor = None  # Lazy initialization
 
         # 📈 Metrics-Sammlung
         self.metrics_history: list[BatchPerformanceMetrics] = []
@@ -105,7 +112,7 @@ class BatchPerformanceOptimizer:
         self,
         pdf_paths: list[Path],
         processor_config: Any,
-        progress_callback: Callable | None = None,
+        progress_callback: Callable[..., None] | None = None,
     ) -> list[ProcessingResult]:
         """
         Führt hochoptimierte Batch-Verarbeitung für PDF-Liste durch.
@@ -212,9 +219,9 @@ class BatchPerformanceOptimizer:
 
     def _create_adaptive_batches(self, pdf_paths: list[Path]) -> list[list[Path]]:
         """Erstellt adaptive Batches basierend auf PDF-Größen und Memory."""
-        batches = []
+        batches: list[list[Path]] = []
         current_batch: list[Path] = []
-        current_batch_size = 0
+        current_batch_size = 0.0
 
         # 📏 PDFs nach Größe sortieren für bessere Load-Balancing
         sorted_paths = sorted(
@@ -235,7 +242,7 @@ class BatchPerformanceOptimizer:
             if should_create_new_batch and current_batch:
                 batches.append(current_batch)
                 current_batch = []
-                current_batch_size = 0
+                current_batch_size = 0.0
 
             current_batch.append(pdf_path)
             current_batch_size += pdf_size_mb
@@ -246,7 +253,7 @@ class BatchPerformanceOptimizer:
 
         logger.info(
             f"📋 {len(batches)} adaptive Batches erstellt "
-            f"(avg: {len(pdf_paths) / len(batches):.1f} PDFs/Batch)"
+            f"(avg: {len(pdf_paths) / len(batches) if batches else 0:.1f} PDFs/Batch)"
         )
 
         return batches
@@ -263,7 +270,7 @@ class BatchPerformanceOptimizer:
         processor = AsyncGeminiDirectProcessor(processor_config)
 
         # 🚀 Parallele Tasks erstellen
-        tasks = []
+        tasks: list[asyncio.Task[ProcessingResult | None]] = []
         for pdf_path in batch_paths:
             task = asyncio.create_task(
                 self._process_single_pdf_with_retry(processor, pdf_path)
@@ -296,7 +303,7 @@ class BatchPerformanceOptimizer:
 
     async def _process_single_pdf_with_retry(
         self,
-        processor: Any,
+        processor: AsyncProcessor,
         pdf_path: Path,
         max_retries: int = 2,
     ) -> ProcessingResult | None:
@@ -319,11 +326,13 @@ class BatchPerformanceOptimizer:
                         f"❌ PDF-Processing fehlgeschlagen nach {max_retries + 1} "
                         f"Versuchen: {pdf_path.name}: {e}"
                     )
-                    return None
+
+        # Falls alle Retries fehlschlagen
+        return None
 
     def _get_memory_usage_mb(self) -> float:
         """Aktuelle Memory-Usage in MB."""
-        return psutil.Process().memory_info().rss / (1024 * 1024)
+        return float(psutil.Process().memory_info().rss) / (1024 * 1024)
 
     def _should_throttle_memory(self, current_memory_mb: float) -> bool:
         """Prüft ob Memory-Throttling notwendig ist."""
@@ -432,9 +441,6 @@ class BatchPerformanceOptimizer:
         if self.thread_executor:
             self.thread_executor.shutdown(wait=False)
 
-        if self.process_executor:
-            self.process_executor.shutdown(wait=False)
-
     def get_performance_insights(self) -> dict[str, Any]:
         """Liefert detaillierte Performance-Insights."""
         if not self.metrics_history:
@@ -459,7 +465,7 @@ class BatchPerformanceOptimizer:
 
     def _generate_optimization_recommendations(self) -> list[str]:
         """Generiert Optimierungsempfehlungen basierend auf Metriken."""
-        recommendations = []
+        recommendations: list[str] = []
 
         if not self.metrics_history:
             return ["Noch keine Metriken verfügbar für Empfehlungen"]
