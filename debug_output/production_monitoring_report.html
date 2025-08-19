@@ -1,0 +1,85 @@
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLKJJ ML - Production Monitoring Report</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 20px; background: #f5f5f7; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        h1 { color: #1d1d1f; border-bottom: 3px solid #007AFF; padding-bottom: 10px; }
+        h2 { color: #333; margin-top: 30px; }
+        .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin: 20px 0; }
+        .metric-card { background: #f8f9fa; padding: 20px; border-radius: 8px; border-left: 4px solid #007AFF; }
+        .metric-value { font-size: 2em; font-weight: bold; color: #007AFF; }
+        .metric-label { color: #666; text-transform: uppercase; font-size: 0.9em; }
+        .status-healthy { color: #34C759; }
+        .status-warning { color: #FF9500; }
+        .status-critical { color: #FF3B30; }
+        .alert { padding: 15px; margin: 10px 0; border-radius: 8px; background: #FFF3CD; border-left: 4px solid #FF9500; }
+        .alert-critical { background: #F8D7DA; border-left-color: #FF3B30; }
+        .timestamp { color: #666; font-size: 0.9em; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background: #f8f9fa; font-weight: 600; }
+        .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚨 LLKJJ ML Pipeline - Production Monitoring Report</h1>
+        <p class="timestamp">Generiert: 19.08.2025 03:47:26</p>
+
+        <h2>📊 System Availability</h2>
+        <div class="metric-grid">
+            <div class="metric-card">
+                <div class="metric-label">Monitoring Cycles</div>
+                <div class="metric-value">10</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">System Availability</div>
+                <div class="metric-value status-healthy">100.0%</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Total Alerts</div>
+                <div class="metric-value status-critical">10</div>
+            </div>
+        </div>
+
+        <h2>🚨 Alert History</h2>
+        <div class="alert "><strong>SUCCESS_RATE_LOW</strong>: Success rate below threshold: 84.0%<br><span class="timestamp">2025-08-19T03:46:47.104396</span></div><div class="alert "><strong>SUCCESS_RATE_LOW</strong>: Success rate below threshold: 84.0%<br><span class="timestamp">2025-08-19T03:46:51.115669</span></div><div class="alert "><strong>SUCCESS_RATE_LOW</strong>: Success rate below threshold: 84.0%<br><span class="timestamp">2025-08-19T03:46:55.125422</span></div><div class="alert "><strong>SUCCESS_RATE_LOW</strong>: Success rate below threshold: 84.0%<br><span class="timestamp">2025-08-19T03:46:59.138352</span></div><div class="alert "><strong>SUCCESS_RATE_LOW</strong>: Success rate below threshold: 84.0%<br><span class="timestamp">2025-08-19T03:47:03.150540</span></div><div class="alert "><strong>SUCCESS_RATE_LOW</strong>: Success rate below threshold: 84.0%<br><span class="timestamp">2025-08-19T03:47:07.163440</span></div><div class="alert "><strong>SUCCESS_RATE_LOW</strong>: Success rate below threshold: 84.0%<br><span class="timestamp">2025-08-19T03:47:11.173426</span></div><div class="alert "><strong>SUCCESS_RATE_LOW</strong>: Success rate below threshold: 84.0%<br><span class="timestamp">2025-08-19T03:47:15.183715</span></div><div class="alert "><strong>SUCCESS_RATE_LOW</strong>: Success rate below threshold: 84.0%<br><span class="timestamp">2025-08-19T03:47:19.195653</span></div><div class="alert "><strong>SUCCESS_RATE_LOW</strong>: Success rate below threshold: 84.0%<br><span class="timestamp">2025-08-19T03:47:23.204234</span></div>
+
+        <h2>💾 System Resource Trends</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Status</th>
+                    <th>Memory %</th>
+                    <th>Disk %</th>
+                    <th>CPU %</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td>03:46:47</td><td class="status-healthy">HEALTHY</td><td>71.7%</td><td>4.9%</td><td>10.4%</td></tr><tr><td>03:46:51</td><td class="status-healthy">HEALTHY</td><td>71.2%</td><td>4.9%</td><td>14.3%</td></tr><tr><td>03:46:55</td><td class="status-healthy">HEALTHY</td><td>71.3%</td><td>4.9%</td><td>12.9%</td></tr><tr><td>03:46:59</td><td class="status-healthy">HEALTHY</td><td>71.1%</td><td>4.9%</td><td>11.6%</td></tr><tr><td>03:47:03</td><td class="status-healthy">HEALTHY</td><td>71.4%</td><td>4.9%</td><td>11.8%</td></tr><tr><td>03:47:07</td><td class="status-healthy">HEALTHY</td><td>70.7%</td><td>4.9%</td><td>8.6%</td></tr><tr><td>03:47:11</td><td class="status-healthy">HEALTHY</td><td>71.6%</td><td>4.9%</td><td>17.3%</td></tr><tr><td>03:47:15</td><td class="status-healthy">HEALTHY</td><td>72.0%</td><td>4.9%</td><td>14.2%</td></tr><tr><td>03:47:19</td><td class="status-healthy">HEALTHY</td><td>71.2%</td><td>4.9%</td><td>37.9%</td></tr><tr><td>03:47:23</td><td class="status-healthy">HEALTHY</td><td>71.4%</td><td>4.9%</td><td>17.3%</td></tr>
+            </tbody>
+        </table>
+
+        <h2>🎯 Monitoring Features Demonstrated</h2>
+        <ul>
+            <li>✅ <strong>24/7 System Health Monitoring</strong> - Kontinuierliche Überwachung von Memory, Disk, CPU</li>
+            <li>✅ <strong>Real-time Alert Generation</strong> - Proaktive Benachrichtigungen bei kritischen Zuständen</li>
+            <li>✅ <strong>Performance Metrics Tracking</strong> - Business-relevante KPIs und Trends</li>
+            <li>✅ <strong>Proactive Maintenance Detection</strong> - Automatische Erkennung von Wartungsbedarfen</li>
+            <li>✅ <strong>Dashboard Auto-Update</strong> - Real-time Dashboard mit JSON/HTML Export</li>
+            <li>✅ <strong>Historical Analysis</strong> - Trend-Analyse und Verfügbarkeits-Statistiken</li>
+        </ul>
+
+        <div class="footer">
+            <p>LLKJJ ML Pipeline - Production Monitoring v1.0.0</p>
+            <p>🎯 Proaktive 24/7 Überwachung für maximale System-Verfügbarkeit</p>
+        </div>
+    </div>
+</body>
+</html>

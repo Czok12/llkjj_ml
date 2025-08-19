@@ -1,0 +1,55 @@
+{
+  "last_update": "2025-08-19T03:47:23.204756",
+  "monitoring_status": "active",
+  "system_health": {
+    "status": "healthy",
+    "timestamp": "2025-08-19T03:47:23.202621",
+    "components": {
+      "memory": "healthy",
+      "disk": "healthy",
+      "cpu": "healthy",
+      "ml_models": "healthy",
+      "chromadb": "healthy"
+    },
+    "metrics": {
+      "memory_usage_percent": 71.4,
+      "disk_usage_percent": 4.9,
+      "cpu_usage_percent": 17.3
+    }
+  },
+  "performance_metrics": {
+    "timestamp": "2025-08-19T03:47:23.204196",
+    "business_metrics": {
+      "total_processed_pdfs": 75,
+      "success_rate": 0.84,
+      "avg_processing_time_ms": 8580.92,
+      "avg_confidence": 0.10095185185185186,
+      "cache_hit_rate": 0.0,
+      "cost_per_pdf": 0.005266666666666667
+    },
+    "performance_trend": "stable",
+    "quality_distribution": {
+      "high": 4,
+      "poor": 71
+    }
+  },
+  "active_alerts": [
+    {
+      "type": "SUCCESS_RATE_LOW",
+      "severity": "warning",
+      "message": "Success rate below threshold: 84.0%",
+      "timestamp": "2025-08-19T03:47:23.204234",
+      "recommended_action": "Check error logs and API connectivity"
+    }
+  ],
+  "alert_summary": {
+    "total_alerts": 10,
+    "critical_alerts": 0,
+    "recent_alerts": 10
+  },
+  "uptime_metrics": {
+    "monitoring_cycles": 10,
+    "last_restart": "2025-01-17T10:00:00",
+    "system_availability": 99.9
+  }
+}
