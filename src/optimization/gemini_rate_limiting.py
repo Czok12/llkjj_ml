@@ -272,7 +272,7 @@ class GeminiAPIOptimizer:
     Kombiniert Rate-Limiting, Retry-Logic und Performance-Monitoring.
     """
 
-    def __init__(self, rate_limiter: EnhancedGeminiRateLimiter):
+    def __init__(self, rate_limiter: EnhancedGeminiRateLimiter) -> None:
         self.rate_limiter = rate_limiter
         self.retry_delays = [1, 2, 4, 8, 16]  # Exponential backoff in Sekunden
 
@@ -384,7 +384,7 @@ def create_optimized_rate_limiter(**kwargs) -> EnhancedGeminiRateLimiter:
 
 
 def create_api_optimizer(
-    rate_limiter: [EnhancedGeminiRateLimiter] = None,
+    rate_limiter: EnhancedGeminiRateLimiter | None = None,
 ) -> GeminiAPIOptimizer:
     """Factory function für API-Optimizer-Erstellung."""
     if rate_limiter is None:

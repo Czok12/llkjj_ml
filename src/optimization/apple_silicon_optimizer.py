@@ -34,7 +34,7 @@ class AppleSiliconOptimizer:
     - Fallback für inkompatible Operations
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.device = self._detect_optimal_device()
         self.mps_available = self._check_mps_availability()
         self._optimize_pytorch_settings()
@@ -103,7 +103,7 @@ class AppleSiliconOptimizer:
             # Optimierte Memory-Settings für Apple Silicon
             if self.mps_available:
                 # MPS-spezifische Optimierungen
-                torch.backends.mps.empty_cache()  # Initial cache cleanup
+                torch.mps.empty_cache()  # Initial cache cleanup
 
                 # Set optimal number of threads (Apple Silicon hat viele efficiency cores)
                 optimal_threads = min(
@@ -189,7 +189,7 @@ class AppleSiliconOptimizer:
         """
         try:
             if self.mps_available:
-                torch.backends.mps.empty_cache()
+                torch.mps.empty_cache()
                 logger.debug("🍎 MPS-Memory bereinigt")
 
             # Zusätzliche Memory-Bereinigung
@@ -206,7 +206,7 @@ class AppleSiliconOptimizer:
         Returns:
             Dictionary mit Performance-Metriken
         """
-        info = {
+        info: dict[str, Any] = {
             "device": self.device,
             "mps_available": self.mps_available,
             "pytorch_version": torch.__version__,
@@ -289,7 +289,7 @@ def auto_configure_apple_silicon() -> dict[str, Any]:
         # Memory cleanup
         optimizer.cleanup_memory()
 
-        config_info = {
+        config_info: dict[str, Any] = {
             "auto_configured": True,
             "optimizer_info": optimizer.get_performance_info(),
             "recommendations": [],

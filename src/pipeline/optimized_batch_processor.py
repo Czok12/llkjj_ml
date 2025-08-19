@@ -66,7 +66,7 @@ class OptimizedBatchProcessor(AsyncGeminiDirectProcessor):
         }
 
         # 📄 SMART PDF CATEGORIZATION
-        self.pdf_categories = {
+        self.pdf_categories: dict[str, list[str]] = {
             "express": [],  # <1MB, einfache Struktur
             "standard": [],  # 1-10MB, normale Rechnungen
             "complex": [],  # >10MB, mehrseitige Dokumente
@@ -123,7 +123,11 @@ class OptimizedBatchProcessor(AsyncGeminiDirectProcessor):
         - standard: Standard-Rechnungen (normale Verarbeitung)
         - complex: Große, komplexe PDFs (sequenziell mit mehr Ressourcen)
         """
-        categories = {"express": [], "standard": [], "complex": []}
+        categories: dict[str, list[Path]] = {
+            "express": [],
+            "standard": [],
+            "complex": [],
+        }
 
         for pdf_path in pdf_paths:
             if not pdf_path.exists():
@@ -189,17 +193,24 @@ class OptimizedBatchProcessor(AsyncGeminiDirectProcessor):
         if hasattr(self, "skr03_manager") and self.skr03_manager:
             try:
                 # Simuliere eine Ähnlichkeitssuche für den Lieferanten
-                dummy_item = {
-                    "description": f"Standard-Artikel von {supplier_name}",
-                    "amount": 100.0,
-                    "supplier": supplier_name,
-                }
+                dummy_description = f"Standard-Artikel von {supplier_name}"
 
                 classification = await asyncio.to_thread(
-                    self.skr03_manager.classify_line_item, dummy_item
+                    self.skr03_manager.klassifiziere_artikel,
+                    dummy_description,
+                    supplier_name,
                 )
 
-                return [classification] if classification else []
+                # Konvertiere das tuple zu einem dict format
+                kategorie, konto, konfidenz, keywords = classification
+                result_dict: dict[str, Any] = {
+                    "kategorie": kategorie,
+                    "konto": konto,
+                    "konfidenz": konfidenz,
+                    "keywords": keywords,
+                }
+
+                return [result_dict] if classification else []
             except Exception as e:
                 logger.debug(f"Pre-Loading für {supplier_name} nicht möglich: {e}")
 
@@ -296,13 +307,13 @@ class OptimizedBatchProcessor(AsyncGeminiDirectProcessor):
                     result = ProcessingResult(
                         pdf_path=str(pdf_path),
                         processing_timestamp=datetime.now().isoformat(),
+                        processing_method="gemini_first",
                         raw_text="",
                         structured_data={},
-                        invoice_data={},
                         skr03_classifications=[],
                         processing_time_ms=0,
                         confidence_score=0.0,
-                        extraction_quality="error",
+                        extraction_quality="poor",
                     )
                     success = False
 
@@ -327,14 +338,18 @@ class OptimizedBatchProcessor(AsyncGeminiDirectProcessor):
         completed_results = await asyncio.gather(*tasks, return_exceptions=True)
 
         # Filtere Exceptions und erstelle Result-Dictionary
-        results = {}
+        results: dict[str, ProcessingResult] = {}
         for result in completed_results:
             if isinstance(result, Exception):
                 logger.error(f"❌ Task-Exception: {result}")
                 continue
 
-            pdf_path, processing_result = result
-            results[pdf_path] = processing_result
+            # result sollte ein tuple[str, ProcessingResult] sein
+            if isinstance(result, tuple) and len(result) == 2:
+                pdf_path, processing_result = result
+                results[pdf_path] = processing_result
+            else:
+                logger.error(f"❌ Unerwartetes Result-Format: {type(result)}")
 
         return results
 
@@ -352,7 +367,7 @@ class OptimizedBatchProcessor(AsyncGeminiDirectProcessor):
 
         # 1. Einzelverarbeitung (Baseline)
         single_start = time.time()
-        single_results = []
+        single_results: list[ProcessingResult] = []
         for pdf_path in test_pdf_paths[:3]:  # Nur erste 3 für Einzeltest
             result = await self.process_pdf_async(pdf_path)
             single_results.append(result)
@@ -368,7 +383,7 @@ class OptimizedBatchProcessor(AsyncGeminiDirectProcessor):
         # 3. Performance-Metriken berechnen
         improvement_factor = single_avg / batch_avg if batch_avg > 0 else 0
 
-        benchmark_results = {
+        benchmark_results: dict[str, Any] = {
             "test_summary": {
                 "total_pdfs": len(test_pdf_paths),
                 "total_benchmark_time": time.time() - benchmark_start,

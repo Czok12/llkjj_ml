@@ -153,7 +153,7 @@ class ProductionMemoryManager:
         )
 
         initial_metrics = self.get_current_metrics()
-        cleanup_actions = []
+        cleanup_actions: list[str] = []
 
         try:
             # 1. Standard Python Garbage Collection
@@ -318,7 +318,7 @@ class ProductionMemoryManager:
                 memory_trend = "decreasing"
 
         # Empfehlungen
-        recommendations = []
+        recommendations: list[str] = []
         if current_metrics.memory_percent > 0.8:
             recommendations.append("Consider reducing batch size")
         if current_metrics.torch_memory_mb > 1000:
@@ -345,7 +345,7 @@ class ProductionMemoryManager:
         🔄 Startet Background-Thread für automatische Memory-Bereinigung
         """
 
-        def cleanup_worker():
+        def cleanup_worker() -> None:
             while not self._stop_event.wait(self.cleanup_interval_seconds):
                 try:
                     if self.is_memory_critical():
@@ -381,7 +381,7 @@ class ProductionMemoryManager:
         🧹 Bereinigt inaktive Tensor-Referenzen
         """
 
-        active_tensors = set()
+        active_tensors: set[Any] = set()
         for tensor in self._active_tensors:
             if tensor.numel() > 0:  # Tensor still valid
                 active_tensors.add(tensor)
@@ -438,8 +438,8 @@ def track_memory_operation(operation_name: str):
         operation_name: Name der Operation für Tracking
     """
 
-    def decorator(func):
-        def wrapper(*args, **kwargs):
+    def decorator(func: Any) -> Any:
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
             with get_memory_manager().memory_tracked_context(operation_name):
                 return func(*args, **kwargs)
 

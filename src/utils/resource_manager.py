@@ -21,7 +21,7 @@ from typing import Any
 
 import chromadb
 import spacy
-from chromadb import Settings
+from chromadb.config import Settings
 from sentence_transformers import SentenceTransformer
 
 # Import optimization modules
@@ -85,7 +85,7 @@ class ResourceManager:
                 "SentenceTransformer Loading"
             ):
                 # Apply Apple Silicon optimization
-                device = self.apple_optimizer.get_optimal_device()
+                device = str(self.apple_optimizer.get_device())
 
                 self._sentence_transformer = SentenceTransformer(
                     "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
@@ -280,7 +280,7 @@ class ResourceManager:
         Returns:
             Detaillierter Memory-Status aller Ressourcen
         """
-        report = {
+        report: dict[str, Any] = {
             "sentence_transformer_loaded": self._sentence_transformer is not None,
             "spacy_model_loaded": self._spacy_model is not None,
             "chroma_client_active": self._chroma_client is not None,

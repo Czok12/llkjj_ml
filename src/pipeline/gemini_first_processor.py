@@ -1118,7 +1118,7 @@ EXTRAHIERE ALLE sichtbaren Positionen vollständig und präzise!
                 "context": context,
                 "gemini_model": self.config.gemini_model,
                 "api_key_available": bool(self.config.google_api_key),
-                "resource_usage": get_resource_manager().get_memory_usage(),
+                "resource_usage": get_resource_manager().get_memory_report(),
             }
 
             with open(log_file, "w", encoding="utf-8") as f:

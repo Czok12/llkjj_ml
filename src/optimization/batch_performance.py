@@ -213,7 +213,7 @@ class BatchPerformanceOptimizer:
     def _create_adaptive_batches(self, pdf_paths: list[Path]) -> list[list[Path]]:
         """Erstellt adaptive Batches basierend auf PDF-Größen und Memory."""
         batches = []
-        current_batch = []
+        current_batch: list[Path] = []
         current_batch_size = 0
 
         # 📏 PDFs nach Größe sortieren für bessere Load-Balancing
@@ -275,15 +275,18 @@ class BatchPerformanceOptimizer:
             results = await asyncio.gather(*tasks, return_exceptions=True)
 
             # 🔍 Exception-Handling
-            processed_results = []
+            processed_results: list[ProcessingResult | None] = []
             for i, result in enumerate(results):
                 if isinstance(result, Exception):
                     logger.error(
                         f"❌ PDF-Processing-Fehler {batch_paths[i].name}: {result}"
                     )
                     processed_results.append(None)
+                elif hasattr(result, "pdf_path"):  # ProcessingResult check
+                    processed_results.append(result)  # type: ignore[arg-type]
                 else:
-                    processed_results.append(result)
+                    logger.error(f"❌ Unerwartetes Result-Format: {type(result)}")
+                    processed_results.append(None)
 
             return processed_results
 

@@ -289,7 +289,7 @@ class EnhancedBatchMemoryManager:
         total_time = time.time() - start_time
         final_memory = self.get_memory_status()
 
-        batch_analytics = {
+        batch_analytics: dict[str, Any] = {
             "processing_summary": {
                 "total_pdfs": len(pdf_paths_list),
                 "successful": successful_count,
