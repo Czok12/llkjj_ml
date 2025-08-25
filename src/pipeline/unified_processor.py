@@ -106,12 +106,14 @@ class UnifiedProcessor:
         # Phase 2: SpaCy RAG bevorzugt (wenn verfügbar und trainiert)
         if "spacy_rag" in available:
             spacy_strategy = self._strategies["spacy_rag"]
-            training_status = spacy_strategy.check_training_data_readiness()
-            if training_status.get("training_data_sufficient", False):
-                logger.info(
-                    "🎯 Default Strategy: spacy_rag (Phase 2: Local autonomous)"
-                )
-                return "spacy_rag"
+            # Type-safe check für SpacyRagStrategy-specific method
+            if hasattr(spacy_strategy, "check_training_data_readiness"):
+                training_status = spacy_strategy.check_training_data_readiness()
+                if training_status.get("training_data_sufficient", False):
+                    logger.info(
+                        "🎯 Default Strategy: spacy_rag (Phase 2: Local autonomous)"
+                    )
+                    return "spacy_rag"
 
         # Phase 1: Gemini bevorzugt (aktueller Standard)
         if "gemini" in available:

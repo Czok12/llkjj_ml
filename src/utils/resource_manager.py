@@ -17,11 +17,35 @@ Version: 2.0.0 (Production mit Apple Silicon)
 
 import gc
 import logging
+import os
 from typing import Any
 
-import chromadb
+# ChromaDB Telemetry vollständig deaktivieren um "capture() takes 1 positional argument" Fehler zu verhindern
+# KRITISCH: Diese müssen VOR allen ChromaDB imports gesetzt werden
+os.environ.setdefault("CHROMA_TELEMETRY", "false")
+os.environ.setdefault("ANONYMIZED_TELEMETRY", "false")
+os.environ.setdefault("CHROMA_TELEMETRY_ENABLED", "false")
+os.environ.setdefault("POSTHOG_ENABLED", "false")
+os.environ.setdefault("CHROMA_SERVER_TELEMETRY", "false")
+os.environ.setdefault("CHROMA_CLIENT_TELEMETRY", "false")
+
+# Zusätzliche posthog-spezifische Deaktivierung
+os.environ.setdefault("POSTHOG_CAPTURE", "false")
+os.environ.setdefault("POSTHOG_DEBUG", "false")
+os.environ.setdefault("POSTHOG_DISABLED", "true")
+
+# ChromaDB optional importieren für graceful degradation
+try:
+    import chromadb
+    from chromadb.config import Settings
+
+    CHROMADB_AVAILABLE = True
+except ImportError:
+    chromadb = None
+    Settings = None
+    CHROMADB_AVAILABLE = False
+
 import spacy
-from chromadb.config import Settings
 from sentence_transformers import SentenceTransformer
 
 # Import optimization modules
@@ -135,19 +159,28 @@ class ResourceManager:
         Returns:
             ChromaDB Client-Instanz (verhindert "instance already exists")
         """
-        if self._chroma_client is None:
-            logger.info("🗃️ Initializing ChromaDB client...")
+        if self._chroma_client is None and CHROMADB_AVAILABLE:
+            logger.info("🗃️ Attempting ChromaDB client initialization...")
 
             try:
                 with self.memory_manager.memory_tracked_context(
                     "ChromaDB Initialization"
                 ):
-                    # Fixed ChromaDB settings to prevent telemetry warnings
+                    # Enhanced ChromaDB settings to prevent telemetry errors
                     settings = Settings(
-                        anonymized_telemetry=False, allow_reset=True, is_persistent=True
+                        anonymized_telemetry=False,
+                        allow_reset=True,
+                        is_persistent=True,
+                        # Zusätzliche telemetry-Deaktivierung auf Settings-Ebene
+                        telemetry_enabled=False,
                     )
 
-                    # Single client creation with error handling
+                    # Create data directory if not exists
+                    import os
+
+                    os.makedirs("./data/vectors", exist_ok=True)
+
+                    # Single client creation with enhanced error handling
                     self._chroma_client = chromadb.PersistentClient(
                         path="./data/vectors", settings=settings
                     )
@@ -158,17 +191,35 @@ class ResourceManager:
                     logger.info("🗃️ ChromaDB client initialized successfully")
 
             except Exception as e:
-                logger.error(f"❌ ChromaDB initialization failed: {e}")
-                # Fallback to in-memory client
+                logger.error(
+                    f"❌ ChromaDB persistent client initialization failed: {e}"
+                )
+                # Enhanced fallback to in-memory client with better error handling
                 try:
-                    logger.info("🔄 Falling back to in-memory ChromaDB...")
-                    settings = Settings(anonymized_telemetry=False, allow_reset=True)
+                    logger.info(
+                        "🔄 Falling back to in-memory ChromaDB with improved settings..."
+                    )
+                    settings = Settings(
+                        anonymized_telemetry=False,
+                        allow_reset=True,
+                        # Zusätzliche telemetry-Deaktivierung für In-Memory Client
+                        telemetry_enabled=False,
+                    )
                     self._chroma_client = chromadb.Client(settings=settings)
                     self.memory_manager.register_chroma_client(self._chroma_client)
-                    logger.info("🗃️ In-memory ChromaDB client initialized")
+                    logger.info("🗃️ In-memory ChromaDB client initialized successfully")
                 except Exception as fallback_error:
-                    logger.critical(f"💥 ChromaDB completely failed: {fallback_error}")
-                    raise
+                    logger.warning(
+                        f"⚠️ ChromaDB in-memory client also failed: {fallback_error}"
+                    )
+                    logger.info(
+                        "✨ Operating without ChromaDB - using simplified storage backend"
+                    )
+                    self._chroma_client = None
+                    # Don't raise - allow graceful degradation
+
+        elif not CHROMADB_AVAILABLE and self._chroma_client is None:
+            logger.info("✨ ChromaDB not installed - using simplified storage backend")
 
         return self._chroma_client
 
@@ -185,6 +236,13 @@ class ResourceManager:
         try:
             client = self.chroma_client
 
+            # Graceful degradation if ChromaDB is completely unavailable
+            if client is None:
+                logger.warning(
+                    f"⚠️ ChromaDB nicht verfügbar - Collection '{collection_name}' kann nicht erstellt werden"
+                )
+                return None
+
             # Versuche Collection zu holen, erstelle bei Bedarf
             try:
                 collection = client.get_collection(name=collection_name)
@@ -197,7 +255,8 @@ class ResourceManager:
 
         except Exception as e:
             logger.error(f"❌ Collection error for '{collection_name}': {e}")
-            raise
+            logger.warning("⚠️ Graceful degradation - returning None")
+            return None
 
     def cleanup(self) -> dict[str, Any]:
         """

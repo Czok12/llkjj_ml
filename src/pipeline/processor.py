@@ -33,7 +33,7 @@ except ImportError:
 
 from src.config import Config
 
-# from src.pipeline.dual_pipeline import UnifiedDualPurposePipeline  # Circular import avoided
+# dual_pipeline.py removed in cleanup - functionality integrated into UnifiedProcessor
 from src.skr03_manager import lade_skr03_manager
 
 logger = logging.getLogger(__name__)
