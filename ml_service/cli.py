@@ -208,7 +208,7 @@ def cmd_validate_config(args: argparse.Namespace) -> int:
 
         print("🌍 UMGEBUNGSVARIABLEN:")
         env_vars = [
-            "ML_GEMINI_API_KEY",
+            "GEMINI_API_KEY",
             "ML_GEMINI_MODEL",
             "ML_ENABLE_CACHING",
             "ML_CACHE_DIR",
@@ -384,7 +384,7 @@ Beispiele:
   %(prog)s benchmark document.pdf           # Performance-Test
 
 Environment-Variablen:
-  ML_GEMINI_API_KEY      # Gemini API-Schlüssel
+  GEMINI_API_KEY         # Gemini API-Schlüssel (aus root .env)
   ML_GEMINI_MODEL        # Gemini-Modell (default: gemini-2.5-flash)
   ML_ENABLE_CACHING      # Cache aktivieren (true/false)
   ML_CACHE_DIR           # Cache-Verzeichnis

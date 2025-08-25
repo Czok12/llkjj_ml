@@ -292,7 +292,7 @@ class EnvironmentManager:
 
     def __init__(self) -> None:
         self.required_vars = {
-            "GOOGLE_API_KEY": "Google Gemini API Key",
+            "GEMINI_API_KEY": "Google Gemini API Key (from root .env)",
             "LLKJJ_ENV": "Environment (development/production)",
         }
 

@@ -107,7 +107,7 @@ class GeminiDirectProcessor:
             if not self.config.google_api_key:
                 raise ValueError(
                     "❌ Google API Key erforderlich für Gemini-First Pipeline. "
-                    "Setze GOOGLE_API_KEY Environment Variable."
+                    "Setze GEMINI_API_KEY Environment Variable."
                 )
 
             try:

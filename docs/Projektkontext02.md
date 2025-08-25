@@ -25,7 +25,7 @@ Die Entwicklung von LLKJJ folgt konsequent vier Kernprinzipien, die sich in jede
 
    * **ML-Pipeline als Blackbox:** Die gesamte ML-Verarbeitung ist als eigenständiges Plugin (`llkjj_ml_plugin`) gekapselt, das eine klar definierte Schnittstelle (`package_api.py`, `ProcessingResult`) bereitstellt.
    * **Backend-Services:** Eine saubere Trennung von API (`routers/`), Geschäftslogik (`services/`) und Datenzugriff (`models/`, `repository_service.py`) nach dem **Single Responsibility Principle**.
-   * **Externe Fachmodule:** Komplexe Domänen wie **E-Invoicing** (`einvoice/`) und **Datenexport** (`export_plugin.py`) sind als unabhängige, wiederverwendbare Plugins realisiert, die der Core nur bei Bedarf einbindet.
+   * **Externe Fachmodule:** Komplexe Domänen wie **E-Invoicing** (`efaktura/`) und **Datenexport** (`export_plugin.py`) sind als unabhängige, wiederverwendbare Plugins realisiert, die der Core nur bei Bedarf einbindet.
 3. **🛡️ Sicherheit und Compliance by Design:**
    Sicherheit ist keine nachträgliche Ergänzung, sondern ein fundamentaler Bestandteil der Architektur.
 
@@ -114,7 +114,7 @@ Das LLKJJ-System besteht aus einem zentralen Backend, das durch spezialisierte, 
 ### 4.4. E-Invoice-System
 
 - **Zweck:** Erstellung und Validierung von gesetzeskonformen elektronischen Rechnungen nach deutschen und europäischen Standards.
-- **Schlüsseldateien:** `einvoice/`-Verzeichnis.
+- **Schlüsseldateien:** `efaktura/`-Verzeichnis.
 - **Features:**
   - **Standard-Unterstützung:** Generiert XML für **XRechnung (CII)** und **UBL**.
   - **Factur-X:** Kombiniert Rechnungs-PDFs mit eingebettetem XML zu **PDF/A-3** konformen Hybrid-Dokumenten (`pdf_xml_combiner.py`).
@@ -135,8 +135,8 @@ Das LLKJJ-System besteht aus einem zentralen Backend, das durch spezialisierte, 
 
 ### Workflow 2: E-Rechnung-Erstellung
 
-1. **API-Aufruf:** Das Frontend sendet strukturierte Rechnungsdaten an den `/api/v1/einvoice/generate`-Endpunkt. Die Daten werden durch das strikte `OutgoingEInvoiceData`-Schema validiert.
-2. **XML-Generierung:** Der `einvoice`-Service nutzt den `XRechnungCIIGeneratorV2` (oder `UBLInvoiceGenerator`), um ein standardkonformes XML zu erstellen.
+1. **API-Aufruf:** Das Frontend sendet strukturierte Rechnungsdaten an den `/api/v1/efaktura/generate`-Endpunkt. Die Daten werden durch das strikte `OutgoingEInvoiceData`-Schema validiert.
+2. **XML-Generierung:** Der `efaktura`-Service nutzt den `XRechnungCIIGeneratorV2` (oder `UBLInvoiceGenerator`), um ein standardkonformes XML zu erstellen.
 3. **PDF-Generierung (Optional):** Parallel wird aus denselben Daten über den `EnhancedPDFService` und Jinja2-Templates eine visuelle PDF-Rechnung erzeugt.
 4. **Factur-X Kombination (Optional):** Falls ein Hybrid-Dokument gewünscht ist, bettet der `FacturXGenerator` das generierte XML in das PDF ein und stellt die PDF/A-3-Konformität sicher.
 5. **Antwort:** Die API liefert das generierte XML (und optional das PDF) an das Frontend zurück.

@@ -1,15 +1,12 @@
 [tool.poetry]
-name = "llkjj-ml"
+name = "llkjj_ml"
 version = "0.1.0"
 description = "LLKJJ ML Pipeline - PDF Invoice Processing für Elektrotechnik-Handwerk UG"
 authors = ["Czok12 <your-email@domain.com>"]
-packages = [
-    { include = "llkjj_ml" },
-    { include = "src" }
-]
+packages = [{ include = "llkjj_ml" }, { include = "src" }]
 
 [project]
-name = "llkjj-ml"
+name = "llkjj_ml"
 version = "0.1.0"
 description = "LLKJJ ML Pipeline - PDF Invoice Processing für Elektrotechnik-Handwerk UG"
 authors = [{ name = "Czok12", email = "your-email@domain.com" }]
@@ -49,7 +46,7 @@ dependencies = [
 ]
 
 [project.scripts]
-llkjj-ml = "main:main"
+llkjj_ml = "main:main"
 
 [project.optional-dependencies]
 # Für legacy/pip-kompatibilität
