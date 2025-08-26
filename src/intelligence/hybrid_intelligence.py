@@ -25,7 +25,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from src.config import Config
+from src.settings_bridge import Config
 
 logger = logging.getLogger(__name__)
 

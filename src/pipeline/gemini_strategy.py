@@ -15,10 +15,10 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from src.config import Config
 from src.models.processing_result import ProcessingResult
 from src.pipeline.gemini_first_processor import GeminiDirectProcessor
 from src.pipeline.processing_strategy import ProcessingStrategy
+from src.settings_bridge import Config
 
 logger = logging.getLogger(__name__)
 

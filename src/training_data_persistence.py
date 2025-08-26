@@ -31,7 +31,7 @@ from typing import Any
 import chromadb
 from sentence_transformers import SentenceTransformer
 
-from src.config import Config
+from src.settings_bridge import Config
 
 logger = logging.getLogger(__name__)
 

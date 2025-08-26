@@ -19,9 +19,9 @@ from pathlib import Path
 from typing import Any
 
 import psutil
+from llkjj_ml_plugin import process_pdf_simple
 
 from deployment.monitoring import get_performance_monitor, get_production_logger
-from llkjj_ml_plugin import process_pdf_simple
 
 
 @dataclass

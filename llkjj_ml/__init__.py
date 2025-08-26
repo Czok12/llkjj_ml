@@ -45,9 +45,9 @@ if parent_dir not in sys.path:
     sys.path.insert(0, parent_dir)
 
 try:
-    from src.config import Config
     from src.pipeline.processor import ProcessingResult, UnifiedProcessor
     from src.security.manager import validate_production_environment
+    from src.settings_bridge import Config
 except ImportError as e:
     # Fallback für fehlende src-Module – jetzt sicher mit vorhandenem logger
     logger.error(f"Failed to import from src module: {e}")

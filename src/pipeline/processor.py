@@ -14,27 +14,21 @@ Autor: LLKJJ ML Pipeline Team
 Version: 2.1.0 (Post-Konsolidierung Refactoring)
 """
 
-import json
 import logging
-import os
-import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Literal
 
-import chromadb
 from pydantic import BaseModel, Field, field_validator
-from sentence_transformers import SentenceTransformer
 
 try:
     import google.genai as genai
 except ImportError:
     genai = None  # type: ignore[assignment]
 
-from src.config import Config
+from src.settings_bridge import Config
 
 # dual_pipeline.py removed in cleanup - functionality integrated into UnifiedProcessor
-from src.skr03_manager import lade_skr03_manager
 
 logger = logging.getLogger(__name__)
 
@@ -42,13 +36,13 @@ logger = logging.getLogger(__name__)
 class ResourceManager:
     """
     REMOVED: Legacy ResourceManager has been removed in v2.0.0 final cleanup
-    
-    ⚠️ This Singleton class has been completely replaced by dependency injection 
+
+    ⚠️ This Singleton class has been completely replaced by dependency injection
        in llkjj_ml.MLPlugin (v2.0).
-    
+
     Use MLPlugin with Repository-Pattern and service injection instead.
     """
-    
+
     def __init__(self):
         raise RuntimeError(
             "ResourceManager has been removed in v2.0.0. "
@@ -292,15 +286,15 @@ for item in result.skr03_classifications:
 class UnifiedProcessor:
     """
     REMOVED: Legacy UnifiedProcessor has been removed in v2.0.0 final cleanup
-    
+
     ⚠️ This class has been completely replaced by llkjj_ml.MLPlugin (v2.0).
-    
+
     Use MLPlugin with:
-    - Repository-Pattern for data persistence  
+    - Repository-Pattern for data persistence
     - Dependency injection for services
     - Stateless design instead of singleton patterns
     """
-    
+
     def __init__(self, *args, **kwargs):
         raise RuntimeError(
             "UnifiedProcessor has been removed in v2.0.0. "

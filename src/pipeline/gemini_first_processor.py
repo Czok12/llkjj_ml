@@ -35,7 +35,6 @@ except ImportError:
     genai = None  # type: ignore[assignment]
     GENAI_AVAILABLE = False
 
-from src.config import Config
 from src.intelligence.context_classifier import (
     ContextAwareClassifier,
 )
@@ -44,6 +43,7 @@ from src.models.gemini_schemas import create_validation_report, validate_gemini_
 from src.models.processing_result import ProcessingResult
 from src.monitoring.performance_metrics import PerformanceMonitor
 from src.processing.spacy_corrector import SpacyAnnotationCorrector
+from src.settings_bridge import Config
 from src.skr03_manager import lade_skr03_manager
 from src.training_data_persistence import TrainingDataPersistence
 from src.utils.resource_manager import get_resource_manager

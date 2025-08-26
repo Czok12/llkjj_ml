@@ -22,9 +22,9 @@ from typing import Any
 
 from docling.document_converter import DocumentConverter
 
-from src.config import Config
 from src.extraction.extractor import DataExtractor
 from src.processing.classifier import DataClassifier
+from src.settings_bridge import Config
 from src.skr03_manager import lade_skr03_manager
 
 logger = logging.getLogger(__name__)

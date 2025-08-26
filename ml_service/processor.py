@@ -4,13 +4,13 @@ LLKJJ ML Service - Eigenständiger Processor
 ==========================================
 
 Eigenständiger ML-Processor der völlig unabhängig von externen Systemen
-funktioniert. Verwendet MLSettings für Konfiguration und stellt eine
+funktioniert. Verwendet zentrale Settings für Konfiguration und stellt eine
 saubere API für PDF-Verarbeitung bereit.
 
 **EIGENSTÄNDIGKEIT:**
 - Keine Abhängigkeiten zu src/config oder externen Modulen
 - Eigene Ressourcenverwaltung
-- Konfiguration über MLSettings
+- Konfiguration über zentrale Settings
 - Wiederverwendbar in jedem Python-Projekt
 
 Author: LLKJJ ML Pipeline Team
@@ -18,14 +18,10 @@ Version: 3.0.0 (Eigenständige Implementierung)
 """
 
 import logging
-import time
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, Field
-
-from .config import MLSettings, default_settings
 
 # Import existing components - we'll adapt them gradually
 try:
@@ -103,13 +99,13 @@ class ProcessingResult(BaseModel):
 class MLProcessor:
     """
     REMOVED: Legacy MLProcessor has been removed in v2.0.0 final cleanup
-    
+
     ⚠️ This class has been completely replaced by llkjj_ml.MLPlugin (v2.0).
-    
+
     Use llkjj_ml.MLPlugin with Repository-Pattern and dependency injection instead.
     See llkjj_ml_plugin_v2.py for the new stateless implementation.
     """
-    
+
     def __init__(self, *args, **kwargs):
         raise RuntimeError(
             "MLProcessor has been removed in v2.0.0. "
@@ -121,9 +117,9 @@ class MLProcessor:
 def process_pdf_simple(pdf_path: str, config: dict | None = None) -> dict:
     """
     REMOVED: Legacy process_pdf_simple has been removed in v2.0.0 final cleanup
-    
+
     ⚠️ This function has been completely replaced by llkjj_ml.MLPlugin (v2.0).
-    
+
     Use MLPlugin.process_invoice_pdf() with Repository-Pattern instead.
     """
     raise RuntimeError(

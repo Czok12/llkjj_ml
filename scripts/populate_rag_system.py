@@ -19,8 +19,8 @@ from typing import Any
 # Add src to path for imports
 sys.path.append(str(Path(__file__).parent.parent / "src"))
 
-from src.config import Config
 from src.pipeline.processor import UnifiedProcessor
+from src.settings_bridge import Config
 
 # Setup logging
 logging.basicConfig(

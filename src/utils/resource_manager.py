@@ -6,7 +6,7 @@ DEPRECATED: LLKJJ ML Pipeline - Enhanced Resource Manager
 ⚠️  DEPRECATION WARNING: This ResourceManager is deprecated in v2.0.0 ⚠️
 
 This file contains the legacy ResourceManager singleton that has been replaced
-by the new stateless Repository-Pattern in v2.0.0. 
+by the new stateless Repository-Pattern in v2.0.0.
 
 Use instead:
 - llkjj_ml.MLPlugin (v2.0) with dependency injection
@@ -70,7 +70,7 @@ class ResourceManager:
     - Dependency injection pattern
     - Explicit resource management
     - Repository-based data access
-    
+
     Will be removed in v3.0.0.
     """
 
@@ -80,13 +80,14 @@ class ResourceManager:
     def __new__(cls) -> "ResourceManager":
         """Singleton-Pattern für einmalige Initialisierung."""
         import warnings
+
         warnings.warn(
             "ResourceManager singleton is deprecated in v2.0.0. "
             "Use llkjj_ml.MLPlugin with Repository-Pattern instead.",
             DeprecationWarning,
-            stacklevel=2
+            stacklevel=2,
         )
-        
+
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             logger.info("🔧 ResourceManager Singleton erstellt (DEPRECATED)")
@@ -471,20 +472,21 @@ _resource_manager: ResourceManager | None = None
 def get_resource_manager() -> ResourceManager:
     """
     DEPRECATED: Get the global ResourceManager singleton
-    
+
     ⚠️  WARNING: This function is deprecated in v2.0.0.
     Use llkjj_ml.MLPlugin with Repository-Pattern instead.
-    
+
     Will be removed in v3.0.0.
     """
     import warnings
+
     warnings.warn(
         "get_resource_manager() is deprecated in v2.0.0. "
         "Use llkjj_ml.MLPlugin with dependency injection instead.",
         DeprecationWarning,
-        stacklevel=2
+        stacklevel=2,
     )
-    
+
     global _resource_manager
     if _resource_manager is None:
         _resource_manager = ResourceManager()

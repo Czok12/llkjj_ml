@@ -18,13 +18,14 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+from llkjj_ml_plugin import MLPlugin, ProcessingResult
+
 from accounting_api.models import (
     AnalyticsResponse,
     BookingResponse,
     CorrectionRequest,
     InvoiceResponse,
 )
-from llkjj_ml_plugin import MLPlugin, ProcessingResult
 
 logger = logging.getLogger(__name__)
 
@@ -184,12 +185,15 @@ class InvoiceService:
         total, avg_confidence, completed = cursor.fetchone()
 
         # Calculate real metrics from processing data
-        cursor.execute("""
-            SELECT AVG(processing_time_ms) 
-            FROM invoices 
+        cursor.execute(
+            """
+            SELECT AVG(processing_time_ms)
+            FROM invoices
             WHERE user_id = ? AND processing_time_ms IS NOT NULL
-        """, (user_id,))
-        
+        """,
+            (user_id,),
+        )
+
         avg_processing_time = cursor.fetchone()[0] or 5000  # Default 5s if no data
         time_saved = completed * 15  # 15 minutes saved per invoice estimate
         cost_savings = time_saved * 0.5  # €0.50 per minute cost saving estimate
@@ -331,12 +335,12 @@ class BookingService:
         """Calculate estimated export file size based on booking data."""
         if not bookings:
             return 0
-            
+
         # Estimate based on format
-        if format.lower() == 'csv':
+        if format.lower() == "csv":
             # CSV: ~150 bytes per booking (including headers)
             return len(bookings) * 150 + 100  # 100 bytes for headers
-        elif format.lower() == 'xml':
+        elif format.lower() == "xml":
             # XML: ~300 bytes per booking (more verbose)
             return len(bookings) * 300 + 200  # 200 bytes for XML structure
         else:

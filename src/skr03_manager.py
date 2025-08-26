@@ -87,7 +87,7 @@ class SKR03Manager:
     Zentraler Manager für SKR03-Regelwerk und Klassifizierung
 
     Verwaltet:
-    - YAML-Klassifizierungsregeln (src/config/skr03_regeln.yaml)
+    - YAML-Klassifizierungsregeln (config/skr03/skr03_regeln.yaml)
     - CSV-Kontenplan (Kontenplan.csv)
     - Intelligente Keyword-Matching-Logik
     """
@@ -289,7 +289,7 @@ class SKR03Manager:
 
 # Convenience-Funktion für einfache Nutzung
 def lade_skr03_manager(
-    regeln_pfad: str = "src/config/skr03_regeln.yaml",
+    regeln_pfad: str = "config/skr03/skr03_regeln.yaml",
     kontenplan_pfad: str = "src/config/Kontenplan.csv",
 ) -> SKR03Manager:
     """Lädt SKR03Manager mit Standard-Pfaden"""

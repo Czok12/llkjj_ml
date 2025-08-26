@@ -21,9 +21,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-# Refactored Training Services
-from src.config import Config
-
 # Feature Engineering Integration
 from src.features.ml_integration import create_feature_pipeline
 
@@ -45,6 +42,9 @@ from src.pipeline.unified_processor import UnifiedProcessor
 from src.processing.modular_processor import ModularProcessor
 from src.security.auditor import run_security_audit
 from src.security.manager import APIKeyManager, validate_production_environment
+
+# Refactored Training Services
+from src.settings_bridge import Config
 from src.trainer import TrainingService  # Backwards compatibility
 
 

@@ -11,7 +11,7 @@ sys.path.append(str(PROJECT_ROOT))
 
 try:
     # Lade die Konfiguration, um den ChromaDB-Pfad zu erhalten
-    from src.config import Config
+    from src.settings_bridge import Config
 
     config = Config()
 except ImportError as e:

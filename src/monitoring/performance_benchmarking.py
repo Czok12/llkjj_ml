@@ -23,9 +23,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from src.config import Config
 from src.models.processing_result import ProcessingResult
 from src.pipeline.async_gemini_processor import AsyncGeminiDirectProcessor
+from src.settings_bridge import Config
 
 logger = logging.getLogger(__name__)
 

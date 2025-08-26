@@ -305,7 +305,6 @@ class IntegrationPatterns:
         import tempfile
 
         from fastapi import FastAPI, HTTPException, UploadFile
-
         from llkjj_ml_plugin import MLPlugin
 
         app = FastAPI()

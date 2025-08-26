@@ -8,7 +8,7 @@ sys.path.append(str(PROJECT_ROOT))
 
 try:
     # Lade die Konfiguration, um die Liste der SpaCy-Modelle zu erhalten
-    from src.config import Config
+    from src.settings_bridge import Config
 
     config = Config()
 except ImportError as e:

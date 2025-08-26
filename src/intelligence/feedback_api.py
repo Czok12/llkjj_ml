@@ -20,8 +20,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from src.config import Config
 from src.intelligence.feedback_learning import FeedbackLearningEngine
+from src.settings_bridge import Config
 
 logger = logging.getLogger(__name__)
 

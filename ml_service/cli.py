@@ -25,7 +25,7 @@ from pathlib import Path
 from typing import Any
 
 # ML Service Imports
-from ml_service import MLProcessor, MLSettings, ProcessingResult, process_pdf_simple
+from ml_service import MLProcessor, ProcessingResult, process_pdf_simple, settings
 
 
 def setup_logging(verbose: bool = False) -> None:
@@ -95,7 +95,7 @@ def cmd_process(args: argparse.Namespace) -> int:
         else:
             # Verwende vollständigen MLProcessor für erweiterte Kontrolle
             print("🚀 Verwende erweiterte Verarbeitung...")
-            settings = MLSettings()
+            settings = settings.ml
 
             if args.verbose:
                 print("🔧 ML Settings:")
@@ -181,7 +181,7 @@ def cmd_validate_config(args: argparse.Namespace) -> int:
     print()
 
     try:
-        settings = MLSettings()
+        settings = settings.ml
         validation = settings.validate_configuration()
 
         print("📋 KONFIGURATION:")
@@ -244,7 +244,7 @@ def cmd_test_capabilities(args: argparse.Namespace) -> int:
     print()
 
     try:
-        settings = MLSettings()
+        settings = settings.ml
 
         with MLProcessor(settings) as processor:
             capabilities = processor.get_capabilities()
@@ -315,7 +315,7 @@ def cmd_benchmark(args: argparse.Namespace) -> int:
         return 1
 
     try:
-        MLSettings()
+        settings.ml
         runs = args.runs or 3
 
         print(f"🔄 Führe {runs} Benchmark-Läufe durch...")

@@ -13,7 +13,7 @@ from typing import Any
 
 from docling.document_converter import DocumentConverter
 
-from src.config import Config
+from src.settings_bridge import Config
 
 logger = logging.getLogger(__name__)
 

@@ -8,21 +8,21 @@ wiederverwendbares Modul zur Verfügung.
 
 **EIGENSTÄNDIGKEIT:**
 - Keine Abhängigkeiten zu externen Systemen oder DMS-Plugins
-- Eigene Konfigurationsverwaltung über MLSettings
+- Zentrale Konfigurationsverwaltung über llkjj_backend.core.settings
 - Vollständig über Umgebungsvariablen konfigurierbar
 - Installation als separates Python-Paket möglich
 
 **PUBLIC API:**
 ```python
-from ml_service import MLProcessor, MLSettings
+from ml_service import MLProcessor, settings
 
-# Mit Standardkonfiguration
+# Mit zentraler Konfiguration
 processor = MLProcessor()
 result = processor.process_pdf("invoice.pdf")
 
-# Mit eigener Konfiguration
-settings = MLSettings(gemini_model="gemini-2.5-pro")
-processor = MLProcessor(settings=settings)
+# Konfiguration erfolgt über llkjj_backend.core.settings
+print(f"Verwendetes Modell: {settings.ml.gemini_model}")
+processor = MLProcessor()
 result = processor.process_pdf("invoice.pdf")
 ```
 
@@ -30,7 +30,8 @@ Author: LLKJJ ML Pipeline Team
 Version: 3.0.0 (Eigenständiges Plugin)
 """
 
-from .config import MLSettings, default_settings
+from llkjj_api.core.settings import settings
+
 from .processor import MLProcessor, ProcessingResult, process_pdf_simple
 
 __version__ = "3.0.0"
@@ -42,8 +43,7 @@ __all__ = [
     "MLProcessor",
     "ProcessingResult",
     "process_pdf_simple",
-    "MLSettings",
-    "default_settings",
+    "settings",
     "__version__",
 ]
 

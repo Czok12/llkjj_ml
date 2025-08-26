@@ -23,7 +23,7 @@ from spacy.pipeline import TextCategorizer
 from spacy.training import Example
 from spacy.util import minibatch
 
-from src.config import Config
+from src.settings_bridge import Config
 
 logger = logging.getLogger(__name__)
 
