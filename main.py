@@ -22,30 +22,30 @@ from pathlib import Path
 from typing import Any
 
 # Feature Engineering Integration
-from src.features.ml_integration import create_feature_pipeline
+from llkjj_ml.src.features.ml_integration import create_feature_pipeline
 
 # Import ProcessingResult for type-safe results
-from src.models.processing_result import ProcessingResult
-from src.optimization.cache_warming import (
+from llkjj_ml.src.models.processing_result import ProcessingResult
+from llkjj_ml.src.optimization.cache_warming import (
     IntelligentCacheWarming,
     get_warming_recommendations,
     warm_cache_intelligent,
 )
 
 # Import Performance Optimization
-from src.pipeline.async_gemini_processor import AsyncGeminiDirectProcessor
+from llkjj_ml.src.pipeline.async_gemini_processor import AsyncGeminiDirectProcessor
 
 # Dual-Purpose Pipeline Import
-from src.pipeline.unified_processor import UnifiedProcessor
+from llkjj_ml.src.pipeline.unified_processor import UnifiedProcessor
 
 # Import consolidated services
-from src.processing.modular_processor import ModularProcessor
-from src.security.auditor import run_security_audit
-from src.security.manager import APIKeyManager, validate_production_environment
+from llkjj_ml.src.processing.modular_processor import ModularProcessor
+from llkjj_ml.src.security.auditor import run_security_audit
+from llkjj_ml.src.security.manager import APIKeyManager, validate_production_environment
 
 # Refactored Training Services
-from src.settings_bridge import Config
-from src.trainer import TrainingService  # Backwards compatibility
+from llkjj_ml.src.settings_bridge import Config
+from llkjj_ml.src.trainer import TrainingService  # Backwards compatibility
 
 
 def setup_logging(verbose: bool = False, production: bool = False) -> None:
@@ -73,10 +73,10 @@ def process_pdfs(args: argparse.Namespace) -> None:
 
     Kein Fallback auf Docling - bei Gemini-Fehlern wird Error-Log ausgegeben!
     """
-    config = Config()
+    config = Config
 
     # NEUE STANDARD-PIPELINE: Gemini-First Processor
-    from src.pipeline.gemini_first_processor import GeminiDirectProcessor
+    from llkjj_ml.src.pipeline.gemini_first_processor import GeminiDirectProcessor
 
     processor = GeminiDirectProcessor(config)
 
@@ -105,7 +105,7 @@ def process_pdfs(args: argparse.Namespace) -> None:
             output_file = output_dir / f"{input_path.stem}_gemini_result.json"
             output_dir.mkdir(parents=True, exist_ok=True)
 
-            with open(output_file, "w", encoding="utf-8") as f:
+            with output_file.open("w", encoding="utf-8") as f:
                 json.dump(result.to_dict(), f, ensure_ascii=False, indent=2)
 
             print(f"💾 Result saved: {output_file}")
@@ -183,7 +183,7 @@ def process_pdfs(args: argparse.Namespace) -> None:
             },
         }
 
-        with open(batch_output, "w", encoding="utf-8") as f:
+        with batch_output.open("w", encoding="utf-8") as f:
             json.dump(batch_data, f, ensure_ascii=False, indent=2)
 
         print(f"💾 Batch results saved: {batch_output}")
@@ -202,10 +202,10 @@ def process_pdfs_async_batch(args: argparse.Namespace) -> None:
     - Rate-Limiting für API-Schutz
     - Batch-Processing für multiple PDFs
     """
-    config = Config()
+    config = Config
 
     # 🎯 A3: AsyncGeminiDirectProcessor mit Performance-Optimierungen
-    from src.pipeline.async_gemini_processor import AsyncGeminiDirectProcessor
+    from llkjj_ml.src.pipeline.async_gemini_processor import AsyncGeminiDirectProcessor
 
     processor = AsyncGeminiDirectProcessor(config)
     input_path = Path(args.input)
@@ -237,7 +237,7 @@ def process_pdfs_async_batch(args: argparse.Namespace) -> None:
                 output_file = output_dir / f"{input_path.stem}_async_result.json"
                 output_dir.mkdir(parents=True, exist_ok=True)
 
-                with open(output_file, "w", encoding="utf-8") as f:
+                with output_file.open("w", encoding="utf-8") as f:
                     json.dump(result.to_dict(), f, ensure_ascii=False, indent=2)
 
                 print(f"💾 Result saved: {output_file}")
@@ -323,7 +323,7 @@ def process_pdfs_async_batch(args: argparse.Namespace) -> None:
                     },
                 }
 
-                with open(batch_output, "w", encoding="utf-8") as f:
+                with batch_output.open("w", encoding="utf-8") as f:
                     json.dump(batch_data, f, ensure_ascii=False, indent=2)
 
                 print(f"💾 Async batch results saved: {batch_output}")
@@ -353,7 +353,7 @@ def process_pdfs_unified_strategy(args: argparse.Namespace) -> None:
     - Strategy-Vergleich für Benchmarking
     - Nahtlose Transition zwischen Engines
     """
-    config = Config()
+    config = Config
 
     # Verwende bereits importierten UnifiedProcessor
     processor = UnifiedProcessor(config)
@@ -373,7 +373,7 @@ def process_pdfs_unified_strategy(args: argparse.Namespace) -> None:
 
     if compare_strategies:
         # Strategy comparison mode
-        if not input_path.is_file() or not input_path.suffix.lower() == ".pdf":
+        if not input_path.is_file() or input_path.suffix.lower() != ".pdf":
             print("❌ Strategy comparison requires a single PDF file")
             return
 
@@ -413,7 +413,7 @@ def process_pdfs_unified_strategy(args: argparse.Namespace) -> None:
             comparison_file = output_dir / f"strategy_comparison_{input_path.stem}.json"
             output_dir.mkdir(parents=True, exist_ok=True)
 
-            with open(comparison_file, "w", encoding="utf-8") as f:
+            with comparison_file.open("w", encoding="utf-8") as f:
                 json.dump(comparison, f, ensure_ascii=False, indent=2)
 
             print(f"\n💾 Comparison results saved: {comparison_file}")
@@ -460,7 +460,7 @@ def process_pdfs_unified_strategy(args: argparse.Namespace) -> None:
                 "available_strategies": available,
             }
 
-            with open(output_file, "w", encoding="utf-8") as f:
+            with output_file.open("w", encoding="utf-8") as f:
                 json.dump(result_data, f, ensure_ascii=False, indent=2)
 
             print(f"💾 Result saved: {output_file}")
@@ -550,7 +550,7 @@ def process_pdfs_unified_strategy(args: argparse.Namespace) -> None:
                 },
             }
 
-            with open(batch_output, "w", encoding="utf-8") as f:
+            with batch_output.open("w", encoding="utf-8") as f:
                 json.dump(batch_data, f, ensure_ascii=False, indent=2)
 
             print(f"💾 Unified batch results saved: {batch_output}")
@@ -568,10 +568,10 @@ def process_pdfs_docling_alternative(args: argparse.Namespace) -> None:
     Diese Methode wird nur noch bei expliziter Anfrage verwendet!
     Standard ist die neue Gemini-First Pipeline.
     """
-    config = Config()
+    config = Config
 
     # ALTERNATIVE: Docling-basierte Verarbeitung
-    from src.pipeline.gemini_first_processor import DoclingAlternativeProcessor
+    from llkjj_ml.src.pipeline.gemini_first_processor import DoclingAlternativeProcessor
 
     processor = DoclingAlternativeProcessor(config)
 
@@ -595,7 +595,7 @@ def process_pdfs_docling_alternative(args: argparse.Namespace) -> None:
         output_file = output_dir / f"{input_path.stem}_docling_result.json"
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        with open(output_file, "w", encoding="utf-8") as f:
+        with output_file.open("w", encoding="utf-8") as f:
             json.dump(result, f, ensure_ascii=False, indent=2)
 
         print(f"💾 Result saved: {output_file}")
@@ -651,7 +651,7 @@ def process_pdfs_docling_alternative(args: argparse.Namespace) -> None:
         batch_output = output_dir / "docling_batch_results.json"
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        with open(batch_output, "w", encoding="utf-8") as f:
+        with batch_output.open("w", encoding="utf-8") as f:
             json.dump(
                 {
                     "results": results,
@@ -680,7 +680,7 @@ def process_pdfs_docling_alternative(args: argparse.Namespace) -> None:
 
 def export_training_data(args: argparse.Namespace) -> None:
     """Export processed data for spaCy training"""
-    config = Config()
+    config = Config
     training_service = TrainingService(config)
 
     input_dir = Path(args.input)
@@ -698,7 +698,7 @@ def export_training_data(args: argparse.Namespace) -> None:
 
 def train_model(args: argparse.Namespace) -> None:
     """Train spaCy models for German electrical invoices using new training pipeline"""
-    config = Config()
+    config = Config
     training_service = TrainingService(config)
 
     training_data = Path(args.input)
@@ -725,7 +725,7 @@ def train_model(args: argparse.Namespace) -> None:
 
 def export_textcat_data(args: argparse.Namespace) -> None:
     """Export textcat training data for SKR03 classification"""
-    config = Config()
+    config = Config
     training_service = TrainingService(config)
 
     input_dir = Path(args.input)
@@ -744,7 +744,7 @@ def export_textcat_data(args: argparse.Namespace) -> None:
 
 def train_textcat_model(args: argparse.Namespace) -> None:
     """Train spaCy text classification model for SKR03"""
-    config = Config()
+    config = Config
     training_service = TrainingService(config)
 
     training_data_dir = Path(args.input)
@@ -769,7 +769,7 @@ def train_textcat_model(args: argparse.Namespace) -> None:
 
 def run_pipeline(args: argparse.Namespace) -> None:
     """Run complete PDF→Training pipeline"""
-    config = Config()
+    config = Config
 
     input_dir = Path(args.input)
     temp_processed = Path("data/processed/pipeline_temp")
@@ -835,7 +835,7 @@ def analyze_results(args: argparse.Namespace) -> None:
 
     for json_file in json_files:
         try:
-            with open(json_file, encoding="utf-8") as f:
+            with json_file.open(encoding="utf-8") as f:
                 data = json.load(f)
 
             # Extract metrics
@@ -882,7 +882,7 @@ def analyze_results(args: argparse.Namespace) -> None:
 # NEW MODULAR WORKFLOW FUNCTIONS
 def run_workflow_1(args: argparse.Namespace) -> None:
     """Run Workflow 1: PDF → Docling → TXT only"""
-    config = Config()
+    config = Config
     processor = ModularProcessor(config)
 
     pdf_path = Path(args.input)
@@ -901,7 +901,7 @@ def run_workflow_1(args: argparse.Namespace) -> None:
 
 def run_workflow_2(args: argparse.Namespace) -> None:
     """Run Workflow 2: PDF → Gemini directly"""
-    config = Config()
+    config = Config
     processor = ModularProcessor(config)
 
     pdf_path = Path(args.input)
@@ -920,7 +920,7 @@ def run_workflow_2(args: argparse.Namespace) -> None:
 
 def run_workflow_3(args: argparse.Namespace) -> None:
     """Run Workflow 3: Docling TXT → Gemini processing"""
-    config = Config()
+    config = Config
     processor = ModularProcessor(config)
 
     txt_path = Path(args.input)
@@ -939,7 +939,6 @@ def run_workflow_3(args: argparse.Namespace) -> None:
 
 def run_workflow_4(args: argparse.Namespace) -> None:
     """Run Workflow 4: Complete pipeline"""
-    Config()
     processor = UnifiedProcessor()
 
     pdf_path = Path(args.input)
@@ -960,7 +959,7 @@ def run_workflow_4(args: argparse.Namespace) -> None:
 
 def init_database(args: argparse.Namespace) -> None:
     """Initialize database with simple manager"""
-    from src.database.simple_manager import create_simple_manager
+    from llkjj_ml.src.database.simple_manager import create_simple_manager
 
     db_path = Path(args.path)
 
@@ -983,7 +982,7 @@ def init_database(args: argparse.Namespace) -> None:
 
 def show_database_stats(args: argparse.Namespace) -> None:
     """Show database statistics with simple manager"""
-    from src.database.simple_manager import create_simple_manager
+    from llkjj_ml.src.database.simple_manager import create_simple_manager
 
     db_path = Path(args.path)
 
@@ -1041,7 +1040,7 @@ def show_database_stats(args: argparse.Namespace) -> None:
 
 def backup_database(args: argparse.Namespace) -> None:
     """Create database backup with simple manager"""
-    from src.database.simple_manager import create_simple_manager
+    from llkjj_ml.src.database.simple_manager import create_simple_manager
 
     db_path = Path(args.path)
     backup_name = args.name
@@ -1060,7 +1059,7 @@ def backup_database(args: argparse.Namespace) -> None:
 
 def optimize_database(args: argparse.Namespace) -> None:
     """Optimize database performance with simple manager"""
-    from src.database.simple_manager import create_simple_manager
+    from llkjj_ml.src.database.simple_manager import create_simple_manager
 
     db_path = Path(args.path)
 
@@ -1086,7 +1085,7 @@ def extract_features(args: argparse.Namespace) -> None:
 
     # Load invoice data
     if input_path.suffix.lower() == ".json":
-        with open(input_path, encoding="utf-8") as f:
+        with input_path.open(encoding="utf-8") as f:
             invoice_data = json.load(f)
     else:
         print("❌ Only JSON files supported for feature extraction")
@@ -1115,7 +1114,7 @@ def extract_features(args: argparse.Namespace) -> None:
             output_path = Path(args.output)
             output_path.parent.mkdir(parents=True, exist_ok=True)
 
-            with open(output_path, "w", encoding="utf-8") as f:
+            with output_path.open("w", encoding="utf-8") as f:
                 json.dump(result, f, ensure_ascii=False, indent=2)
 
             print(f"💾 Features saved to: {output_path}")
@@ -1143,7 +1142,7 @@ def extract_features_batch(args: argparse.Namespace) -> None:
     invoice_data_list: list[dict[str, Any]] = []
     for json_file in json_files:
         try:
-            with open(json_file, encoding="utf-8") as f:
+            with json_file.open(encoding="utf-8") as f:
                 invoice_data = json.load(f)
                 invoice_data_list.append(invoice_data)
         except Exception as e:
@@ -1188,12 +1187,12 @@ def extract_features_batch(args: argparse.Namespace) -> None:
     for _i, (result, json_file) in enumerate(zip(results, json_files, strict=False)):
         if result["success"]:
             feature_file = output_dir / f"{json_file.stem}_features.json"
-            with open(feature_file, "w", encoding="utf-8") as f:
+            with feature_file.open("w", encoding="utf-8") as f:
                 json.dump(result, f, ensure_ascii=False, indent=2)
 
     # Save analysis
     analysis_file = output_dir / "feature_analysis.json"
-    with open(analysis_file, "w", encoding="utf-8") as f:
+    with analysis_file.open("w", encoding="utf-8") as f:
         json.dump(analysis, f, ensure_ascii=False, indent=2)
 
     print(f"💾 Results saved to: {output_dir}")
@@ -1202,12 +1201,12 @@ def extract_features_batch(args: argparse.Namespace) -> None:
     for _i, (result, json_file) in enumerate(zip(results, json_files, strict=False)):
         if result["success"]:
             feature_file = output_dir / f"{json_file.stem}_features.json"
-            with open(feature_file, "w", encoding="utf-8") as f:
+            with feature_file.open("w", encoding="utf-8") as f:
                 json.dump(result, f, ensure_ascii=False, indent=2)
 
     # Save analysis
     analysis_file = output_dir / "feature_analysis.json"
-    with open(analysis_file, "w", encoding="utf-8") as f:
+    with analysis_file.open("w", encoding="utf-8") as f:
         json.dump(analysis, f, ensure_ascii=False, indent=2)
 
     print(f"💾 Results saved to: {output_dir}")
@@ -1222,7 +1221,9 @@ def run_benchmark_single(args: argparse.Namespace) -> None:
     """
     import asyncio
 
-    from src.monitoring.performance_benchmarking import PerformanceBenchmarkSuite
+    from llkjj_ml.src.monitoring.performance_benchmarking import (
+        PerformanceBenchmarkSuite,
+    )
 
     async def _run_single() -> None:
         suite = PerformanceBenchmarkSuite()
@@ -1249,7 +1250,7 @@ def run_benchmark_single(args: argparse.Namespace) -> None:
             output_file = Path("data/benchmarks") / f"single_benchmark_{timestamp}.json"
             output_file.parent.mkdir(parents=True, exist_ok=True)
 
-            with open(output_file, "w", encoding="utf-8") as f:
+            with output_file.open("w", encoding="utf-8") as f:
                 json.dump(result, f, indent=2, ensure_ascii=False)
 
             print(f"   💾 Detaillierte Ergebnisse: {output_file}")
@@ -1270,7 +1271,9 @@ def run_benchmark_batch(args: argparse.Namespace) -> None:
     """
     import asyncio
 
-    from src.monitoring.performance_benchmarking import PerformanceBenchmarkSuite
+    from llkjj_ml.src.monitoring.performance_benchmarking import (
+        PerformanceBenchmarkSuite,
+    )
 
     async def _run_batch() -> None:
         suite = PerformanceBenchmarkSuite()
@@ -1303,7 +1306,7 @@ def run_benchmark_batch(args: argparse.Namespace) -> None:
             output_file = Path("data/benchmarks") / f"batch_benchmark_{timestamp}.json"
             output_file.parent.mkdir(parents=True, exist_ok=True)
 
-            with open(output_file, "w", encoding="utf-8") as f:
+            with output_file.open("w", encoding="utf-8") as f:
                 json.dump(result, f, indent=2, ensure_ascii=False)
 
             print(f"   💾 Detaillierte Ergebnisse: {output_file}")
@@ -1324,7 +1327,9 @@ def run_benchmark_comprehensive(args: argparse.Namespace) -> None:
     """
     import asyncio
 
-    from src.monitoring.performance_benchmarking import PerformanceBenchmarkSuite
+    from llkjj_ml.src.monitoring.performance_benchmarking import (
+        PerformanceBenchmarkSuite,
+    )
 
     async def _run_comprehensive() -> None:
         suite = PerformanceBenchmarkSuite()
@@ -1353,7 +1358,7 @@ def run_cache_health(args: argparse.Namespace) -> None:
     Args:
         args: CLI-Argumente
     """
-    from src.monitoring.cache_invalidation import CacheInvalidationEngine
+    from llkjj_ml.src.monitoring.cache_invalidation import CacheInvalidationEngine
 
     engine = CacheInvalidationEngine()
     health_report = engine.get_cache_health_report()
@@ -1390,7 +1395,7 @@ def run_cache_cleanup_age(args: argparse.Namespace) -> None:
     Args:
         args: CLI-Argumente mit max_age_days
     """
-    from src.monitoring.cache_invalidation import CacheInvalidationEngine
+    from llkjj_ml.src.monitoring.cache_invalidation import CacheInvalidationEngine
 
     engine = CacheInvalidationEngine()
     stats = engine.invalidate_by_age(max_age_days=args.max_age_days)
@@ -1409,7 +1414,7 @@ def run_cache_cleanup_schema(args: argparse.Namespace) -> None:
     Args:
         args: CLI-Argumente mit optionaler version
     """
-    from src.monitoring.cache_invalidation import CacheInvalidationEngine
+    from llkjj_ml.src.monitoring.cache_invalidation import CacheInvalidationEngine
 
     engine = CacheInvalidationEngine()
     stats = engine.invalidate_by_schema_version(current_version=args.version)
@@ -1427,7 +1432,7 @@ def run_cache_cleanup_emergency(args: argparse.Namespace) -> None:
     Args:
         args: CLI-Argumente
     """
-    from src.monitoring.cache_invalidation import CacheInvalidationEngine
+    from llkjj_ml.src.monitoring.cache_invalidation import CacheInvalidationEngine
 
     engine = CacheInvalidationEngine()
     stats = engine.emergency_cleanup()
@@ -1457,7 +1462,7 @@ def run_cache_maintenance(args: argparse.Namespace) -> None:
     Args:
         args: CLI-Argumente
     """
-    from src.monitoring.cache_invalidation import CacheInvalidationEngine
+    from llkjj_ml.src.monitoring.cache_invalidation import CacheInvalidationEngine
 
     engine = CacheInvalidationEngine()
     maintenance_stats = engine.run_scheduled_maintenance()
@@ -1545,7 +1550,7 @@ def analyze_feature_pipeline(args: argparse.Namespace) -> None:
         output_path = Path(args.output)
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        with open(output_path, "w", encoding="utf-8") as f:
+        with output_path.open("w", encoding="utf-8") as f:
             json.dump(info, f, ensure_ascii=False, indent=2)
 
         print(f"💾 Analysis saved to: {output_path}")
@@ -1565,10 +1570,11 @@ def dual_purpose_pipeline(args: argparse.Namespace) -> None:
         - spaCy Training Export (für zukünftige Unabhängigkeit)
     }
     """
-    from src.pipeline.dual_pipeline import UnifiedDualPurposePipeline
+    # dual_pipeline removed in cleanup - using UnifiedProcessor instead
+    from llkjj_ml.src.pipeline.unified_processor import UnifiedProcessor
 
-    config = Config()
-    pipeline = UnifiedDualPurposePipeline(config)
+    config = Config
+    pipeline = UnifiedProcessor(config)
 
     pdf_path = Path(args.input)
     output_dir = Path(args.output) if args.output else Path("data/output/dual_purpose")
@@ -1582,43 +1588,31 @@ def dual_purpose_pipeline(args: argparse.Namespace) -> None:
         print(f"❌ PDF nicht gefunden: {pdf_path}")
         return
 
-    if not pdf_path.suffix.lower() == ".pdf":
+    if pdf_path.suffix.lower() != ".pdf":
         print(f"❌ Eingabe muss eine PDF-Datei sein: {pdf_path}")
         return
 
     print("\n🚀 Starte Dual-Purpose Verarbeitung...")
 
     try:
-        # Process PDF with dual purpose
-        result = pipeline.process_pdf_dual_purpose(pdf_path)
+        # Process PDF with unified pipeline
+        result = pipeline.process_pdf(pdf_path)
 
         if result:
-            print("✅ Dual-Purpose Pipeline erfolgreich abgeschlossen!")
+            print("✅ PDF-Verarbeitung erfolgreich abgeschlossen!")
 
-            # Save immediate SKR03 results
-            buchungs_file = pipeline.save_buchungsausgabe(
-                result["buchungsausgabe"], output_dir
-            )
-            print("\n📊 SOFORT-NUTZEN - SKR03 Buchungsausgabe:")
-            print(f"   💾 Gespeichert: {buchungs_file}")
-            print(
-                f"   🎯 SKR03 Klassifikationen: {len(result['buchungsausgabe'].get('positionen', []))}"
-            )
+            # Output result information
+            print("\n📊 Verarbeitungsergebnis:")
+            print(f"   📄 PDF: {pdf_path.name}")
+            print(f"   ✅ Methode: {result.processing_method}")
+            print(f"   🎯 Qualität: {result.extraction_quality}")
+            print(f"   📈 Konfidenz: {result.confidence_score:.2f}")
+            if result.skr03_classifications:
+                print(
+                    f"   📝 SKR03-Klassifikationen: {len(result.skr03_classifications)}"
+                )
 
-            # Save training data export
-            training_file = pipeline.save_training_export(
-                result["training_export"], output_dir
-            )
-            print("\n🧠 TRAINING - spaCy Export für Eigenständigkeit:")
-            print(f"   💾 Gespeichert: {training_file}")
-            print(
-                f"   🎯 Training Beispiele: {len(result['training_export'].get('spacy_ner', []))}"
-            )
-
-            # Summary
-            print("\n🎉 Pipeline Summary:")
-            print(f"   📄 Verarbeitete PDF: {pdf_path.name}")
-            print(f"   📁 Alle Ausgaben in: {output_dir}")
+            print("\n📁 Weitere Verarbeitung erfolgt über die API-Integration")
 
             # Future benefits message
             print("\n💡 Jede Verarbeitung verbessert Ihre KI-Eigenständigkeit!")
@@ -2244,7 +2238,7 @@ def run_cache_warming(args: argparse.Namespace) -> None:
         return
 
     # AsyncGeminiDirectProcessor für Warming erstellen
-    config = Config()
+    config = Config
     async_processor = AsyncGeminiDirectProcessor(config)
 
     async def _handle_warming_command() -> None:
