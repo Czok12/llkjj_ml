@@ -52,7 +52,8 @@ def _get_backend_settings() -> Any:
 
             @property
             def project_root(self) -> Path:
-                return Path(__file__).parent.parent.parent
+                # Go up from llkjj_ml/src/llkjj_ml to llkjj_backend root
+                return Path(__file__).parent.parent.parent.parent.parent
 
             @property
             def data_raw_path(self) -> Path:
@@ -76,7 +77,7 @@ def _get_backend_settings() -> Any:
 
             @property
             def elektro_lieferanten(self) -> list[str]:
-                """Load elektro_lieferanten from config file or fallback to hardcoded list."""
+                """Load elektro_lieferanten from config file - TASK-028: No hardcoded fallback."""
                 try:
                     import yaml
                     
@@ -87,24 +88,22 @@ def _get_backend_settings() -> Any:
                         with config_file.open("r", encoding="utf-8") as f:
                             config_data = yaml.safe_load(f)
                             if config_data and "elektro_lieferanten" in config_data:
-                                return config_data["elektro_lieferanten"]
-                except Exception:
-                    # Silently fall back to hardcoded list if YAML loading fails
-                    pass
+                                suppliers = config_data["elektro_lieferanten"]
+                                if suppliers:  # Only return if non-empty
+                                    return suppliers
+                except Exception as e:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.warning(f"Failed to load suppliers config: {e}")
                 
-                # Fallback to hardcoded list (backwards compatibility)
-                return [
-                    "Rexel",
-                    "Conrad",
-                    "ELV",
-                    "Wago",
-                    "Phoenix Contact",
-                    "Siemens",
-                    "ABB",
-                    "Schneider Electric",
-                    "Legrand",
-                    "Hager",
-                ]
+                # TASK-028: No hardcoded fallback - return empty list to force proper configuration
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(
+                    "No elektro_lieferanten configuration found! Please configure suppliers in "
+                    "config/ml/suppliers.yaml"
+                )
+                return []
 
             @property
             def default_accounts(self) -> dict[str, str]:
@@ -261,7 +260,8 @@ class ConfigBridge:
     def project_root(self) -> Path:
         if hasattr(self._settings, "project_root"):
             return Path(self._settings.project_root)
-        return Path(__file__).parent.parent.parent
+        # Go up from llkjj_ml/src/llkjj_ml to llkjj_backend root
+        return Path(__file__).parent.parent.parent.parent.parent
 
     @property
     def data_raw_path(self) -> Path:
@@ -296,10 +296,12 @@ class ConfigBridge:
     # Kompatibilitäts-Properties
     @property
     def elektro_lieferanten(self) -> list[str]:
-        """Load elektro_lieferanten from config file or fallback to hardcoded list."""
-        # Check if available from backend settings
+        """Load elektro_lieferanten from config file - TASK-028: No hardcoded fallback."""
+        # Check if available from backend settings first
         if hasattr(self._ml_config, "elektro_lieferanten"):
-            return getattr(self._ml_config, "elektro_lieferanten", [])
+            suppliers = getattr(self._ml_config, "elektro_lieferanten", [])
+            if suppliers:  # Only return if non-empty
+                return suppliers
         
         # Try to load from suppliers.yaml config file
         try:
@@ -312,24 +314,22 @@ class ConfigBridge:
                 with config_file.open("r", encoding="utf-8") as f:
                     config_data = yaml.safe_load(f)
                     if config_data and "elektro_lieferanten" in config_data:
-                        return config_data["elektro_lieferanten"]
-        except Exception:
-            # Silently fall back to hardcoded list if YAML loading fails
-            pass
+                        suppliers = config_data["elektro_lieferanten"]
+                        if suppliers:  # Only return if non-empty
+                            return suppliers
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Failed to load suppliers config: {e}")
         
-        # Fallback to hardcoded list (backwards compatibility)
-        return [
-            "Rexel",
-            "Conrad", 
-            "ELV",
-            "Wago",
-            "Phoenix Contact",
-            "Siemens",
-            "ABB",
-            "Schneider Electric",
-            "Legrand",
-            "Hager",
-        ]
+        # TASK-028: No hardcoded fallback - return empty list to force proper configuration
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(
+            "No elektro_lieferanten configuration found! Please configure suppliers in "
+            "config/ml/suppliers.yaml or via backend settings."
+        )
+        return []
 
     @property
     def default_accounts(self) -> dict[str, str]:
