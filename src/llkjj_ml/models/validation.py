@@ -192,7 +192,7 @@ def validate_processing_result(
     Returns:
         Tuple von (ProcessingResult oder None, Liste der Fehlermeldungen)
     """
-    from ..pipeline.processor import ProcessingResult
+    from .processing_result import ProcessingResult
 
     errors = []
     result = None

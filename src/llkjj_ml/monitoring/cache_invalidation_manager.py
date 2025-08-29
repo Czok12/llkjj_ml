@@ -24,7 +24,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from ..settings_bridge import Config
+from ..settings_bridge import ConfigBridge, config_instance
 
 logger = logging.getLogger(__name__)
 
@@ -40,8 +40,8 @@ class CacheInvalidationManager:
     4. Time-based Expiry: Automatische Alterung nach konfigurierbarer Zeit
     """
 
-    def __init__(self, config: Config | None = None):
-        self.config = config or Config()
+    def __init__(self, config: ConfigBridge | None = None):
+        self.config = config or config_instance
         self.cache_db_path = Path("data/cache/pdf_hash_cache.db")
         self.invalidation_log_path = Path("data/cache/invalidation_log.db")
 

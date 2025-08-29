@@ -20,7 +20,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from llkjj_ml.settings_bridge import Config, ConfigType
+from llkjj_ml.settings_bridge import Config, ConfigBridge
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +69,7 @@ class GeminiDirectProcessor:
     Optimiert für deutsche Elektrohandwerk-Rechnungen mit SKR03-Klassifizierung.
     """
 
-    def __init__(self, config: ConfigType | None = None):
+    def __init__(self, config: ConfigBridge | GeminiDirectConfig | None = None):
         """
         Initialisiere den GeminiDirectProcessor.
 
@@ -83,7 +83,10 @@ class GeminiDirectProcessor:
         self._client: Any | None = None
 
         # Validierung der Gemini-API-Konfiguration
-        if not self.config.google_api_key:
+        api_key = getattr(self.config, "google_api_key", None) or getattr(
+            self.config, "api_key", None
+        )
+        if not api_key:
             self.logger.warning("⚠️ Keine Google API Key konfiguriert")
             self._is_available = False
         else:
@@ -104,7 +107,9 @@ class GeminiDirectProcessor:
             from google import genai
 
             # Use API key from config or environment
-            api_key = self.config.api_key
+            api_key = getattr(self.config, "google_api_key", None) or getattr(
+                self.config, "api_key", None
+            )
             if not api_key:
                 import os
 

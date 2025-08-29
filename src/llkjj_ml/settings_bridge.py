@@ -76,6 +76,23 @@ def _get_backend_settings() -> Any:
 
             @property
             def elektro_lieferanten(self) -> list[str]:
+                """Load elektro_lieferanten from config file or fallback to hardcoded list."""
+                try:
+                    import yaml
+                    
+                    # Determine config file path relative to project root
+                    config_file = self.project_root / "config" / "ml" / "suppliers.yaml"
+                    
+                    if config_file.exists():
+                        with config_file.open("r", encoding="utf-8") as f:
+                            config_data = yaml.safe_load(f)
+                            if config_data and "elektro_lieferanten" in config_data:
+                                return config_data["elektro_lieferanten"]
+                except Exception:
+                    # Silently fall back to hardcoded list if YAML loading fails
+                    pass
+                
+                # Fallback to hardcoded list (backwards compatibility)
                 return [
                     "Rexel",
                     "Conrad",
@@ -127,6 +144,19 @@ class ConfigBridge:
     @property
     def gemini_model(self) -> str:
         return getattr(self._ml_config, "gemini_model", "gemini-2.5-flash")
+
+    @property
+    def model_name(self) -> str:
+        """Alias für gemini_model für Kompatibilität"""
+        return self.gemini_model
+
+    @property
+    def temperature(self) -> float:
+        return getattr(self._ml_config, "temperature", 0.3)
+
+    @property
+    def max_output_tokens(self) -> int:
+        return getattr(self._ml_config, "max_output_tokens", 8192)
 
     @property
     def spacy_model_name(self) -> str:
@@ -266,11 +296,31 @@ class ConfigBridge:
     # Kompatibilitäts-Properties
     @property
     def elektro_lieferanten(self) -> list[str]:
+        """Load elektro_lieferanten from config file or fallback to hardcoded list."""
+        # Check if available from backend settings
         if hasattr(self._ml_config, "elektro_lieferanten"):
             return getattr(self._ml_config, "elektro_lieferanten", [])
+        
+        # Try to load from suppliers.yaml config file
+        try:
+            import yaml
+            
+            # Determine config file path relative to project root
+            config_file = self.project_root / "config" / "ml" / "suppliers.yaml"
+            
+            if config_file.exists():
+                with config_file.open("r", encoding="utf-8") as f:
+                    config_data = yaml.safe_load(f)
+                    if config_data and "elektro_lieferanten" in config_data:
+                        return config_data["elektro_lieferanten"]
+        except Exception:
+            # Silently fall back to hardcoded list if YAML loading fails
+            pass
+        
+        # Fallback to hardcoded list (backwards compatibility)
         return [
             "Rexel",
-            "Conrad",
+            "Conrad", 
             "ELV",
             "Wago",
             "Phoenix Contact",
@@ -296,10 +346,13 @@ class ConfigBridge:
 
 
 # Type-Alias für mypy compatibility
-ConfigType = ConfigBridge
+ConfigType = type[ConfigBridge]
 
-# Globale Instanz für einfachen Import
-Config: ConfigType = ConfigBridge()
+# Globale Instanz für einfachen Import - als ConfigBridge-Instanz deklariert
+config_instance: ConfigBridge = ConfigBridge()
+
+# For compatibility with existing code that expects Config variable
+Config: ConfigBridge = config_instance
 
 # Export both for convenient imports
-__all__ = ["Config", "ConfigBridge", "ConfigType"]
+__all__ = ["Config", "ConfigBridge", "ConfigType", "config_instance"]

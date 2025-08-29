@@ -21,7 +21,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from ..settings_bridge import Config
+from ..settings_bridge import ConfigBridge, config_instance
 
 logger = logging.getLogger(__name__)
 
@@ -37,8 +37,8 @@ class IntelligentCacheWarming:
     - Business Logic für deutsche Elektrotechnik-UGs
     """
 
-    def __init__(self, config: Config | None = None):
-        self.config = config or Config()
+    def __init__(self, config: ConfigBridge | None = None):
+        self.config = config or config_instance
         self.cache_warming_db = Path("data/cache/cache_warming.db")
         self.supplier_priorities = {
             # 🎯 Deutsche Elektrotechnik-Lieferanten Priorisierung
@@ -554,7 +554,7 @@ class IntelligentCacheWarming:
 
 # Convenience-Funktionen für CLI-Integration
 async def warm_cache_intelligent(
-    pdf_directory: Path, async_processor: Any, config: Config | None = None
+    pdf_directory: Path, async_processor: Any, config: ConfigBridge | None = None
 ) -> dict[str, Any]:
     """Convenience function für intelligentes Cache-Warming."""
     warming_system = IntelligentCacheWarming(config)
@@ -569,7 +569,7 @@ async def warm_cache_intelligent(
 
 
 async def get_warming_recommendations(
-    config: Config | None = None,
+    config: ConfigBridge | None = None,
 ) -> list[dict[str, Any]]:
     """Convenience function für Warming-Empfehlungen."""
     warming_system = IntelligentCacheWarming(config)

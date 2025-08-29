@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any
 
 from ..models.processing_result import ProcessingResult
-from ..settings_bridge import Config
+from ..settings_bridge import ConfigBridge
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +34,7 @@ class ProcessingStrategy(ABC):
     - HybridStrategy (Phase 3: Best-of-both)
     """
 
-    def __init__(self, config: Config):
+    def __init__(self, config: ConfigBridge):
         self.config = config
         self.name = self.__class__.__name__
         logger.debug("🔧 Strategy initialisiert: %s", self.name)

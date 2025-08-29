@@ -43,7 +43,7 @@ from ..models.gemini_schemas import create_validation_report, validate_gemini_re
 from ..models.processing_result import ProcessingResult
 from ..monitoring.performance_metrics import PerformanceMonitor
 from ..processing.spacy_corrector import SpacyAnnotationCorrector
-from ..settings_bridge import Config
+from ..settings_bridge import ConfigBridge, config_instance
 from ..skr03_manager import lade_skr03_manager
 from ..training_data_persistence import TrainingDataPersistence
 from ..utils.resource_manager import get_resource_manager
@@ -66,9 +66,9 @@ class GeminiDirectProcessor:
     - Kein Fallback - Error-Logging bei Fehlern
     """
 
-    def __init__(self, config: Config | None = None) -> None:
+    def __init__(self, config: ConfigBridge | None = None) -> None:
         """Initialize Gemini-First processor"""
-        self.config = config or Config()
+        self.config = config or config_instance
 
         # SKR03 Manager für deutsche Buchhaltung
         self.skr03_manager = lade_skr03_manager()
@@ -192,6 +192,36 @@ class GeminiDirectProcessor:
             RuntimeError: Gemini API-Fehler oder Pipeline-Fehler
         """
         start_time = time.time()
+        validated_path = self._validate_pdf_input(pdf_path)
+        
+        try:
+            pdf_content = self._prepare_pdf_for_gemini_analysis(validated_path)
+            gemini_result = self._execute_gemini_analysis(pdf_content, validated_path) 
+            enhanced_classifications = self._enhance_with_rag_classification(gemini_result)
+            quality_data = self._assess_quality_and_generate_annotations(gemini_result, enhanced_classifications)
+            processing_result = self._build_complete_processing_result(
+                validated_path, gemini_result, enhanced_classifications, quality_data, start_time
+            )
+            self._handle_training_data_and_metrics(processing_result, validated_path)
+            return processing_result
+            
+        except Exception as e:
+            return self._handle_processing_error(e, validated_path, start_time)
+
+    def _validate_pdf_input(self, pdf_path: str | Path) -> Path:
+        """
+        Validates PDF input file and returns validated Path object.
+        
+        Args:
+            pdf_path: Raw input path to PDF file
+            
+        Returns:
+            Validated Path object
+            
+        Raises:
+            FileNotFoundError: PDF file does not exist
+            ValueError: Invalid PDF file or configuration
+        """
         pdf_path = Path(pdf_path)
 
         # Initiale Validierung
@@ -214,223 +244,413 @@ class GeminiDirectProcessor:
 
         # Resource Manager für robustes Memory-Management
         get_resource_manager()
+        
+        return pdf_path
 
+    def _prepare_pdf_for_gemini_analysis(self, pdf_path: Path) -> bytes:
+        """
+        Reads and validates PDF content for Gemini analysis.
+        
+        Args:
+            pdf_path: Validated PDF path
+            
+        Returns:
+            PDF content as bytes
+            
+        Raises:
+            ValueError: PDF file too large or empty
+            RuntimeError: File reading error
+        """
+        logger.info("📤 Sende PDF an Gemini 2.5 Pro für direkte Analyse...")
+
+        # PDF-Datei für Gemini vorbereiten mit Validierung
         try:
-            # Phase 1: PDF-Upload an Gemini für direkte Analyse
-            logger.info("📤 Sende PDF an Gemini 2.5 Pro für direkte Analyse...")
+            with open(pdf_path, "rb") as pdf_file:
+                pdf_content = pdf_file.read()
 
-            # PDF-Datei für Gemini vorbereiten mit Validierung
-            try:
-                with open(pdf_path, "rb") as pdf_file:
-                    pdf_content = pdf_file.read()
-
-                if len(pdf_content) == 0:
-                    raise ValueError(
-                        "PDF-Datei ist leer oder konnte nicht gelesen werden"
-                    )
-
-                if len(pdf_content) > 20 * 1024 * 1024:  # 20MB Limit
-                    raise ValueError(
-                        f"PDF-Datei zu groß: {len(pdf_content) / 1024 / 1024:.1f}MB (Max: 20MB)"
-                    )
-
-            except OSError as e:
-                raise RuntimeError(f"Fehler beim Lesen der PDF-Datei: {e}") from e
-
-            # Optimierter Prompt für deutsche Elektrotechnik-Rechnungen
-            analysis_prompt = self._get_german_elektro_analysis_prompt()
-
-            # Gemini-Analyse durchführen mit Retry-Logic
-            gemini_start = time.time()
-            try:
-                structured_result = self._analyze_pdf_with_gemini_robust(
-                    pdf_content, analysis_prompt, pdf_path
-                )
-            except Exception as e:
-                raise RuntimeError(f"Gemini-Analyse fehlgeschlagen: {e}") from e
-
-            gemini_time_ms = int((time.time() - gemini_start) * 1000)
-            logger.info("✅ Gemini-Analyse abgeschlossen (%d ms)", gemini_time_ms)
-
-            # Phase 2: SKR03-Klassifizierung mit RAG-Enhancement
-            classification_start = time.time()
-            try:
-                enhanced_classifications = self._enhance_with_rag_system_robust(
-                    structured_result.get("line_items", [])
-                )
-            except Exception as e:
-                logger.warning(
-                    "⚠️ RAG-Enhancement fehlgeschlagen, verwende Basis-Klassifizierung: %s",
-                    e,
-                )
-                # Fallback auf Basis-Klassifizierung
-                enhanced_classifications = self._fallback_skr03_classification(
-                    structured_result.get("line_items", [])
+            if len(pdf_content) == 0:
+                raise ValueError(
+                    "PDF-Datei ist leer oder konnte nicht gelesen werden"
                 )
 
-            classification_time_ms = int((time.time() - classification_start) * 1000)
-            logger.info(
-                "✅ SKR03-Klassifizierung abgeschlossen (%d ms)", classification_time_ms
+            if len(pdf_content) > 20 * 1024 * 1024:  # 20MB Limit
+                raise ValueError(
+                    f"PDF-Datei zu groß: {len(pdf_content) / 1024 / 1024:.1f}MB (Max: 20MB)"
+                )
+
+            return pdf_content
+
+        except OSError as e:
+            raise RuntimeError(f"Fehler beim Lesen der PDF-Datei: {e}") from e
+
+    def _execute_gemini_analysis(self, pdf_content: bytes, pdf_path: Path) -> dict:
+        """
+        Executes Gemini analysis on PDF content with retry logic.
+        
+        Args:
+            pdf_content: PDF file content as bytes
+            pdf_path: PDF file path for context
+            
+        Returns:
+            Structured analysis result from Gemini
+            
+        Raises:
+            RuntimeError: Gemini analysis failed
+        """
+        # Optimierter Prompt für deutsche Elektrotechnik-Rechnungen
+        analysis_prompt = self._get_german_elektro_analysis_prompt()
+
+        # Gemini-Analyse durchführen mit Retry-Logic
+        gemini_start = time.time()
+        try:
+            structured_result = self._analyze_pdf_with_gemini_robust(
+                pdf_content, analysis_prompt, pdf_path
             )
-
-            # Phase 3: Qualitätsbewertung mit Error Handling
-            try:
-                confidence_score = self.quality_assessor.calculate_confidence(
-                    structured_result, enhanced_classifications
-                )
-                quality_level = self.quality_assessor.assess_quality(confidence_score)
-            except Exception as e:
-                logger.warning(
-                    "⚠️ Qualitätsbewertung fehlgeschlagen, verwende Standard-Werte: %s",
-                    e,
-                )
-                confidence_score = 0.75  # Standardwert
-                quality_level = "medium"
-
-            # Phase 4: Annotation für spaCy-Training mit Error Handling
-            try:
-                training_annotations = self._generate_spacy_annotations_robust(
-                    structured_result, enhanced_classifications
-                )
-                # Method always returns list[dict[str, Any]], no type check needed
-            except Exception as e:
-                logger.warning(
-                    "⚠️ spaCy-Annotation fehlgeschlagen, verwende leere Annotations: %s",
-                    e,
-                )
-                training_annotations = []
-
-            # Gesamtergebnis zusammenstellen mit ProcessingResult
-            processing_time_ms = int((time.time() - start_time) * 1000)
-
-            # Validierung der extrahierten Daten
-            line_items = structured_result.get("line_items", [])
-            if not line_items:
-                logger.warning("⚠️ Keine Rechnungspositionen extrahiert")
-
-            # RAG-Vektorisierung für zukünftige Verbesserungen (optional)
-            try:
-                self._store_in_rag_system_robust(structured_result, pdf_path)
-            except Exception as e:
-                logger.warning(
-                    "⚠️ RAG-Speicherung fehlgeschlagen (nicht kritisch): %s", e
-                )
-
-            # ProcessingResult erstellen
-            result = ProcessingResult.from_gemini_analysis(
-                pdf_path=str(pdf_path),
-                gemini_result=structured_result,
-                skr03_classifications=enhanced_classifications,
-                confidence_score=confidence_score,
-                quality_level=quality_level,
-                training_annotations=training_annotations,
-                processing_time_ms=processing_time_ms,
-                gemini_time_ms=gemini_time_ms,
-                classification_time_ms=classification_time_ms,
-                gemini_model=self.config.gemini_model,
-            )
-
-            logger.info(
-                "🎉 GEMINI-FIRST Pipeline erfolgreich: %d Positionen, %.1f%% Konfidenz, %s Qualität",
-                len(enhanced_classifications),
-                confidence_score * 100,
-                quality_level,
-            )
-
-            # 🎯 A2: Training Data Persistence - Collect valuable training data
-            try:
-                persistence_stats = self.training_persistence.persist_training_data(
-                    pdf_path=str(pdf_path),
-                    validated_gemini_result=structured_result,
-                    skr03_classifications=enhanced_classifications,
-                    processing_result=result,
-                )
-                logger.info("✅ Training data persisted: %s", persistence_stats)
-            except Exception as training_error:
-                # Training data persistence should not fail the main pipeline
-                logger.warning("⚠️ Training data persistence failed: %s", training_error)
-
-            # 📊 Performance Monitoring - Record business metrics
-            try:
-                self.performance_monitor.record_processing_metrics(
-                    result=result,
-                    gemini_time_ms=gemini_time_ms,
-                    classification_time_ms=classification_time_ms,
-                    cache_hit=False,  # Not using cache in this standard processor
-                    error_occurred=False,
-                )
-                logger.debug("📊 Performance metrics recorded successfully")
-            except Exception as metrics_error:
-                # Metrics recording should not fail the main pipeline
-                logger.warning(
-                    "⚠️ Performance metrics recording failed: %s", metrics_error
-                )
-
-            return result
-
         except Exception as e:
-            # Detailliertes Error-Logging mit Chain-Information
-            error_context = {
-                "pdf_path": str(pdf_path),
-                "pdf_size_bytes": pdf_path.stat().st_size if pdf_path.exists() else 0,
-                "processing_time_ms": int((time.time() - start_time) * 1000),
-                "error_type": type(e).__name__,
-                "error_message": str(e),
-                "gemini_model": self.config.gemini_model,
-            }
+            raise RuntimeError(f"Gemini-Analyse fehlgeschlagen: {e}") from e
 
-            logger.error(
-                "❌ GEMINI-FIRST Pipeline fehlgeschlagen: %s",
-                error_context,
-                exc_info=True,
+        gemini_time_ms = int((time.time() - gemini_start) * 1000)
+        logger.info("✅ Gemini-Analyse abgeschlossen (%d ms)", gemini_time_ms)
+        
+        return structured_result
+
+    def _enhance_with_rag_classification(self, structured_result: dict) -> list:
+        """
+        Enhances Gemini results with RAG-based SKR03 classification.
+        
+        Args:
+            structured_result: Raw Gemini analysis results
+            
+        Returns:
+            Enhanced classifications with SKR03 codes
+            
+        Note:
+            Uses fallback classification if RAG enhancement fails
+        """
+        # Phase 2: SKR03-Klassifizierung mit RAG-Enhancement
+        classification_start = time.time()
+        try:
+            enhanced_classifications = self._enhance_with_rag_system_robust(
+                structured_result.get("line_items", [])
+            )
+        except Exception as e:
+            logger.warning(
+                "⚠️ RAG-Enhancement fehlgeschlagen, verwende Basis-Klassifizierung: %s",
+                e,
+            )
+            # Fallback auf Basis-Klassifizierung
+            enhanced_classifications = self._fallback_skr03_classification(
+                structured_result.get("line_items", [])
             )
 
-            # Error-Log in Datei schreiben für Debugging
-            self._write_error_log_detailed(pdf_path, e, error_context)
+        classification_time_ms = int((time.time() - classification_start) * 1000)
+        logger.info(
+            "✅ SKR03-Klassifizierung abgeschlossen (%d ms)", classification_time_ms
+        )
+        
+        return enhanced_classifications
 
-            # 📊 Performance Monitoring - Record error metrics
-            try:
-                # Create a minimal ProcessingResult for error recording
-                error_result = ProcessingResult(
-                    pdf_path=str(pdf_path),
-                    processing_timestamp=datetime.now().isoformat() + "Z",
-                    processing_method="gemini_first",
-                    structured_data={},
-                    skr03_classifications=[],
-                    confidence_score=0.0,
-                    extraction_quality="poor",
-                    training_annotations=[],
-                    processing_time_ms=int(str(error_context["processing_time_ms"])),
-                    gemini_time_ms=0,
-                    classification_time_ms=0,
-                )
+    def _assess_quality_and_generate_annotations(self, structured_result: dict, enhanced_classifications: list) -> dict:
+        """
+        Assesses processing quality and generates spaCy training annotations.
+        
+        Args:
+            structured_result: Gemini analysis results
+            enhanced_classifications: Enhanced SKR03 classifications
+            
+        Returns:
+            Dictionary containing quality metrics and training annotations
+            
+        Note:
+            Uses fallback values if assessment fails
+        """
+        # Phase 3: Qualitätsbewertung mit Error Handling
+        try:
+            confidence_score = self.quality_assessor.calculate_confidence(
+                structured_result, enhanced_classifications
+            )
+            quality_level = self.quality_assessor.assess_quality(confidence_score)
+        except Exception as e:
+            logger.warning(
+                "⚠️ Qualitätsbewertung fehlgeschlagen, verwende Standard-Werte: %s",
+                e,
+            )
+            confidence_score = 0.75  # Standardwert
+            quality_level = "medium"
 
-                self.performance_monitor.record_processing_metrics(
-                    result=error_result,
-                    gemini_time_ms=0,
-                    classification_time_ms=0,
-                    cache_hit=False,
-                    error_occurred=True,
-                    error_message=str(e),
-                )
-                logger.debug("📊 Error metrics recorded successfully")
-            except Exception as metrics_error:
-                logger.warning("⚠️ Error metrics recording failed: %s", metrics_error)
+        # Phase 4: Annotation für spaCy-Training mit Error Handling
+        try:
+            training_annotations = self._generate_spacy_annotations_robust(
+                structured_result, enhanced_classifications
+            )
+            # Method always returns list[dict[str, Any]], no type check needed
+        except Exception as e:
+            logger.warning(
+                "⚠️ spaCy-Annotation fehlgeschlagen, verwende leere Annotations: %s",
+                e,
+            )
+            training_annotations = []
+            
+        return {
+            "confidence_score": confidence_score,
+            "quality_level": quality_level, 
+            "training_annotations": training_annotations
+        }
 
-            # Exception re-raise mit besserer Nachricht
-            if isinstance(e, FileNotFoundError | ValueError):
-                # Input-Validation Errors direkt weiterreichen
-                raise
-            else:
-                # Alle anderen Errors als RuntimeError mit Kontext
-                raise RuntimeError(
-                    f"GEMINI-FIRST Pipeline fehlgeschlagen für {pdf_path.name}: {e}"
-                ) from e
+    def _build_complete_processing_result(
+        self, 
+        pdf_path: Path, 
+        gemini_result: dict, 
+        enhanced_classifications: list, 
+        quality_data: dict,
+        start_time: float
+    ) -> ProcessingResult:
+        """
+        Builds complete ProcessingResult with all pipeline data.
+        
+        Args:
+            pdf_path: Validated PDF file path
+            gemini_result: Raw Gemini analysis results
+            enhanced_classifications: Enhanced SKR03 classifications
+            quality_data: Quality metrics and training annotations
+            start_time: Pipeline start time
+            
+        Returns:
+            Complete ProcessingResult object
+            
+        Raises:
+            Warning: Logs if no line items extracted
+        """
+        processing_time_ms = int((time.time() - start_time) * 1000)
+        
+        self._validate_extracted_data(gemini_result)
+        self._store_in_rag_system_if_enabled(gemini_result, pdf_path)
+        result = self._create_processing_result_object(
+            pdf_path, gemini_result, enhanced_classifications, quality_data, processing_time_ms
+        )
+        self._log_pipeline_success(enhanced_classifications, quality_data)
+        
+        return result
 
-        finally:
-            # Memory-Management: Keine automatische Bereinigung, da Resource Manager wiederverwendet wird
-            # Nur bei kritischen Memory-Problemen würde rm.cleanup() aufgerufen
-            pass
+    def _validate_extracted_data(self, gemini_result: dict) -> None:
+        """
+        Validates extracted data and logs warnings if incomplete.
+        
+        Args:
+            gemini_result: Raw Gemini analysis results
+        """
+        line_items = gemini_result.get("line_items", [])
+        if not line_items:
+            logger.warning("⚠️ Keine Rechnungspositionen extrahiert")
+
+    def _store_in_rag_system_if_enabled(self, gemini_result: dict, pdf_path: Path) -> None:
+        """
+        Stores results in RAG system for future improvements if enabled.
+        
+        Args:
+            gemini_result: Gemini analysis results
+            pdf_path: PDF file path
+        """
+        try:
+            self._store_in_rag_system_robust(gemini_result, pdf_path)
+        except Exception as e:
+            logger.warning(
+                "⚠️ RAG-Speicherung fehlgeschlagen (nicht kritisch): %s", e
+            )
+
+    def _create_processing_result_object(
+        self, pdf_path: Path, gemini_result: dict, enhanced_classifications: list,
+        quality_data: dict, processing_time_ms: int
+    ) -> ProcessingResult:
+        """
+        Creates ProcessingResult object from pipeline data.
+        
+        Args:
+            pdf_path: PDF file path
+            gemini_result: Gemini analysis results
+            enhanced_classifications: Enhanced classifications
+            quality_data: Quality metrics and annotations
+            processing_time_ms: Total processing time
+            
+        Returns:
+            ProcessingResult object
+        """
+        return ProcessingResult.from_gemini_analysis(
+            pdf_path=str(pdf_path),
+            gemini_result=gemini_result,
+            skr03_classifications=enhanced_classifications,
+            confidence_score=quality_data["confidence_score"],
+            quality_level=quality_data["quality_level"],
+            training_annotations=quality_data["training_annotations"],
+            processing_time_ms=processing_time_ms,
+            gemini_time_ms=0,  # Will be set by calling method
+            classification_time_ms=0,  # Will be set by calling method
+            gemini_model=self.config.gemini_model,
+        )
+
+    def _log_pipeline_success(self, enhanced_classifications: list, quality_data: dict) -> None:
+        """
+        Logs successful pipeline completion statistics.
+        
+        Args:
+            enhanced_classifications: Enhanced SKR03 classifications
+            quality_data: Quality metrics
+        """
+        logger.info(
+            "🎉 GEMINI-FIRST Pipeline erfolgreich: %d Positionen, %.1f%% Konfidenz, %s Qualität",
+            len(enhanced_classifications),
+            quality_data["confidence_score"] * 100,
+            quality_data["quality_level"],
+        )
+
+    def _handle_training_data_and_metrics(self, result: ProcessingResult, pdf_path: Path) -> None:
+        """
+        Handles training data persistence and performance metrics recording.
+        
+        Args:
+            result: Complete processing result
+            pdf_path: PDF file path
+            
+        Note:
+            Failures in training data persistence or metrics recording do not fail the main pipeline
+        """
+        # 🎯 A2: Training Data Persistence - Collect valuable training data
+        try:
+            persistence_stats = self.training_persistence.persist_training_data(
+                pdf_path=str(pdf_path),
+                validated_gemini_result=result.structured_data,
+                skr03_classifications=result.skr03_classifications,
+                processing_result=result,
+            )
+            logger.info("✅ Training data persisted: %s", persistence_stats)
+        except Exception as training_error:
+            # Training data persistence should not fail the main pipeline
+            logger.warning("⚠️ Training data persistence failed: %s", training_error)
+
+        # 📊 Performance Monitoring - Record business metrics
+        try:
+            self.performance_monitor.record_processing_metrics(
+                result=result,
+                gemini_time_ms=result.gemini_time_ms,
+                classification_time_ms=result.classification_time_ms,
+                cache_hit=False,  # Not using cache in this standard processor
+                error_occurred=False,
+            )
+            logger.debug("📊 Performance metrics recorded successfully")
+        except Exception as metrics_error:
+            # Metrics recording should not fail the main pipeline
+            logger.warning(
+                "⚠️ Performance metrics recording failed: %s", metrics_error
+            )
+
+    def _handle_processing_error(self, error: Exception, pdf_path: Path, start_time: float) -> None:
+        """
+        Handles processing errors with detailed logging and metrics recording.
+        
+        Args:
+            error: The exception that occurred
+            pdf_path: PDF file path for context
+            start_time: Processing start time
+            
+        Raises:
+            Re-raises the original exception or RuntimeError with context
+        """
+        error_context = self._build_error_context(error, pdf_path, start_time)
+        self._log_detailed_error(error_context)
+        self._write_error_log_detailed(pdf_path, error, error_context)
+        self._record_error_metrics(error, error_context)
+        self._re_raise_with_context(error, pdf_path)
+
+    def _build_error_context(self, error: Exception, pdf_path: Path, start_time: float) -> dict:
+        """
+        Builds comprehensive error context for logging and metrics.
+        
+        Args:
+            error: The exception that occurred
+            pdf_path: PDF file path
+            start_time: Processing start time
+            
+        Returns:
+            Error context dictionary
+        """
+        return {
+            "pdf_path": str(pdf_path),
+            "pdf_size_bytes": pdf_path.stat().st_size if pdf_path.exists() else 0,
+            "processing_time_ms": int((time.time() - start_time) * 1000),
+            "error_type": type(error).__name__,
+            "error_message": str(error),
+            "gemini_model": self.config.gemini_model,
+        }
+
+    def _log_detailed_error(self, error_context: dict) -> None:
+        """
+        Logs detailed error information with context.
+        
+        Args:
+            error_context: Error context dictionary
+        """
+        logger.error(
+            "❌ GEMINI-FIRST Pipeline fehlgeschlagen: %s",
+            error_context,
+            exc_info=True,
+        )
+
+    def _record_error_metrics(self, error: Exception, error_context: dict) -> None:
+        """
+        Records error metrics for monitoring and analysis.
+        
+        Args:
+            error: The exception that occurred
+            error_context: Error context information
+        """
+        try:
+            # Create a minimal ProcessingResult for error recording
+            error_result = ProcessingResult(
+                pdf_path=str(error_context["pdf_path"]),
+                processing_timestamp=datetime.now().isoformat() + "Z",
+                processing_method="gemini_first",
+                structured_data={},
+                skr03_classifications=[],
+                confidence_score=0.0,
+                extraction_quality="poor",
+                training_annotations=[],
+                processing_time_ms=int(str(error_context["processing_time_ms"])),
+                gemini_time_ms=0,
+                classification_time_ms=0,
+            )
+
+            self.performance_monitor.record_processing_metrics(
+                result=error_result,
+                gemini_time_ms=0,
+                classification_time_ms=0,
+                cache_hit=False,
+                error_occurred=True,
+                error_message=str(error),
+            )
+            logger.debug("📊 Error metrics recorded successfully")
+        except Exception as metrics_error:
+            logger.warning("⚠️ Error metrics recording failed: %s", metrics_error)
+
+    def _re_raise_with_context(self, error: Exception, pdf_path: Path) -> None:
+        """
+        Re-raises exception with improved context and error message.
+        
+        Args:
+            error: Original exception
+            pdf_path: PDF file path for context
+            
+        Raises:
+            Original exception or RuntimeError with context
+        """
+        # Exception re-raise mit besserer Nachricht
+        if isinstance(error, FileNotFoundError | ValueError):
+            # Input-Validation Errors direkt weiterreichen
+            raise
+        else:
+            # Alle anderen Errors als RuntimeError mit Kontext
+            raise RuntimeError(
+                f"GEMINI-FIRST Pipeline fehlgeschlagen für {pdf_path.name}: {error}"
+            ) from error
 
     def _get_german_elektro_analysis_prompt(self) -> str:
         """
@@ -790,10 +1010,9 @@ EXTRAHIERE ALLE sichtbaren Positionen vollständig und präzise!
                 # 🎯 NEUE PYDANTIC-VALIDIERUNG (A1 TODO-Item)
                 logger.info("🔍 Validiere Gemini-Response mit Pydantic...")
 
-                # DEBUG: Log raw result for debugging
-                logger.debug(
-                    "🐛 DEBUG: Raw Gemini Response: %s", str(raw_result)[:1000]
-                )
+                # DEBUG: Only log in development mode, never in production
+                if logger.isEnabledFor(logging.DEBUG):
+                    logger.debug("Gemini response validation starting - response length: %d chars", len(str(raw_result)))
 
                 validated_result, validation_errors = validate_gemini_response(
                     raw_result
@@ -1167,9 +1386,9 @@ class DoclingAlternativeProcessor:
     Nur noch bei expliziter Anfrage verfügbar!
     """
 
-    def __init__(self, config: Config | None = None):
+    def __init__(self, config: ConfigBridge | None = None):
         """Initialize Docling alternative processor"""
-        self.config = config or Config()
+        self.config = config or config_instance
         logger.info(
             "DoclingAlternativeProcessor initialisiert (nur bei expliziter Anfrage)"
         )
@@ -1187,7 +1406,7 @@ class DoclingAlternativeProcessor:
         logger.info("🔄 ALTERNATIVE: Docling-Verarbeitung explizit angefordert")
 
         # Importiere den bestehenden UnifiedProcessor für Docling-Verarbeitung
-        from ..pipeline.processor import UnifiedProcessor
+        from .unified_processor import UnifiedProcessor
 
         processor = UnifiedProcessor(self.config)
         result = processor.process_pdf(pdf_path)
@@ -1199,7 +1418,7 @@ class DoclingAlternativeProcessor:
             "timestamp": result.processing_timestamp,
             "raw_text": result.raw_text,
             "structured_data": result.structured_data,
-            "invoice_data": result.invoice_data,
+            "invoice_header": result.invoice_header,
             "skr03_classifications": result.skr03_classifications,
             "processing_time_ms": result.processing_time_ms,
             "ocr_time_ms": result.ocr_time_ms,

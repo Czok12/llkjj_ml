@@ -22,7 +22,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from ..settings_bridge import Config
+from ..settings_bridge import ConfigBridge, config_instance
 
 logger = logging.getLogger(__name__)
 
@@ -38,8 +38,8 @@ class CacheInvalidationEngine:
     - Speicher-Limits (Automatic Cleanup bei Bedarf)
     """
 
-    def __init__(self, config: Config | None = None):
-        self.config = config or Config()
+    def __init__(self, config: ConfigBridge | None = None):
+        self.config = config or config_instance
         self.cache_dir = Path("data/cache")
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 

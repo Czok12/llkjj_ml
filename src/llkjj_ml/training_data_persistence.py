@@ -31,7 +31,7 @@ from typing import Any
 import chromadb
 from sentence_transformers import SentenceTransformer
 
-ConfigType = dict[str, Any]
+from .settings_bridge import ConfigBridge
 
 logger = logging.getLogger(__name__)
 
@@ -46,10 +46,10 @@ class TrainingDataPersistence:
     3. Audit-Trail (GoBD-konform)
     """
 
-    def __init__(self, config: ConfigType):
+    def __init__(self, config: ConfigBridge):
         self.config = config
-        self.base_path = Path("data/training")
-        self.logs_path = Path("logs")
+        self.base_path = config.training_data_path
+        self.logs_path = Path(config.log_file).parent
 
         # Stelle sicher, dass Verzeichnisse existieren
         self.base_path.mkdir(parents=True, exist_ok=True)
@@ -69,7 +69,7 @@ class TrainingDataPersistence:
     def _setup_chromadb(self) -> None:
         """Setup ChromaDB für RAG-System-Population"""
         try:
-            self.chroma_client = chromadb.PersistentClient(path="data/vectors")
+            self.chroma_client = chromadb.PersistentClient(path=str(self.config.vector_db_path))
             self.collection = self.chroma_client.get_or_create_collection(
                 name="invoice_classifications",
                 metadata={

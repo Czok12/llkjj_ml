@@ -21,7 +21,8 @@ from pathlib import Path
 from typing import Any, Literal
 
 from llkjj_ml.models.processing_result import ProcessingResult
-from llkjj_ml.settings_bridge import Config, ConfigType
+from llkjj_ml.settings_bridge import ConfigBridge, config_instance
+from llkjj_ml.optimization import batch_memory_optimizer
 
 from .gemini_strategy import GeminiStrategy
 from .processing_strategy import ProcessingStrategy
@@ -43,12 +44,13 @@ class UnifiedProcessor:
     - Einheitliche API für alle Processing-Engines
     """
 
-    def __init__(self, config: ConfigType | None = None):
-        self.config = config or Config
+    def __init__(self, config: ConfigBridge | None = None):
+        self.config = config or config_instance
         self._strategies: dict[str, ProcessingStrategy] = {}
+        self._memory_optimizer = batch_memory_optimizer.get_global_optimizer()
         self._initialize_strategies()
 
-        logger.info("🔧 UnifiedProcessor initialisiert mit Strategy-Pattern")
+        logger.info("🔧 UnifiedProcessor initialisiert mit Strategy-Pattern und Memory-Optimization")
 
     def _initialize_strategies(self) -> None:
         """Initialisiere alle verfügbaren Strategies."""
@@ -173,32 +175,34 @@ class UnifiedProcessor:
             else:
                 raise RuntimeError(f"Strategy {selected_strategy} nicht verfügbar!")
 
-        # Processing mit ausgewählter Strategy
+        # Processing mit ausgewählter Strategy und Memory-Optimization
         logger.info("🚀 Processing mit %s Strategy", strategy_instance.name)
 
-        try:
-            result = strategy_instance.process_pdf(pdf_path)
+        # Memory-optimized processing
+        with self._memory_optimizer.memory_managed_processing():
+            try:
+                result = strategy_instance.process_pdf(pdf_path)
 
-            # Strategy-Info zu Result hinzufügen
-            result.processing_method = selected_strategy  # type: ignore[assignment]
+                # Strategy-Info zu Result hinzufügen
+                result.processing_method = selected_strategy  # type: ignore[assignment]
 
-            logger.info("✅ %s Strategy erfolgreich", strategy_instance.name)
-            return result
+                logger.info("✅ %s Strategy erfolgreich", strategy_instance.name)
+                return result
 
-        except Exception as e:
-            logger.error("❌ %s Strategy fehlgeschlagen: %s", strategy_instance.name, e)
+            except Exception as e:
+                logger.error("❌ %s Strategy fehlgeschlagen: %s", strategy_instance.name, e)
 
-            # Fallback-Mechanismus
-            if (
-                selected_strategy != "gemini"
-                and "gemini" in self.get_available_strategies()
-            ):
-                logger.warning("🔄 Fallback zu GeminiStrategy...")
-                fallback_result = self._strategies["gemini"].process_pdf(pdf_path)
-                fallback_result.processing_method = "gemini_fallback"
-                return fallback_result
-            else:
-                raise
+                # Fallback-Mechanismus
+                if (
+                    selected_strategy != "gemini"
+                    and "gemini" in self.get_available_strategies()
+                ):
+                    logger.warning("🔄 Fallback zu GeminiStrategy...")
+                    fallback_result = self._strategies["gemini"].process_pdf(pdf_path)
+                    fallback_result.processing_method = "gemini_fallback"
+                    return fallback_result
+                else:
+                    raise
 
     def get_strategy_info(self, strategy_name: str | None = None) -> dict[str, Any]:
         """
@@ -320,3 +324,160 @@ class UnifiedProcessor:
             summary["summary"]["most_classifications"] = most_class
 
         return summary
+
+    def process_batch_optimized(self, pdf_paths: list[str | Path], strategy: StrategyType = "auto") -> list[ProcessingResult]:
+        """
+        Memory-optimized batch processing of multiple PDFs.
+        
+        Args:
+            pdf_paths: List of PDF file paths
+            strategy: Processing strategy to use
+            
+        Returns:
+            List of ProcessingResults
+        """
+        batch_config = self._prepare_optimized_batch_configuration(pdf_paths)
+        results = self._execute_memory_managed_batch_processing(batch_config, strategy)
+        
+        self._log_batch_optimization_completion(results)
+        return results
+
+    def _prepare_optimized_batch_configuration(self, pdf_paths: list[str | Path]) -> dict:
+        """
+        Prepares optimized batch configuration based on memory constraints.
+        
+        Args:
+            pdf_paths: List of PDF file paths
+            
+        Returns:
+            Dictionary containing batch configuration parameters
+        """
+        pdf_paths = [Path(p) for p in pdf_paths]
+        
+        # Get optimal batch size based on memory
+        optimal_batch_size, batch_sizes = self._memory_optimizer.suggest_batch_size(
+            item_count=len(pdf_paths),
+            memory_per_item_mb=50.0  # Conservative estimate for PDF processing
+        )
+        
+        logger.info(f"📊 Batch processing {len(pdf_paths)} PDFs in {len(batch_sizes)} batches")
+        
+        return {
+            "pdf_paths": pdf_paths,
+            "optimal_batch_size": optimal_batch_size,
+            "batch_sizes": batch_sizes,
+            "total_pdfs": len(pdf_paths)
+        }
+
+    def _execute_memory_managed_batch_processing(
+        self, batch_config: dict, strategy: StrategyType
+    ) -> list[ProcessingResult]:
+        """
+        Executes batch processing with memory management between batches.
+        
+        Args:
+            batch_config: Batch configuration parameters
+            strategy: Processing strategy to use
+            
+        Returns:
+            List of all processing results
+        """
+        results = []
+        start_idx = 0
+        
+        for batch_num, batch_size in enumerate(batch_config["batch_sizes"], 1):
+            batch_paths = batch_config["pdf_paths"][start_idx:start_idx + batch_size]
+            
+            logger.info(f"🔄 Processing batch {batch_num}/{len(batch_config['batch_sizes'])} ({len(batch_paths)} PDFs)")
+            
+            # Process current batch with memory management
+            batch_results = self._process_single_batch_with_memory_context(batch_paths, strategy)
+            results.extend(batch_results)
+            
+            start_idx += batch_size
+            
+            # Optimize memory between batches if not the last batch
+            if batch_num < len(batch_config["batch_sizes"]):
+                self._optimize_inter_batch_memory()
+        
+        return results
+
+    def _process_single_batch_with_memory_context(
+        self, batch_paths: list[Path], strategy: StrategyType
+    ) -> list[ProcessingResult]:
+        """
+        Processes a single batch within memory-managed context.
+        
+        Args:
+            batch_paths: List of PDF paths for current batch
+            strategy: Processing strategy to use
+            
+        Returns:
+            List of processing results for this batch
+        """
+        # Memory-managed batch processing
+        with self._memory_optimizer.memory_managed_processing():
+            batch_results = []
+            for pdf_path in batch_paths:
+                try:
+                    result = self.process_pdf(pdf_path, strategy)
+                    batch_results.append(result)
+                except Exception as e:
+                    logger.error(f"❌ Failed to process {pdf_path}: {e}")
+                    # Create error result
+                    error_result = ProcessingResult(
+                        success=False,
+                        error_message=str(e),
+                        file_path=str(pdf_path)
+                    )
+                    batch_results.append(error_result)
+            
+            return batch_results
+
+    def _optimize_inter_batch_memory(self) -> None:
+        """
+        Optimizes memory usage between batch processing iterations.
+        
+        Note:
+            Performs memory cleanup and logs optimization results
+        """
+        optimization_result = self._memory_optimizer.optimize_memory()
+        logger.debug(f"🗑️ Inter-batch cleanup: {optimization_result.memory_freed_mb:.1f}MB freed")
+
+    def _log_batch_optimization_completion(self, results: list[ProcessingResult]) -> None:
+        """
+        Logs completion statistics for optimized batch processing.
+        
+        Args:
+            results: List of all processing results
+        """
+        logger.info(f"✅ Batch processing completed: {len(results)} results")
+
+    def get_memory_status(self) -> dict[str, Any]:
+        """
+        Get current memory status and optimization information.
+        
+        Returns:
+            Dict with memory status and optimization history
+        """
+        memory_status = self._memory_optimizer.get_memory_status()
+        optimization_history = self._memory_optimizer.get_optimization_history()
+        
+        return {
+            "memory_status": {
+                "total_memory_gb": memory_status.total_memory_gb,
+                "available_memory_gb": memory_status.available_memory_gb,
+                "used_memory_gb": memory_status.used_memory_gb,
+                "memory_percent": memory_status.memory_percent,
+                "recommended_batch_size": memory_status.recommended_batch_size,
+            },
+            "optimization_history": {
+                "total_optimizations": len(optimization_history),
+                "total_memory_freed_mb": sum(opt.memory_freed_mb for opt in optimization_history),
+                "average_optimization_time_ms": (
+                    sum(opt.optimization_time_ms for opt in optimization_history) / len(optimization_history)
+                    if optimization_history else 0
+                ),
+                "last_optimization": optimization_history[-1].__dict__ if optimization_history else None,
+            }
+        }

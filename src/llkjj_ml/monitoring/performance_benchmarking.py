@@ -25,7 +25,7 @@ from typing import Any
 
 from ..models.processing_result import ProcessingResult
 from ..pipeline.async_gemini_processor import AsyncGeminiDirectProcessor
-from ..settings_bridge import Config
+from ..settings_bridge import ConfigBridge, config_instance
 
 logger = logging.getLogger(__name__)
 
@@ -41,8 +41,8 @@ class PerformanceBenchmarkSuite:
     - Batch-Processing Effizienz
     """
 
-    def __init__(self, config: Config | None = None):
-        self.config = config or Config()
+    def __init__(self, config: ConfigBridge | None = None):
+        self.config = config or config_instance
         self.processor = AsyncGeminiDirectProcessor(config)
         self.results_dir = Path("data/benchmarks")
         self.results_dir.mkdir(parents=True, exist_ok=True)

@@ -24,7 +24,7 @@ from docling.document_converter import DocumentConverter
 
 from ..extraction.extractor import DataExtractor
 from ..processing.classifier import DataClassifier
-from ..settings_bridge import Config
+from ..settings_bridge import ConfigBridge, config_instance
 from ..skr03_manager import lade_skr03_manager
 
 logger = logging.getLogger(__name__)
@@ -41,9 +41,9 @@ class ModularProcessor:
     - Complete pipeline
     """
 
-    def __init__(self, config: Config | None = None) -> None:
+    def __init__(self, config: ConfigBridge | None = None) -> None:
         """Initialize modular processor with config"""
-        self.config = config or Config()
+        self.config = config or config_instance
         self.document_converter = DocumentConverter()
 
         # Initialize SKR03 Manager for classification

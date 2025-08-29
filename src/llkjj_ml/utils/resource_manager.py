@@ -8,8 +8,8 @@ from typing import Any
 class ResourceManager:
     """Mock Resource Manager für Migration."""
 
-    def __init__(self):
-        self.resources = {}
+    def __init__(self) -> None:
+        self.resources: dict[str, Any] = {}
 
     def get_resource(self, name: str) -> Any:
         """Get resource by name."""
@@ -18,6 +18,22 @@ class ResourceManager:
     def set_resource(self, name: str, resource: Any) -> None:
         """Set resource by name."""
         self.resources[name] = resource
+
+    def get_memory_report(self) -> dict[str, Any]:
+        """Get memory usage report für Kompatibilität mit Pipeline."""
+        import os
+
+        import psutil
+
+        process = psutil.Process(os.getpid())
+        memory_info = process.memory_info()
+
+        return {
+            "memory_rss_mb": memory_info.rss / 1024 / 1024,
+            "memory_vms_mb": memory_info.vms / 1024 / 1024,
+            "memory_percent": process.memory_percent(),
+            "resources_count": len(self.resources),
+        }
 
 
 # Singleton instance

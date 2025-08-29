@@ -26,7 +26,7 @@ from pathlib import Path
 from typing import Any
 
 from ..models.processing_result import ProcessingResult
-from ..settings_bridge import Config
+from ..settings_bridge import ConfigBridge, config_instance
 
 logger = logging.getLogger(__name__)
 
@@ -76,8 +76,8 @@ class PerformanceMonitor:
     - Production-Health-Monitoring
     """
 
-    def __init__(self, config: Config | None = None):
-        self.config = config or Config()
+    def __init__(self, config: ConfigBridge | None = None):
+        self.config = config or config_instance
         self.metrics_db_path = Path("data/monitoring/performance_metrics.db")
         self.business_metrics_cache = Path("data/monitoring/business_metrics.json")
         self._setup_metrics_database()
@@ -493,7 +493,9 @@ class PerformanceMonitor:
 
 
 # Convenience-Funktionen für CLI-Integration
-def create_performance_monitor(config: Config | None = None) -> PerformanceMonitor:
+def create_performance_monitor(
+    config: ConfigBridge | None = None,
+) -> PerformanceMonitor:
     """Factory-Funktion für PerformanceMonitor."""
     return PerformanceMonitor(config)
 

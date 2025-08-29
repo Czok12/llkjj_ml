@@ -307,7 +307,7 @@ if __name__ == "__main__":
     import sys
 
     logging.basicConfig(
-        level=logging.DEBUG,
+        level=logging.INFO,  # Changed from DEBUG to INFO for production safety
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
 

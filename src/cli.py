@@ -22,39 +22,39 @@ from pathlib import Path
 from typing import Any
 
 # Feature Engineering Integration
-from llkjj_ml.src.features.ml_integration import create_feature_pipeline
+from llkjj_ml.features.ml_integration import create_feature_pipeline
 
 # Import ProcessingResult for type-safe results
-from llkjj_ml.src.models.processing_result import ProcessingResult
-from llkjj_ml.src.optimization.cache_warming import (
+from llkjj_ml.models.processing_result import ProcessingResult
+from llkjj_ml.optimization.cache_warming import (
     IntelligentCacheWarming,
     get_warming_recommendations,
     warm_cache_intelligent,
 )
 
 # Import Performance Optimization
-from llkjj_ml.src.pipeline.async_gemini_processor import AsyncGeminiDirectProcessor
+from llkjj_ml.pipeline.async_gemini_processor import AsyncGeminiDirectProcessor
 
 # Dual-Purpose Pipeline Import
-from llkjj_ml.src.pipeline.unified_processor import UnifiedProcessor
+from llkjj_ml.pipeline.unified_processor import UnifiedProcessor
 
 # Import consolidated services
-from llkjj_ml.src.processing.modular_processor import ModularProcessor
-from llkjj_ml.src.security.auditor import run_security_audit
-from llkjj_ml.src.security.manager import APIKeyManager, validate_production_environment
+from llkjj_ml.processing.modular_processor import ModularProcessor
+from llkjj_ml.security.auditor import run_security_audit
+from llkjj_ml.security.manager import APIKeyManager, validate_production_environment
 
 # Refactored Training Services
-from llkjj_ml.src.settings_bridge import Config
-from llkjj_ml.src.trainer import TrainingService  # Backwards compatibility
+from llkjj_ml.settings_bridge import Config
+from llkjj_ml.trainer import TrainingService  # Backwards compatibility
 
 
 def setup_logging(verbose: bool = False, production: bool = False) -> None:
     """Configure logging for CLI"""
     if production:
-        # Produktions-Modus: Nur Warnungen und Fehler
-        level = logging.WARNING
+        # Produktions-Modus: Nur INFO und höher
+        level = logging.INFO
     else:
-        # Development-Modus: Debug oder Info
+        # Development-Modus: DEBUG nur bei verbose flag
         level = logging.DEBUG if verbose else logging.INFO
 
     logging.basicConfig(
@@ -76,7 +76,7 @@ def process_pdfs(args: argparse.Namespace) -> None:
     config = Config
 
     # NEUE STANDARD-PIPELINE: Gemini-First Processor
-    from llkjj_ml.src.pipeline.gemini_first_processor import GeminiDirectProcessor
+    from llkjj_ml.pipeline.gemini_first_processor import GeminiDirectProcessor
 
     processor = GeminiDirectProcessor(config)
 
@@ -205,7 +205,7 @@ def process_pdfs_async_batch(args: argparse.Namespace) -> None:
     config = Config
 
     # 🎯 A3: AsyncGeminiDirectProcessor mit Performance-Optimierungen
-    from llkjj_ml.src.pipeline.async_gemini_processor import AsyncGeminiDirectProcessor
+    from llkjj_ml.pipeline.async_gemini_processor import AsyncGeminiDirectProcessor
 
     processor = AsyncGeminiDirectProcessor(config)
     input_path = Path(args.input)
@@ -571,7 +571,7 @@ def process_pdfs_docling_alternative(args: argparse.Namespace) -> None:
     config = Config
 
     # ALTERNATIVE: Docling-basierte Verarbeitung
-    from llkjj_ml.src.pipeline.gemini_first_processor import DoclingAlternativeProcessor
+    from llkjj_ml.pipeline.gemini_first_processor import DoclingAlternativeProcessor
 
     processor = DoclingAlternativeProcessor(config)
 
@@ -681,7 +681,7 @@ def process_pdfs_docling_alternative(args: argparse.Namespace) -> None:
 def export_training_data(args: argparse.Namespace) -> None:
     """Export processed data for spaCy training"""
     config = Config
-    training_service = TrainingService(config)
+    training_service = TrainingService(config)  # type: ignore[arg-type]
 
     input_dir = Path(args.input)
     output_path = Path(args.output) if args.output else Path("data/training")
@@ -699,7 +699,7 @@ def export_training_data(args: argparse.Namespace) -> None:
 def train_model(args: argparse.Namespace) -> None:
     """Train spaCy models for German electrical invoices using new training pipeline"""
     config = Config
-    training_service = TrainingService(config)
+    training_service = TrainingService(config)  # type: ignore[arg-type]
 
     training_data = Path(args.input)
     model_output = Path(args.output) if args.output else Path("output_model")
@@ -726,7 +726,7 @@ def train_model(args: argparse.Namespace) -> None:
 def export_textcat_data(args: argparse.Namespace) -> None:
     """Export textcat training data for SKR03 classification"""
     config = Config
-    training_service = TrainingService(config)
+    training_service = TrainingService(config)  # type: ignore[arg-type]
 
     input_dir = Path(args.input)
     output_dir = Path(args.output) if args.output else Path("data/training/textcat/")
@@ -745,7 +745,7 @@ def export_textcat_data(args: argparse.Namespace) -> None:
 def train_textcat_model(args: argparse.Namespace) -> None:
     """Train spaCy text classification model for SKR03"""
     config = Config
-    training_service = TrainingService(config)
+    training_service = TrainingService(config)  # type: ignore[arg-type]
 
     training_data_dir = Path(args.input)
     model_output = (
@@ -798,7 +798,7 @@ def run_pipeline(args: argparse.Namespace) -> None:
 
     # Step 2: Export training data
     print("\n📤 Step 2: Exporting training data...")
-    training_service = TrainingService(config)
+    training_service = TrainingService(config)  # type: ignore[arg-type]
     export_result = training_service.export_training_data(
         temp_processed, temp_training_dir
     )
@@ -959,7 +959,7 @@ def run_workflow_4(args: argparse.Namespace) -> None:
 
 def init_database(args: argparse.Namespace) -> None:
     """Initialize database with simple manager"""
-    from llkjj_ml.src.database.simple_manager import create_simple_manager
+    from llkjj_ml.database.simple_manager import create_simple_manager
 
     db_path = Path(args.path)
 
@@ -982,7 +982,7 @@ def init_database(args: argparse.Namespace) -> None:
 
 def show_database_stats(args: argparse.Namespace) -> None:
     """Show database statistics with simple manager"""
-    from llkjj_ml.src.database.simple_manager import create_simple_manager
+    from llkjj_ml.database.simple_manager import create_simple_manager
 
     db_path = Path(args.path)
 
@@ -1040,7 +1040,7 @@ def show_database_stats(args: argparse.Namespace) -> None:
 
 def backup_database(args: argparse.Namespace) -> None:
     """Create database backup with simple manager"""
-    from llkjj_ml.src.database.simple_manager import create_simple_manager
+    from llkjj_ml.database.simple_manager import create_simple_manager
 
     db_path = Path(args.path)
     backup_name = args.name
@@ -1059,7 +1059,7 @@ def backup_database(args: argparse.Namespace) -> None:
 
 def optimize_database(args: argparse.Namespace) -> None:
     """Optimize database performance with simple manager"""
-    from llkjj_ml.src.database.simple_manager import create_simple_manager
+    from llkjj_ml.database.simple_manager import create_simple_manager
 
     db_path = Path(args.path)
 
@@ -1221,7 +1221,7 @@ def run_benchmark_single(args: argparse.Namespace) -> None:
     """
     import asyncio
 
-    from llkjj_ml.src.monitoring.performance_benchmarking import (
+    from llkjj_ml.monitoring.performance_benchmarking import (
         PerformanceBenchmarkSuite,
     )
 
@@ -1271,7 +1271,7 @@ def run_benchmark_batch(args: argparse.Namespace) -> None:
     """
     import asyncio
 
-    from llkjj_ml.src.monitoring.performance_benchmarking import (
+    from llkjj_ml.monitoring.performance_benchmarking import (
         PerformanceBenchmarkSuite,
     )
 
@@ -1327,7 +1327,7 @@ def run_benchmark_comprehensive(args: argparse.Namespace) -> None:
     """
     import asyncio
 
-    from llkjj_ml.src.monitoring.performance_benchmarking import (
+    from llkjj_ml.monitoring.performance_benchmarking import (
         PerformanceBenchmarkSuite,
     )
 
@@ -1358,7 +1358,7 @@ def run_cache_health(args: argparse.Namespace) -> None:
     Args:
         args: CLI-Argumente
     """
-    from llkjj_ml.src.monitoring.cache_invalidation import CacheInvalidationEngine
+    from llkjj_ml.monitoring.cache_invalidation import CacheInvalidationEngine
 
     engine = CacheInvalidationEngine()
     health_report = engine.get_cache_health_report()
@@ -1395,7 +1395,7 @@ def run_cache_cleanup_age(args: argparse.Namespace) -> None:
     Args:
         args: CLI-Argumente mit max_age_days
     """
-    from llkjj_ml.src.monitoring.cache_invalidation import CacheInvalidationEngine
+    from llkjj_ml.monitoring.cache_invalidation import CacheInvalidationEngine
 
     engine = CacheInvalidationEngine()
     stats = engine.invalidate_by_age(max_age_days=args.max_age_days)
@@ -1414,7 +1414,7 @@ def run_cache_cleanup_schema(args: argparse.Namespace) -> None:
     Args:
         args: CLI-Argumente mit optionaler version
     """
-    from llkjj_ml.src.monitoring.cache_invalidation import CacheInvalidationEngine
+    from llkjj_ml.monitoring.cache_invalidation import CacheInvalidationEngine
 
     engine = CacheInvalidationEngine()
     stats = engine.invalidate_by_schema_version(current_version=args.version)
@@ -1432,7 +1432,7 @@ def run_cache_cleanup_emergency(args: argparse.Namespace) -> None:
     Args:
         args: CLI-Argumente
     """
-    from llkjj_ml.src.monitoring.cache_invalidation import CacheInvalidationEngine
+    from llkjj_ml.monitoring.cache_invalidation import CacheInvalidationEngine
 
     engine = CacheInvalidationEngine()
     stats = engine.emergency_cleanup()
@@ -1462,7 +1462,7 @@ def run_cache_maintenance(args: argparse.Namespace) -> None:
     Args:
         args: CLI-Argumente
     """
-    from llkjj_ml.src.monitoring.cache_invalidation import CacheInvalidationEngine
+    from llkjj_ml.monitoring.cache_invalidation import CacheInvalidationEngine
 
     engine = CacheInvalidationEngine()
     maintenance_stats = engine.run_scheduled_maintenance()
@@ -1571,7 +1571,7 @@ def dual_purpose_pipeline(args: argparse.Namespace) -> None:
     }
     """
     # dual_pipeline removed in cleanup - using UnifiedProcessor instead
-    from llkjj_ml.src.pipeline.unified_processor import UnifiedProcessor
+    from llkjj_ml.pipeline.unified_processor import UnifiedProcessor
 
     config = Config
     pipeline = UnifiedProcessor(config)

@@ -18,7 +18,7 @@ from typing import Any
 from ..models.processing_result import ProcessingResult
 from ..pipeline.gemini_first_processor import GeminiDirectProcessor
 from ..pipeline.processing_strategy import ProcessingStrategy
-from ..settings_bridge import Config
+from ..settings_bridge import ConfigBridge
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ class GeminiStrategy(ProcessingStrategy):
     - Training Data Collection für Phase 2
     """
 
-    def __init__(self, config: Config):
+    def __init__(self, config: ConfigBridge):
         super().__init__(config)
         self._processor: GeminiDirectProcessor | None = None
         logger.info("🎯 GeminiStrategy initialisiert (Phase 1: AI-powered)")

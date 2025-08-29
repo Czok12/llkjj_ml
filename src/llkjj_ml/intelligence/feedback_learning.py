@@ -27,7 +27,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from ..settings_bridge import Config
+from ..settings_bridge import ConfigBridge, config_instance
 
 logger = logging.getLogger(__name__)
 
@@ -94,8 +94,8 @@ class FeedbackLearningEngine:
     - Conflict-Detection bei widersprüchlichen Feedbacks
     """
 
-    def __init__(self, config: Config | None = None):
-        self.config = config or Config()
+    def __init__(self, config: ConfigBridge | None = None):
+        self.config = config or config_instance
         self.feedback_db_path = Path("data/feedback/learning_feedback.db")
         self.feedback_db_path.parent.mkdir(parents=True, exist_ok=True)
 

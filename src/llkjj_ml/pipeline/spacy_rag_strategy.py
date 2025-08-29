@@ -20,7 +20,7 @@ from typing import Any
 
 from ..models.processing_result import ProcessingResult
 from ..pipeline.processing_strategy import ProcessingStrategy
-from ..settings_bridge import Config
+from ..settings_bridge import ConfigBridge
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +38,7 @@ class SpacyRagStrategy(ProcessingStrategy):
     AKTUELL: Placeholder mit Fallback zu Gemini
     """
 
-    def __init__(self, config: Config):
+    def __init__(self, config: ConfigBridge):
         super().__init__(config)
         self._trained_models_available = False
         logger.info("🔮 SpacyRagStrategy initialisiert (Phase 2 Placeholder)")

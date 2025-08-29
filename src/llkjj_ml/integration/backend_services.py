@@ -18,7 +18,14 @@ from ..embeddings.sentence_transformer_provider import (
 )
 
 if TYPE_CHECKING:
-    from llkjj_ml.llkjj_ml_plugin_v2 import MLPlugin
+    # Plugin Protocol Definition
+    from typing import Protocol
+
+    class MLPlugin(Protocol):
+        """Protocol für MLPlugin Interface"""
+
+        pass
+
 
 # Import der stateless Plugin-Komponenten
 from ..gemini.direct_processor import (
@@ -220,8 +227,16 @@ class MLPluginFactory:
             Configured MLPlugin instance
         """
         try:
-            from llkjj_ml.llkjj_ml_plugin_v2 import MLPlugin, MLPluginConfig
+            from llkjj_ml.llkjj_ml_plugin_v2 import (  # type: ignore[import-not-found]
+                MLPlugin,
+                MLPluginConfig,
+            )
+        except ImportError:
+            raise RuntimeError(
+                "MLPlugin v2.0 nicht verfügbar - Plugin-Factory nicht nutzbar"
+            )
 
+        try:
             # Repository aus Registry abrufen
             repository_factory = backend_registry.get_service("repository_factory")
             if not repository_factory:
@@ -247,7 +262,7 @@ class MLPluginFactory:
             )
 
             logger.info("✅ MLPlugin v2.0 erfolgreich über Backend-Registry erstellt")
-            return plugin
+            return plugin  # type: ignore[no-any-return]
 
         except Exception as e:
             logger.error(f"Fehler bei MLPlugin-Factory: {e}")
@@ -274,7 +289,12 @@ class MLPluginFactory:
         """
         try:
             from llkjj_ml.llkjj_ml_plugin_v2 import MLPlugin, MLPluginConfig
+        except ImportError:
+            raise RuntimeError(
+                "MLPlugin v2.0 nicht verfügbar - Plugin-Factory nicht nutzbar"
+            )
 
+        try:
             # Services mit custom parameters erstellen
             gemini_service = BackendGeminiService(api_key=gemini_api_key)
 
@@ -294,7 +314,7 @@ class MLPluginFactory:
             )
 
             logger.info("✅ MLPlugin v2.0 mit custom Services erstellt")
-            return plugin
+            return plugin  # type: ignore[no-any-return]
 
         except Exception as e:
             logger.error(f"Fehler bei Custom MLPlugin-Factory: {e}")

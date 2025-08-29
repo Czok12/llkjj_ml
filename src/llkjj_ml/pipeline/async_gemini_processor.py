@@ -27,7 +27,7 @@ from typing import Any
 from ..models.processing_result import ProcessingResult
 from ..optimization.gemini_rate_limiting import EnhancedGeminiRateLimiter
 from ..pipeline.gemini_first_processor import GeminiDirectProcessor
-from ..settings_bridge import Config
+from ..settings_bridge import ConfigBridge
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +43,7 @@ class AsyncGeminiDirectProcessor(GeminiDirectProcessor):
     - Non-blocking I/O-Operationen
     """
 
-    def __init__(self, config: Config | None = None):
+    def __init__(self, config: ConfigBridge | None = None):
         super().__init__(config)
 
         # 🚀 ENHANCED RATE LIMITING: Ersetzt einfaches Semaphore
@@ -443,22 +443,42 @@ class AsyncGeminiDirectProcessor(GeminiDirectProcessor):
         Returns:
             Liste der ProcessingResults in derselben Reihenfolge
         """
-        total_pdfs = len(pdf_paths)
+        batch_context = self._prepare_batch_context(pdf_paths, max_concurrent)
+        
+        # Handle batch size limiting with recursive processing
+        if batch_context["requires_chunking"]:
+            return await self._process_large_batch_in_chunks(pdf_paths, max_concurrent)
+            
+        pdf_analysis = self._analyze_and_optimize_batch(pdf_paths)
+        processing_tasks = self._create_concurrent_processing_tasks(pdf_analysis, batch_context)
+        results = await self._execute_batch_with_monitoring(processing_tasks, batch_context)
+        
+        self._log_batch_completion_statistics(results, batch_context)
+        return results
 
-        # 📊 MEMORY-SCHUTZ: Batch-Größe limitieren
-        if total_pdfs > self.max_batch_size:
+    def _prepare_batch_context(self, pdf_paths: list[str | Path], max_concurrent: int) -> dict:
+        """
+        Prepares batch processing context with memory monitoring and size validation.
+        
+        Args:
+            pdf_paths: List of PDF file paths
+            max_concurrent: Maximum concurrent processing limit
+            
+        Returns:
+            Dictionary containing batch context information
+        """
+        total_pdfs = len(pdf_paths)
+        start_time = time.time()
+        initial_memory = self._check_memory_usage()
+        
+        # Check if batch requires chunking
+        requires_chunking = total_pdfs > self.max_batch_size
+        if requires_chunking:
             logger.warning(
                 "⚠️ Batch-Größe %d > Maximum %d - wird in Chunks aufgeteilt",
                 total_pdfs,
                 self.max_batch_size,
             )
-            # Recursive batch processing in chunks
-            all_results: list[ProcessingResult | None] = []
-            for i in range(0, total_pdfs, self.max_batch_size):
-                chunk = pdf_paths[i : i + self.max_batch_size]
-                chunk_results = await self.process_batch_async(chunk, max_concurrent)
-                all_results.extend(chunk_results)
-            return all_results
 
         logger.info(
             "🚀 Enhanced Batch-Processing startet: %d PDFs, max %d parallel (Memory-Optimized)",
@@ -466,9 +486,48 @@ class AsyncGeminiDirectProcessor(GeminiDirectProcessor):
             max_concurrent,
         )
 
-        start_time = time.time()
-        initial_memory = self._check_memory_usage()
+        return {
+            "total_pdfs": total_pdfs,
+            "max_concurrent": max_concurrent,
+            "start_time": start_time,
+            "initial_memory": initial_memory,
+            "requires_chunking": requires_chunking,
+            "processed_count": 0
+        }
 
+    async def _process_large_batch_in_chunks(
+        self, pdf_paths: list[str | Path], max_concurrent: int
+    ) -> list[ProcessingResult | None]:
+        """
+        Processes large batches by splitting them into manageable chunks.
+        
+        Args:
+            pdf_paths: List of PDF file paths
+            max_concurrent: Maximum concurrent processing limit
+            
+        Returns:
+            Combined results from all chunks
+        """
+        total_pdfs = len(pdf_paths)
+        all_results: list[ProcessingResult | None] = []
+        
+        for i in range(0, total_pdfs, self.max_batch_size):
+            chunk = pdf_paths[i : i + self.max_batch_size]
+            chunk_results = await self.process_batch_async(chunk, max_concurrent)
+            all_results.extend(chunk_results)
+            
+        return all_results
+
+    def _analyze_and_optimize_batch(self, pdf_paths: list[str | Path]) -> list[dict]:
+        """
+        Analyzes PDF files for optimal processing strategy and resource allocation.
+        
+        Args:
+            pdf_paths: List of PDF file paths
+            
+        Returns:
+            List of PDF analysis information with optimization parameters
+        """
         # 📄 SMART PDF-ANALYSIS: Analysiere alle PDFs für optimale Strategie
         pdf_analysis: list[dict[str, Any]] = []
         for pdf_path in pdf_paths:
@@ -491,46 +550,55 @@ class AsyncGeminiDirectProcessor(GeminiDirectProcessor):
                 for info in pdf_analysis[:5]
             ),
         )
+        
+        return pdf_analysis
 
+    def _create_concurrent_processing_tasks(self, pdf_analysis: list[dict], batch_context: dict) -> list:
+        """
+        Creates concurrent processing tasks with enhanced monitoring capabilities.
+        
+        Args:
+            pdf_analysis: List of analyzed PDF information
+            batch_context: Batch processing context
+            
+        Returns:
+            List of async tasks for concurrent execution
+        """
         # Semaphore für Batch-Limit (zusätzlich zu API-Rate-Limit)
-        batch_semaphore = asyncio.Semaphore(max_concurrent)
-        processed_count = 0
+        batch_semaphore = asyncio.Semaphore(batch_context["max_concurrent"])
 
         async def _process_with_enhanced_monitoring(
             pdf_info: dict[str, Any], index: int
         ) -> ProcessingResult | None:
-            nonlocal processed_count
-
             async with batch_semaphore:
                 try:
                     # 📊 MEMORY-CHECK alle 10 PDFs
                     if (
-                        processed_count > 0
-                        and processed_count % self.memory_check_interval == 0
+                        batch_context["processed_count"] > 0
+                        and batch_context["processed_count"] % self.memory_check_interval == 0
                     ):
                         current_memory = self._check_memory_usage()
                         memory_growth = (
-                            current_memory["rss_mb"] - initial_memory["rss_mb"]
+                            current_memory["rss_mb"] - batch_context["initial_memory"]["rss_mb"]
                         )
 
                         if memory_growth > 500:  # >500MB Growth
                             logger.warning(
                                 "⚠️ Memory-Growth: +%.1fMB nach %d PDFs - Garbage Collection",
                                 memory_growth,
-                                processed_count,
+                                batch_context["processed_count"],
                             )
                             import gc
-
                             gc.collect()
 
                     result = await self.process_pdf_async(pdf_info["path"])
-                    processed_count += 1
+                    batch_context["processed_count"] += 1
 
-                    if processed_count % 10 == 0:
+                    if batch_context["processed_count"] % 10 == 0:
                         logger.info(
                             "📈 Progress: %d/%d PDFs verarbeitet",
-                            processed_count,
-                            total_pdfs,
+                            batch_context["processed_count"],
+                            batch_context["total_pdfs"],
                         )
 
                     return result
@@ -543,15 +611,43 @@ class AsyncGeminiDirectProcessor(GeminiDirectProcessor):
                     )
                     return None
 
-        # 🚀 Alle PDFs parallel verarbeiten mit Enhanced Monitoring
+        # 🚀 Create processing tasks with enhanced monitoring
         tasks = [
             _process_with_enhanced_monitoring(pdf_info, i)
             for i, pdf_info in enumerate(pdf_analysis)
         ]
-        results = await asyncio.gather(*tasks)
+        
+        return tasks
 
+    async def _execute_batch_with_monitoring(
+        self, processing_tasks: list, batch_context: dict
+    ) -> list[ProcessingResult | None]:
+        """
+        Executes batch processing tasks with comprehensive monitoring.
+        
+        Args:
+            processing_tasks: List of async processing tasks
+            batch_context: Batch processing context
+            
+        Returns:
+            List of processing results
+        """
+        # Execute all tasks concurrently
+        results = await asyncio.gather(*processing_tasks)
+        return results
+
+    def _log_batch_completion_statistics(
+        self, results: list[ProcessingResult | None], batch_context: dict
+    ) -> None:
+        """
+        Logs comprehensive batch completion statistics and performance metrics.
+        
+        Args:
+            results: List of processing results
+            batch_context: Batch processing context
+        """
         # 📊 FINAL STATISTICS
-        batch_time_ms = int((time.time() - start_time) * 1000)
+        batch_time_ms = int((time.time() - batch_context["start_time"]) * 1000)
         successful_count = sum(1 for r in results if r is not None)
         final_memory = self._check_memory_usage()
         memory_efficiency = final_memory["rss_mb"] / max(1, successful_count)
@@ -559,15 +655,13 @@ class AsyncGeminiDirectProcessor(GeminiDirectProcessor):
         logger.info(
             "✅ Enhanced Batch-Processing abgeschlossen: %d/%d erfolgreich in %dms (%.1fMB/PDF avg)",
             successful_count,
-            total_pdfs,
+            batch_context["total_pdfs"],
             batch_time_ms,
             memory_efficiency,
         )
 
         # 📊 ENHANCED RATE LIMITER PERFORMANCE SUMMARY nach Batch
         self.log_performance_summary()
-
-        return results
 
     async def get_cache_statistics(self) -> dict[str, Any]:
         """
@@ -764,7 +858,7 @@ class AsyncGeminiDirectProcessor(GeminiDirectProcessor):
 
 # Convenience-Funktion für CLI-Integration
 async def process_pdf_async(
-    pdf_path: str, config: Config | None = None
+    pdf_path: str, config: ConfigBridge | None = None
 ) -> ProcessingResult:
     """Convenience function für async PDF-Processing."""
     processor = AsyncGeminiDirectProcessor(config)
@@ -773,7 +867,7 @@ async def process_pdf_async(
 
 async def process_batch_async(
     pdf_paths: list[str | Path],
-    config: Config | None = None,
+    config: ConfigBridge | None = None,
     max_concurrent: int = 3,
 ) -> list[ProcessingResult | None]:
     """Convenience function für async Batch-Processing."""

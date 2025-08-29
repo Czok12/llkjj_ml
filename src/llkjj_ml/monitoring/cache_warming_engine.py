@@ -25,7 +25,7 @@ from pathlib import Path
 from typing import Any
 
 from ..pipeline.async_gemini_processor import AsyncGeminiDirectProcessor
-from ..settings_bridge import Config
+from ..settings_bridge import ConfigBridge, config_instance
 
 logger = logging.getLogger(__name__)
 
@@ -41,8 +41,8 @@ class CacheWarmingEngine:
     4. Performance-Tracking: Hit-Rate-Optimierung messen
     """
 
-    def __init__(self, config: Config | None = None):
-        self.config = config or Config()
+    def __init__(self, config: ConfigBridge | None = None):
+        self.config = config or config_instance
         self.processor = AsyncGeminiDirectProcessor(config)
         self.warming_db_path = Path("data/cache/cache_warming.db")
         self.warming_db_path.parent.mkdir(parents=True, exist_ok=True)

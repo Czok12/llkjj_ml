@@ -25,7 +25,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from ..settings_bridge import Config
+from ..settings_bridge import ConfigBridge, config_instance
 
 logger = logging.getLogger(__name__)
 
@@ -83,8 +83,8 @@ class HybridIntelligenceEngine:
     Konfidenz, Kosten und Performance-Metriken.
     """
 
-    def __init__(self, config: Config | None = None):
-        self.config = config or Config()
+    def __init__(self, config: ConfigBridge | None = None):
+        self.config = config or config_instance
         self.db_path: Path = Path("data") / "training" / "hybrid_intelligence.db"
 
         # Threshold-Konfiguration
@@ -621,7 +621,9 @@ class HybridIntelligenceEngine:
 
 
 # Convenience Functions
-def create_hybrid_engine(config: Config | None = None) -> HybridIntelligenceEngine:
+def create_hybrid_engine(
+    config: ConfigBridge | None = None,
+) -> HybridIntelligenceEngine:
     """Factory-Function für HybridIntelligenceEngine."""
     return HybridIntelligenceEngine(config)
 

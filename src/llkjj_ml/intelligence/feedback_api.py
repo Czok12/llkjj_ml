@@ -20,7 +20,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from llkjj_ml.settings_bridge import Config, ConfigType
+from llkjj_ml.settings_bridge import Config, ConfigBridge
 
 from .feedback_learning import FeedbackLearningEngine
 
@@ -80,7 +80,7 @@ class FeedbackAPI:
     und Backend-Kommunikation mit dem LLKJJ-System.
     """
 
-    def __init__(self, config: ConfigType | None = None):
+    def __init__(self, config: ConfigBridge | None = None):
         self.config = config or Config
         self.feedback_engine = FeedbackLearningEngine(self.config)
         logger.info("🔄 Feedback API initialisiert")
@@ -197,7 +197,7 @@ class FeedbackAPI:
 
 
 # Convenience Functions für direkte API-Nutzung
-def create_feedback_api(config: ConfigType | None = None) -> FeedbackAPI:
+def create_feedback_api(config: ConfigBridge | None = None) -> FeedbackAPI:
     """
     Factory-Function für FeedbackAPI-Instanz.
 

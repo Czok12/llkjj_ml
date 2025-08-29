@@ -1,4 +1,4 @@
-from llkjj_ml.src.settings_bridge import ConfigType
+from .settings_bridge import ConfigType
 
 #!/usr/bin/env python3
 """
@@ -422,7 +422,7 @@ class NERTrainer(BaseTrainer):
             random.shuffle(train_data)
 
             # Training in batches
-            batches = minibatch(train_data, size=8)  # type: ignore[no-untyped-call]
+            batches = minibatch(train_data, size=8)
             for batch in batches:
                 examples = []
                 for text, annotations in batch:
@@ -495,9 +495,11 @@ class NERTrainer(BaseTrainer):
         else:
             ner = self.nlp.get_pipe("ner")
 
-        # Add labels
-        for label in elektro_labels:
-            ner.add_label(label)  # type: ignore[attr-defined]
+        # Add labels - cast to access add_label method
+
+        if hasattr(ner, "add_label"):
+            for label in elektro_labels:
+                ner.add_label(label)
 
         self.entity_labels = elektro_labels
         logger.info("🏷️ Added %d entity labels", len(elektro_labels))
@@ -587,7 +589,7 @@ class TextCatTrainer(BaseTrainer):
             random.shuffle(train_data)
 
             # Training in batches
-            batches = minibatch(train_data, size=16)  # type: ignore[no-untyped-call]
+            batches = minibatch(train_data, size=16)
             for batch in batches:
                 examples = []
                 for doc in batch:
@@ -652,13 +654,13 @@ class TextCatTrainer(BaseTrainer):
 
         # Add textcat pipe
         if "textcat" not in self.nlp.pipe_names:
-            textcat = self.nlp.add_pipe("textcat", last=True)
+            textcat = cast(TextCategorizer, self.nlp.add_pipe("textcat", last=True))
         else:
             textcat = cast(TextCategorizer, self.nlp.get_pipe("textcat"))
 
         # Add labels
         for category in all_categories:
-            textcat.add_label(category)  # type: ignore[attr-defined]
+            textcat.add_label(category)
 
         logger.info("🏷️ Added %d text categories", len(all_categories))
 

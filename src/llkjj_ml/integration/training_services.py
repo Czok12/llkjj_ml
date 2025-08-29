@@ -15,7 +15,7 @@ from datetime import datetime
 from typing import Any, cast
 
 from ..config.training_config import TrainingConfig
-from ..settings_bridge import Config
+from ..settings_bridge import ConfigBridge
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +38,9 @@ class BackendTrainingOrchestrator:
     - Performance-Tracking
     """
 
-    def __init__(self, ml_plugin: Any, training_config: Config | None = None) -> None:
+    def __init__(
+        self, ml_plugin: Any, training_config: TrainingConfig | None = None
+    ) -> None:
         """
         Initialisiere Training-Orchestrator.
 
@@ -115,7 +117,7 @@ class BackendTrainingOrchestrator:
     async def execute_training_pipeline(
         self,
         model_name: str | None = None,
-        custom_config: Config | None = None,
+        custom_config: ConfigBridge | TrainingConfig | None = None,
     ) -> dict[str, Any]:
         """
         Führe vollständige Training-Pipeline aus.
@@ -127,7 +129,16 @@ class BackendTrainingOrchestrator:
         Returns:
             Training-Pipeline-Ergebnis mit Metriken
         """
-        config = custom_config or self.default_training_config
+        # Ensure we have a TrainingConfig instance
+        if isinstance(custom_config, ConfigBridge):
+            # Use default TrainingConfig when ConfigBridge is provided
+            config = self.default_training_config
+        elif isinstance(custom_config, TrainingConfig):
+            config = custom_config
+        else:
+            # custom_config is None
+            config = self.default_training_config
+
         model_name = model_name or config.model_name
 
         try:
@@ -412,7 +423,7 @@ class BackendTrainingOrchestrator:
 
 
 def create_training_orchestrator_for_backend(
-    ml_plugin: Any, custom_config: Config | None = None
+    ml_plugin: Any, custom_config: TrainingConfig | None = None
 ) -> "BackendTrainingOrchestrator":
     """
     Factory für BackendTrainingOrchestrator.
