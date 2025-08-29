@@ -206,26 +206,30 @@ class EnhancedBatchMemoryManager:
             Batch-Processing-Ergebnisse mit Memory-Analytics
         """
         batch_context = self._initialize_smart_batch_context(pdf_paths)
-        batch_config = self.calculate_optimal_batch_size(batch_context["pdf_paths_list"])
-        
+        batch_config = self.calculate_optimal_batch_size(
+            batch_context["pdf_paths_list"]
+        )
+
         processing_results = await self._execute_chunked_batch_processing(
             batch_context, batch_config
         )
-        
-        final_analytics = self._build_comprehensive_batch_analytics(
+
+        final_analytics = await self._build_comprehensive_batch_analytics(
             processing_results, batch_context, batch_config
         )
-        
+
         self._log_smart_batch_completion(final_analytics)
         return final_analytics
 
-    def _initialize_smart_batch_context(self, pdf_paths: list[str | Path]) -> dict[str, Any]:
+    def _initialize_smart_batch_context(
+        self, pdf_paths: list[str | Path]
+    ) -> dict[str, Any]:
         """
         Initializes smart batch processing context with memory monitoring.
-        
+
         Args:
             pdf_paths: List of PDF file paths
-            
+
         Returns:
             Batch context dictionary with initialization data
         """
@@ -239,12 +243,10 @@ class EnhancedBatchMemoryManager:
             "pdf_paths_list": pdf_paths_list,
             "start_time": start_time,
             "initial_memory": initial_memory,
-            "memory_checkpoints": [
-                {"stage": "start", "memory": initial_memory}
-            ],
+            "memory_checkpoints": [{"stage": "start", "memory": initial_memory}],
             "cleanup_actions": [],
             "successful_count": 0,
-            "failed_count": 0
+            "failed_count": 0,
         }
 
     async def _execute_chunked_batch_processing(
@@ -252,11 +254,11 @@ class EnhancedBatchMemoryManager:
     ) -> list[ProcessingResult | None]:
         """
         Executes batch processing in optimal chunks with memory management.
-        
+
         Args:
             batch_context: Batch processing context
             batch_config: Optimal batch configuration
-            
+
         Returns:
             List of all processing results
         """
@@ -278,9 +280,7 @@ class EnhancedBatchMemoryManager:
             )
 
             # Memory-Check and cleanup before chunk processing
-            pre_chunk_memory = await self._handle_pre_chunk_memory_management(
-                batch_context, chunk_number
-            )
+            await self._handle_pre_chunk_memory_management(batch_context, chunk_number)
 
             # Process chunk with error handling
             chunk_results = await self._process_single_chunk_with_monitoring(
@@ -305,11 +305,11 @@ class EnhancedBatchMemoryManager:
     ) -> dict[str, Any]:
         """
         Handles memory management checks and cleanup before chunk processing.
-        
+
         Args:
             batch_context: Batch processing context
             chunk_number: Current chunk number
-            
+
         Returns:
             Pre-chunk memory status
         """
@@ -326,12 +326,12 @@ class EnhancedBatchMemoryManager:
     ) -> list[ProcessingResult | None]:
         """
         Processes a single chunk with comprehensive monitoring and error handling.
-        
+
         Args:
             chunk: List of PDF paths in current chunk
             batch_config: Batch configuration parameters
             chunk_number: Current chunk number for logging
-            
+
         Returns:
             List of processing results for this chunk
         """
@@ -351,7 +351,7 @@ class EnhancedBatchMemoryManager:
     ) -> None:
         """
         Updates batch processing statistics after chunk completion.
-        
+
         Args:
             batch_context: Batch processing context to update
             chunk_results: Results from chunk processing
@@ -373,7 +373,7 @@ class EnhancedBatchMemoryManager:
     ) -> None:
         """
         Records memory checkpoint after chunk processing completion.
-        
+
         Args:
             batch_context: Batch processing context
             chunk_number: Current chunk number
@@ -389,19 +389,19 @@ class EnhancedBatchMemoryManager:
         )
 
     async def _build_comprehensive_batch_analytics(
-        self, 
-        all_results: list[ProcessingResult | None], 
-        batch_context: dict[str, Any], 
-        batch_config: dict[str, Any]
+        self,
+        all_results: list[ProcessingResult | None],
+        batch_context: dict[str, Any],
+        batch_config: dict[str, Any],
     ) -> dict[str, Any]:
         """
         Builds comprehensive batch analytics with memory and performance metrics.
-        
+
         Args:
             all_results: Complete list of processing results
             batch_context: Batch processing context
             batch_config: Batch configuration used
-            
+
         Returns:
             Comprehensive analytics dictionary
         """
@@ -420,7 +420,9 @@ class EnhancedBatchMemoryManager:
                 "successful": batch_context["successful_count"],
                 "failed": batch_context["failed_count"],
                 "success_rate": (
-                    batch_context["successful_count"] / len(pdf_paths_list) if pdf_paths_list else 0
+                    batch_context["successful_count"] / len(pdf_paths_list)
+                    if pdf_paths_list
+                    else 0
                 ),
                 "total_time_seconds": round(total_time, 2),
                 "pdfs_per_minute": (
@@ -430,7 +432,9 @@ class EnhancedBatchMemoryManager:
                 ),
             },
             "memory_analytics": {
-                "initial_memory_mb": batch_context["initial_memory"]["process"]["rss_mb"],
+                "initial_memory_mb": batch_context["initial_memory"]["process"][
+                    "rss_mb"
+                ],
                 "final_memory_mb": final_memory["process"]["rss_mb"],
                 "peak_memory_growth_mb": max(
                     cp["memory"]["process"]["rss_mb"]
@@ -438,7 +442,8 @@ class EnhancedBatchMemoryManager:
                     for cp in batch_context["memory_checkpoints"]
                 ),
                 "memory_efficiency_mb_per_pdf": (
-                    final_memory["process"]["rss_mb"] / max(1, batch_context["successful_count"])
+                    final_memory["process"]["rss_mb"]
+                    / max(1, batch_context["successful_count"])
                 ),
                 "cleanup_actions_applied": batch_context["cleanup_actions"],
                 "memory_checkpoints": batch_context["memory_checkpoints"],
@@ -450,13 +455,13 @@ class EnhancedBatchMemoryManager:
     def _log_smart_batch_completion(self, batch_analytics: dict[str, Any]) -> None:
         """
         Logs comprehensive smart batch processing completion statistics.
-        
+
         Args:
             batch_analytics: Complete batch analytics data
         """
         summary = batch_analytics["processing_summary"]
         memory = batch_analytics["memory_analytics"]
-        
+
         logger.info(
             "🎉 Smart Batch-Processing abgeschlossen: %d/%d erfolgreich, %.2f PDFs/min, %.1fMB peak growth",
             summary["successful"],

@@ -185,7 +185,7 @@ class SKR03Manager:
         Klassifiziert einen Artikel basierend auf Beschreibung und Lieferant
 
         Returns:
-            Tuple[kategorie, konto, konfidenz, matched_keywords]
+            tuple[kategorie, konto, konfidenz, matched_keywords]
         """
         if not self._regeln_geladen:
             logger.warning("SKR03-Manager nicht bereit - verwende Fallback")

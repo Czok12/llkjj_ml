@@ -444,33 +444,39 @@ class AsyncGeminiDirectProcessor(GeminiDirectProcessor):
             Liste der ProcessingResults in derselben Reihenfolge
         """
         batch_context = self._prepare_batch_context(pdf_paths, max_concurrent)
-        
+
         # Handle batch size limiting with recursive processing
         if batch_context["requires_chunking"]:
             return await self._process_large_batch_in_chunks(pdf_paths, max_concurrent)
-            
+
         pdf_analysis = self._analyze_and_optimize_batch(pdf_paths)
-        processing_tasks = self._create_concurrent_processing_tasks(pdf_analysis, batch_context)
-        results = await self._execute_batch_with_monitoring(processing_tasks, batch_context)
-        
+        processing_tasks = self._create_concurrent_processing_tasks(
+            pdf_analysis, batch_context
+        )
+        results = await self._execute_batch_with_monitoring(
+            processing_tasks, batch_context
+        )
+
         self._log_batch_completion_statistics(results, batch_context)
         return results
 
-    def _prepare_batch_context(self, pdf_paths: list[str | Path], max_concurrent: int) -> dict:
+    def _prepare_batch_context(
+        self, pdf_paths: list[str | Path], max_concurrent: int
+    ) -> dict:
         """
         Prepares batch processing context with memory monitoring and size validation.
-        
+
         Args:
             pdf_paths: List of PDF file paths
             max_concurrent: Maximum concurrent processing limit
-            
+
         Returns:
             Dictionary containing batch context information
         """
         total_pdfs = len(pdf_paths)
         start_time = time.time()
         initial_memory = self._check_memory_usage()
-        
+
         # Check if batch requires chunking
         requires_chunking = total_pdfs > self.max_batch_size
         if requires_chunking:
@@ -492,7 +498,7 @@ class AsyncGeminiDirectProcessor(GeminiDirectProcessor):
             "start_time": start_time,
             "initial_memory": initial_memory,
             "requires_chunking": requires_chunking,
-            "processed_count": 0
+            "processed_count": 0,
         }
 
     async def _process_large_batch_in_chunks(
@@ -500,31 +506,31 @@ class AsyncGeminiDirectProcessor(GeminiDirectProcessor):
     ) -> list[ProcessingResult | None]:
         """
         Processes large batches by splitting them into manageable chunks.
-        
+
         Args:
             pdf_paths: List of PDF file paths
             max_concurrent: Maximum concurrent processing limit
-            
+
         Returns:
             Combined results from all chunks
         """
         total_pdfs = len(pdf_paths)
         all_results: list[ProcessingResult | None] = []
-        
+
         for i in range(0, total_pdfs, self.max_batch_size):
             chunk = pdf_paths[i : i + self.max_batch_size]
             chunk_results = await self.process_batch_async(chunk, max_concurrent)
             all_results.extend(chunk_results)
-            
+
         return all_results
 
     def _analyze_and_optimize_batch(self, pdf_paths: list[str | Path]) -> list[dict]:
         """
         Analyzes PDF files for optimal processing strategy and resource allocation.
-        
+
         Args:
             pdf_paths: List of PDF file paths
-            
+
         Returns:
             List of PDF analysis information with optimization parameters
         """
@@ -550,17 +556,19 @@ class AsyncGeminiDirectProcessor(GeminiDirectProcessor):
                 for info in pdf_analysis[:5]
             ),
         )
-        
+
         return pdf_analysis
 
-    def _create_concurrent_processing_tasks(self, pdf_analysis: list[dict], batch_context: dict) -> list:
+    def _create_concurrent_processing_tasks(
+        self, pdf_analysis: list[dict], batch_context: dict
+    ) -> list:
         """
         Creates concurrent processing tasks with enhanced monitoring capabilities.
-        
+
         Args:
             pdf_analysis: List of analyzed PDF information
             batch_context: Batch processing context
-            
+
         Returns:
             List of async tasks for concurrent execution
         """
@@ -575,11 +583,14 @@ class AsyncGeminiDirectProcessor(GeminiDirectProcessor):
                     # 📊 MEMORY-CHECK alle 10 PDFs
                     if (
                         batch_context["processed_count"] > 0
-                        and batch_context["processed_count"] % self.memory_check_interval == 0
+                        and batch_context["processed_count"]
+                        % self.memory_check_interval
+                        == 0
                     ):
                         current_memory = self._check_memory_usage()
                         memory_growth = (
-                            current_memory["rss_mb"] - batch_context["initial_memory"]["rss_mb"]
+                            current_memory["rss_mb"]
+                            - batch_context["initial_memory"]["rss_mb"]
                         )
 
                         if memory_growth > 500:  # >500MB Growth
@@ -589,6 +600,7 @@ class AsyncGeminiDirectProcessor(GeminiDirectProcessor):
                                 batch_context["processed_count"],
                             )
                             import gc
+
                             gc.collect()
 
                     result = await self.process_pdf_async(pdf_info["path"])
@@ -616,7 +628,7 @@ class AsyncGeminiDirectProcessor(GeminiDirectProcessor):
             _process_with_enhanced_monitoring(pdf_info, i)
             for i, pdf_info in enumerate(pdf_analysis)
         ]
-        
+
         return tasks
 
     async def _execute_batch_with_monitoring(
@@ -624,11 +636,11 @@ class AsyncGeminiDirectProcessor(GeminiDirectProcessor):
     ) -> list[ProcessingResult | None]:
         """
         Executes batch processing tasks with comprehensive monitoring.
-        
+
         Args:
             processing_tasks: List of async processing tasks
             batch_context: Batch processing context
-            
+
         Returns:
             List of processing results
         """
@@ -641,7 +653,7 @@ class AsyncGeminiDirectProcessor(GeminiDirectProcessor):
     ) -> None:
         """
         Logs comprehensive batch completion statistics and performance metrics.
-        
+
         Args:
             results: List of processing results
             batch_context: Batch processing context

@@ -17,12 +17,13 @@ Datum: 18. August 2025
 """
 
 import logging
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Literal
 
 from llkjj_ml.models.processing_result import ProcessingResult
-from llkjj_ml.settings_bridge import ConfigBridge, config_instance
 from llkjj_ml.optimization import batch_memory_optimizer
+from llkjj_ml.settings_bridge import ConfigBridge, config_instance
 
 from .gemini_strategy import GeminiStrategy
 from .processing_strategy import ProcessingStrategy
@@ -50,7 +51,9 @@ class UnifiedProcessor:
         self._memory_optimizer = batch_memory_optimizer.get_global_optimizer()
         self._initialize_strategies()
 
-        logger.info("🔧 UnifiedProcessor initialisiert mit Strategy-Pattern und Memory-Optimization")
+        logger.info(
+            "🔧 UnifiedProcessor initialisiert mit Strategy-Pattern und Memory-Optimization"
+        )
 
     def _initialize_strategies(self) -> None:
         """Initialisiere alle verfügbaren Strategies."""
@@ -190,7 +193,9 @@ class UnifiedProcessor:
                 return result
 
             except Exception as e:
-                logger.error("❌ %s Strategy fehlgeschlagen: %s", strategy_instance.name, e)
+                logger.error(
+                    "❌ %s Strategy fehlgeschlagen: %s", strategy_instance.name, e
+                )
 
                 # Fallback-Mechanismus
                 if (
@@ -325,48 +330,54 @@ class UnifiedProcessor:
 
         return summary
 
-    def process_batch_optimized(self, pdf_paths: list[str | Path], strategy: StrategyType = "auto") -> list[ProcessingResult]:
+    def process_batch_optimized(
+        self, pdf_paths: list[str | Path], strategy: StrategyType = "auto"
+    ) -> list[ProcessingResult]:
         """
         Memory-optimized batch processing of multiple PDFs.
-        
+
         Args:
             pdf_paths: List of PDF file paths
             strategy: Processing strategy to use
-            
+
         Returns:
             List of ProcessingResults
         """
         batch_config = self._prepare_optimized_batch_configuration(pdf_paths)
         results = self._execute_memory_managed_batch_processing(batch_config, strategy)
-        
+
         self._log_batch_optimization_completion(results)
         return results
 
-    def _prepare_optimized_batch_configuration(self, pdf_paths: list[str | Path]) -> dict:
+    def _prepare_optimized_batch_configuration(
+        self, pdf_paths: list[str | Path]
+    ) -> dict:
         """
         Prepares optimized batch configuration based on memory constraints.
-        
+
         Args:
             pdf_paths: List of PDF file paths
-            
+
         Returns:
             Dictionary containing batch configuration parameters
         """
         pdf_paths = [Path(p) for p in pdf_paths]
-        
+
         # Get optimal batch size based on memory
         optimal_batch_size, batch_sizes = self._memory_optimizer.suggest_batch_size(
             item_count=len(pdf_paths),
-            memory_per_item_mb=50.0  # Conservative estimate for PDF processing
+            memory_per_item_mb=50.0,  # Conservative estimate for PDF processing
         )
-        
-        logger.info(f"📊 Batch processing {len(pdf_paths)} PDFs in {len(batch_sizes)} batches")
-        
+
+        logger.info(
+            f"📊 Batch processing {len(pdf_paths)} PDFs in {len(batch_sizes)} batches"
+        )
+
         return {
             "pdf_paths": pdf_paths,
             "optimal_batch_size": optimal_batch_size,
             "batch_sizes": batch_sizes,
-            "total_pdfs": len(pdf_paths)
+            "total_pdfs": len(pdf_paths),
         }
 
     def _execute_memory_managed_batch_processing(
@@ -374,32 +385,36 @@ class UnifiedProcessor:
     ) -> list[ProcessingResult]:
         """
         Executes batch processing with memory management between batches.
-        
+
         Args:
             batch_config: Batch configuration parameters
             strategy: Processing strategy to use
-            
+
         Returns:
             List of all processing results
         """
         results = []
         start_idx = 0
-        
+
         for batch_num, batch_size in enumerate(batch_config["batch_sizes"], 1):
-            batch_paths = batch_config["pdf_paths"][start_idx:start_idx + batch_size]
-            
-            logger.info(f"🔄 Processing batch {batch_num}/{len(batch_config['batch_sizes'])} ({len(batch_paths)} PDFs)")
-            
+            batch_paths = batch_config["pdf_paths"][start_idx : start_idx + batch_size]
+
+            logger.info(
+                f"🔄 Processing batch {batch_num}/{len(batch_config['batch_sizes'])} ({len(batch_paths)} PDFs)"
+            )
+
             # Process current batch with memory management
-            batch_results = self._process_single_batch_with_memory_context(batch_paths, strategy)
+            batch_results = self._process_single_batch_with_memory_context(
+                batch_paths, strategy
+            )
             results.extend(batch_results)
-            
+
             start_idx += batch_size
-            
+
             # Optimize memory between batches if not the last batch
             if batch_num < len(batch_config["batch_sizes"]):
                 self._optimize_inter_batch_memory()
-        
+
         return results
 
     def _process_single_batch_with_memory_context(
@@ -407,11 +422,11 @@ class UnifiedProcessor:
     ) -> list[ProcessingResult]:
         """
         Processes a single batch within memory-managed context.
-        
+
         Args:
             batch_paths: List of PDF paths for current batch
             strategy: Processing strategy to use
-            
+
         Returns:
             List of processing results for this batch
         """
@@ -424,30 +439,38 @@ class UnifiedProcessor:
                     batch_results.append(result)
                 except Exception as e:
                     logger.error(f"❌ Failed to process {pdf_path}: {e}")
-                    # Create error result
+                    # Create error result with required fields
                     error_result = ProcessingResult(
-                        success=False,
-                        error_message=str(e),
-                        file_path=str(pdf_path)
+                        pdf_path=str(pdf_path),
+                        processing_timestamp=datetime.utcnow().isoformat() + "Z",
+                        processing_method="gemini_first",
+                        processing_time_ms=0,
+                        confidence_score=0.0,
+                        extraction_quality="poor",
+                        skr03_classifications=[],
                     )
                     batch_results.append(error_result)
-            
+
             return batch_results
 
     def _optimize_inter_batch_memory(self) -> None:
         """
         Optimizes memory usage between batch processing iterations.
-        
+
         Note:
             Performs memory cleanup and logs optimization results
         """
         optimization_result = self._memory_optimizer.optimize_memory()
-        logger.debug(f"🗑️ Inter-batch cleanup: {optimization_result.memory_freed_mb:.1f}MB freed")
+        logger.debug(
+            f"🗑️ Inter-batch cleanup: {optimization_result.memory_freed_mb:.1f}MB freed"
+        )
 
-    def _log_batch_optimization_completion(self, results: list[ProcessingResult]) -> None:
+    def _log_batch_optimization_completion(
+        self, results: list[ProcessingResult]
+    ) -> None:
         """
         Logs completion statistics for optimized batch processing.
-        
+
         Args:
             results: List of all processing results
         """
@@ -456,13 +479,13 @@ class UnifiedProcessor:
     def get_memory_status(self) -> dict[str, Any]:
         """
         Get current memory status and optimization information.
-        
+
         Returns:
             Dict with memory status and optimization history
         """
         memory_status = self._memory_optimizer.get_memory_status()
         optimization_history = self._memory_optimizer.get_optimization_history()
-        
+
         return {
             "memory_status": {
                 "total_memory_gb": memory_status.total_memory_gb,
@@ -473,11 +496,17 @@ class UnifiedProcessor:
             },
             "optimization_history": {
                 "total_optimizations": len(optimization_history),
-                "total_memory_freed_mb": sum(opt.memory_freed_mb for opt in optimization_history),
-                "average_optimization_time_ms": (
-                    sum(opt.optimization_time_ms for opt in optimization_history) / len(optimization_history)
-                    if optimization_history else 0
+                "total_memory_freed_mb": sum(
+                    opt.memory_freed_mb for opt in optimization_history
                 ),
-                "last_optimization": optimization_history[-1].__dict__ if optimization_history else None,
-            }
+                "average_optimization_time_ms": (
+                    sum(opt.optimization_time_ms for opt in optimization_history)
+                    / len(optimization_history)
+                    if optimization_history
+                    else 0
+                ),
+                "last_optimization": optimization_history[-1].__dict__
+                if optimization_history
+                else None,
+            },
         }

@@ -124,7 +124,7 @@ class TypeSafetyAnalyzer:
             strict: Ob --strict-Modus verwendet werden soll
 
         Returns:
-            List[Dict]: Parsed mypy-Errors
+            list[Dict]: Parsed mypy-Errors
         """
         try:
             cmd = ["poetry", "run", "mypy"]
@@ -208,7 +208,7 @@ class TypeSafetyAnalyzer:
             errors: List der mypy-Errors
 
         Returns:
-            List[TypeErrorFix]: Vorgeschlagene Korrekturen
+            list[TypeErrorFix]: Vorgeschlagene Korrekturen
         """
         fixes = []
 

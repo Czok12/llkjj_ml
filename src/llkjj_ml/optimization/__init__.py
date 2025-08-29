@@ -10,7 +10,7 @@ from .batch_memory_optimizer import (
 
 __all__ = [
     "BatchMemoryOptimizer",
-    "MemoryStatus", 
+    "MemoryStatus",
     "OptimizationResult",
     "create_memory_optimizer",
     "get_global_optimizer",

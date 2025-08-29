@@ -69,7 +69,9 @@ class TrainingDataPersistence:
     def _setup_chromadb(self) -> None:
         """Setup ChromaDB für RAG-System-Population"""
         try:
-            self.chroma_client = chromadb.PersistentClient(path=str(self.config.vector_db_path))
+            self.chroma_client = chromadb.PersistentClient(
+                path=str(self.config.vector_db_path)
+            )
             self.collection = self.chroma_client.get_or_create_collection(
                 name="invoice_classifications",
                 metadata={

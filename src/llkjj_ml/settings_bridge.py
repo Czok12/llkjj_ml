@@ -80,24 +80,26 @@ def _get_backend_settings() -> Any:
                 """Load elektro_lieferanten from config file - TASK-028: No hardcoded fallback."""
                 try:
                     import yaml
-                    
+
                     # Determine config file path relative to project root
                     config_file = self.project_root / "config" / "ml" / "suppliers.yaml"
-                    
+
                     if config_file.exists():
                         with config_file.open("r", encoding="utf-8") as f:
                             config_data = yaml.safe_load(f)
                             if config_data and "elektro_lieferanten" in config_data:
                                 suppliers = config_data["elektro_lieferanten"]
                                 if suppliers:  # Only return if non-empty
-                                    return suppliers
+                                    return list(suppliers)  # Ensure list[str] type
                 except Exception as e:
                     import logging
+
                     logger = logging.getLogger(__name__)
                     logger.warning(f"Failed to load suppliers config: {e}")
-                
+
                 # TASK-028: No hardcoded fallback - return empty list to force proper configuration
                 import logging
+
                 logger = logging.getLogger(__name__)
                 logger.error(
                     "No elektro_lieferanten configuration found! Please configure suppliers in "
@@ -302,28 +304,30 @@ class ConfigBridge:
             suppliers = getattr(self._ml_config, "elektro_lieferanten", [])
             if suppliers:  # Only return if non-empty
                 return suppliers
-        
+
         # Try to load from suppliers.yaml config file
         try:
             import yaml
-            
+
             # Determine config file path relative to project root
             config_file = self.project_root / "config" / "ml" / "suppliers.yaml"
-            
+
             if config_file.exists():
                 with config_file.open("r", encoding="utf-8") as f:
                     config_data = yaml.safe_load(f)
                     if config_data and "elektro_lieferanten" in config_data:
                         suppliers = config_data["elektro_lieferanten"]
                         if suppliers:  # Only return if non-empty
-                            return suppliers
+                            return list(suppliers)  # Ensure list[str] type
         except Exception as e:
             import logging
+
             logger = logging.getLogger(__name__)
             logger.warning(f"Failed to load suppliers config: {e}")
-        
+
         # TASK-028: No hardcoded fallback - return empty list to force proper configuration
         import logging
+
         logger = logging.getLogger(__name__)
         logger.error(
             "No elektro_lieferanten configuration found! Please configure suppliers in "
