@@ -56,7 +56,7 @@ _resource_manager = None  # ResourceManager() disabled in v2.0.0
 class _DummyResourceManager:
     """Dummy ResourceManager für Tests."""
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         pass
 
 

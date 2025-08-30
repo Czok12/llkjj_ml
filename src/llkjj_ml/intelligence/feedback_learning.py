@@ -84,6 +84,8 @@ class PatternLearning(BaseModel):
 
 
 class FeedbackLearningEngine:
+    config: ConfigBridge | None
+    feedback_db_path: Path | None
     """
     🧠 Intelligentes Feedback-Learning für SKR03-Klassifizierung
 
@@ -119,6 +121,9 @@ class FeedbackLearningEngine:
 
     def _initialize_feedback_database(self) -> None:
         """Initialize SQLite database for feedback storage."""
+        if self.feedback_db_path is None:
+            logger.warning("⚠️ Feedback-Datenbank nicht verfügbar (Test-Modus)")
+            return None
         with sqlite3.connect(self.feedback_db_path) as conn:
             # Feedback Records Table
             conn.execute(
@@ -207,6 +212,10 @@ class FeedbackLearningEngine:
             supplier_context=supplier_context or {},
         )
 
+        if not self.feedback_db_path:
+            logger.warning("Database path not available - skipping feedback recording")
+            return ""
+
         with sqlite3.connect(self.feedback_db_path) as conn:
             conn.execute(
                 """
@@ -267,6 +276,9 @@ class FeedbackLearningEngine:
             # Create or update pattern
             pattern_id = f"{supplier}_{skr03_account}_{hash(description) % 10000}"
 
+            if self.feedback_db_path is None:
+                logger.warning("⚠️ Feedback-Datenbank nicht verfügbar (Test-Modus)")
+                return
             with sqlite3.connect(self.feedback_db_path) as conn:
                 # Check if pattern exists
                 existing = conn.execute(
@@ -359,6 +371,9 @@ class FeedbackLearningEngine:
             return classification
 
         try:
+            if self.feedback_db_path is None:
+                logger.warning("⚠️ Feedback-Datenbank nicht verfügbar (Test-Modus)")
+                return classification
             with sqlite3.connect(self.feedback_db_path) as conn:
                 # Find matching patterns
                 patterns = conn.execute(
@@ -428,6 +443,9 @@ class FeedbackLearningEngine:
         cutoff_date = (datetime.now() - timedelta(days=days_back)).isoformat()
 
         try:
+            if self.feedback_db_path is None:
+                logger.warning("⚠️ Feedback-Datenbank nicht verfügbar (Test-Modus)")
+                return {"conflicts": [], "recommendations": []}
             with sqlite3.connect(self.feedback_db_path) as conn:
                 # Get recent feedback for supplier
                 feedbacks = conn.execute(
@@ -504,6 +522,9 @@ class FeedbackLearningEngine:
             return []
 
         try:
+            if self.feedback_db_path is None:
+                logger.warning("⚠️ Feedback-Datenbank nicht verfügbar (Test-Modus)")
+                return []
             with sqlite3.connect(self.feedback_db_path) as conn:
                 patterns = conn.execute(
                     """
@@ -551,6 +572,15 @@ class FeedbackLearningEngine:
             }
 
         try:
+            if self.feedback_db_path is None:
+                logger.warning("⚠️ Feedback-Datenbank nicht verfügbar (Test-Modus)")
+                return {
+                    "total_feedback_entries": 0,
+                    "learning_pattern_extraction_success": False,
+                    "accuracy_trend": "unknown",
+                    "most_common_corrections": [],
+                    "error": "Database not initialized",
+                }
             with sqlite3.connect(self.feedback_db_path) as conn:
                 # Total feedback entries
                 total_feedback = conn.execute(
@@ -618,6 +648,7 @@ class FeedbackLearningEngine:
                 ).fetchone()[0]
 
                 # Calculate trend
+                accuracy_ratio = 0.0
                 if recent_confirmations + recent_corrections > 0:
                     accuracy_ratio = recent_confirmations / (
                         recent_confirmations + recent_corrections
@@ -638,9 +669,7 @@ class FeedbackLearningEngine:
                     "most_common_corrections": most_common_corrections,
                     "feedback_distribution": {ft[0]: ft[1] for ft in feedback_types},
                     "learned_patterns_count": pattern_count,
-                    "recent_accuracy_ratio": accuracy_ratio
-                    if "accuracy_ratio" in locals()
-                    else 0.0,
+                    "recent_accuracy_ratio": accuracy_ratio,
                 }
 
         except Exception as e:

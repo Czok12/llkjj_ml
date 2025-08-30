@@ -19,7 +19,7 @@ import json
 import logging
 import os
 import time
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -593,7 +593,7 @@ class GeminiDirectProcessor:
         # Return error result instead of re-raising
         return ProcessingResult(
             pdf_path=str(pdf_path),
-            processing_timestamp=datetime.now(datetime.UTC).isoformat(),
+            processing_timestamp=datetime.now(UTC).isoformat(),
             processing_method="gemini_first",
             processing_time_ms=int((time.time() - start_time) * 1000),
             confidence_score=0.0,

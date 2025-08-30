@@ -213,7 +213,7 @@ class ConfigBridge:
         return getattr(self._ml_config, "cache_enabled", True)
 
     @property
-    def model_config(self) -> dict[str, any]:
+    def model_config(self) -> dict[str, Any]:
         """Model-Konfiguration für Kompatibilität mit Tests"""
         return {
             "model_name": self.model_name,
