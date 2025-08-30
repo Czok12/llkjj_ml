@@ -163,6 +163,16 @@ class SKR03Manager:
         """Prüft ob Manager einsatzbereit ist"""
         return self._regeln_geladen
 
+    @property
+    def regeln(self) -> dict[str, Any]:
+        """Kompatibilitäts-Property für Tests"""
+        return self.klassifizierungsregeln
+
+    @property
+    def kontenplan(self) -> Any:
+        """Kompatibilitäts-Property für Tests"""
+        return self.kontenplan_parser
+
     def get_statistiken(self) -> dict[str, Any]:
         """Gibt Status-Statistiken zurück"""
         regeln_count = len(self.klassifizierungsregeln)

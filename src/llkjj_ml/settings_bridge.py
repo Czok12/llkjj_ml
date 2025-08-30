@@ -208,6 +208,20 @@ class ConfigBridge:
         return getattr(self._ml_config, "log_file", "logs/llkjj_ml.log")
 
     @property
+    def cache_enabled(self) -> bool:
+        """Cache-Aktivierung für Kompatibilität mit Tests"""
+        return getattr(self._ml_config, "cache_enabled", True)
+
+    @property
+    def model_config(self) -> dict[str, any]:
+        """Model-Konfiguration für Kompatibilität mit Tests"""
+        return {
+            "model_name": self.model_name,
+            "temperature": self.temperature,
+            "max_output_tokens": self.max_output_tokens,
+        }
+
+    @property
     def umsatzsteuer_regulaer(self) -> float:
         return getattr(self._ml_config, "umsatzsteuer_regulaer", 0.19)
 
