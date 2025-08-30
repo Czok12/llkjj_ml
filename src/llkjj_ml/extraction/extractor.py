@@ -33,7 +33,7 @@ class DataExtractor:
         """Initialisiert DataExtractor mit Docling DocumentConverter."""
         logger.info("🔄 Initialisiere DataExtractor...")
 
-        # Config für Kompatibilität akzeptieren
+        # Config für Kompatibilität akzeptieren aber nicht verwenden
         self.config = config
 
         # Docling DocumentConverter für PDF-Verarbeitung
@@ -41,12 +41,16 @@ class DataExtractor:
 
         # Optional: Gemini AI Client für Verbesserung
         self.gemini_client = None
+        
+        # Robuste Config-Abfrage ohne Fehler
         try:
+            # Versuche Config zu laden, aber akzeptiere wenn nicht verfügbar
+            from ..settings_bridge import Config
             if hasattr(Config, "USE_GEMINI") and hasattr(Config, "GEMINI_API_KEY"):
                 # Gemini würde hier initialisiert werden
                 pass
         except Exception as e:
-            logger.warning(f"⚠️ Gemini AI nicht verfügbar: {e}")
+            logger.info(f"ℹ️ Config nicht verfügbar (Test-Modus?): {e}")
 
         logger.info("✅ DataExtractor initialisiert")
 

@@ -214,7 +214,8 @@ class GeminiDirectProcessor:
             return processing_result
 
         except Exception as e:
-            return self._handle_processing_error(e, validated_path, start_time)
+            self._handle_processing_error(e, validated_path, start_time)
+            raise
 
     def _validate_pdf_input(self, pdf_path: str | Path) -> Path:
         """
@@ -456,7 +457,9 @@ class GeminiDirectProcessor:
             logger.warning("⚠️ Keine Rechnungspositionen extrahiert")
 
     def _store_in_rag_system_if_enabled(
-        self, gemini_result: dict, pdf_path: Path
+        self,
+        gemini_result: dict,
+        pdf_path: Path,
     ) -> None:
         """
         Stores results in RAG system for future improvements if enabled.
@@ -505,7 +508,9 @@ class GeminiDirectProcessor:
         )
 
     def _log_pipeline_success(
-        self, enhanced_classifications: list, quality_data: dict
+        self,
+        enhanced_classifications: list,
+        quality_data: dict,
     ) -> None:
         """
         Logs successful pipeline completion statistics.
@@ -522,7 +527,9 @@ class GeminiDirectProcessor:
         )
 
     def _handle_training_data_and_metrics(
-        self, result: ProcessingResult, pdf_path: Path
+        self,
+        result: ProcessingResult,
+        pdf_path: Path,
     ) -> None:
         """
         Handles training data persistence and performance metrics recording.
@@ -562,7 +569,10 @@ class GeminiDirectProcessor:
             logger.warning("⚠️ Performance metrics recording failed: %s", metrics_error)
 
     def _handle_processing_error(
-        self, error: Exception, pdf_path: Path, start_time: float
+        self,
+        error: Exception,
+        pdf_path: Path,
+        start_time: float,
     ) -> ProcessingResult:
         """
         Handles processing errors with detailed logging and metrics recording.
@@ -583,7 +593,7 @@ class GeminiDirectProcessor:
         # Return error result instead of re-raising
         return ProcessingResult(
             pdf_path=str(pdf_path),
-            processing_timestamp=datetime.utcnow().isoformat() + "Z",
+            processing_timestamp=datetime.now(datetime.UTC).isoformat(),
             processing_method="gemini_first",
             processing_time_ms=int((time.time() - start_time) * 1000),
             confidence_score=0.0,
@@ -592,7 +602,10 @@ class GeminiDirectProcessor:
         )
 
     def _build_error_context(
-        self, error: Exception, pdf_path: Path, start_time: float
+        self,
+        error: Exception,
+        pdf_path: Path,
+        start_time: float,
     ) -> dict:
         """
         Builds comprehensive error context for logging and metrics.
@@ -755,7 +768,9 @@ EXTRAHIERE ALLE sichtbaren Positionen vollständig und präzise!
 """
 
     def _analyze_pdf_with_gemini(
-        self, pdf_content: bytes, prompt: str
+        self,
+        pdf_content: bytes,
+        prompt: str,
     ) -> dict[str, Any]:
         """
         Führt die direkte PDF-Analyse mit Gemini durch.
@@ -843,7 +858,8 @@ EXTRAHIERE ALLE sichtbaren Positionen vollständig und präzise!
             raise
 
     def _enhance_with_rag_system(
-        self, line_items: list[dict[str, Any]]
+        self,
+        line_items: list[dict[str, Any]],
     ) -> list[dict[str, Any]]:
         """
         🧠 Verbessert SKR03-Klassifizierung durch RAG-System + Context-Aware Intelligence.
@@ -916,7 +932,9 @@ EXTRAHIERE ALLE sichtbaren Positionen vollständig und präzise!
         return enhanced_items
 
     def _generate_spacy_annotations(
-        self, structured_data: dict[str, Any], classifications: list[dict[str, Any]]
+        self,
+        structured_data: dict[str, Any],
+        classifications: list[dict[str, Any]],
     ) -> dict[str, Any]:
         """
         Generiert spaCy-Training-Annotationen aus den extrahierten Daten.
@@ -1013,7 +1031,10 @@ EXTRAHIERE ALLE sichtbaren Positionen vollständig und präzise!
     # === ROBUST HELPER METHODS (Hybrid Implementation) ===
 
     def _analyze_pdf_with_gemini_robust(
-        self, pdf_content: bytes, analysis_prompt: str, pdf_path: Path
+        self,
+        pdf_content: bytes,
+        analysis_prompt: str,
+        pdf_path: Path,
     ) -> dict[str, Any]:
         """
         Robuste Gemini-Analyse mit Retry-Logic und detailliertem Error Handling.
@@ -1096,7 +1117,8 @@ EXTRAHIERE ALLE sichtbaren Positionen vollständig und präzise!
         raise RuntimeError("Unerwarteter Fehler in Gemini-Retry-Logic")
 
     def _enhance_with_rag_system_robust(
-        self, line_items: list[dict[str, Any]]
+        self,
+        line_items: list[dict[str, Any]],
     ) -> list[dict[str, Any]]:
         """
         Robuste RAG-Enhancement mit Fallback auf Basis-Klassifizierung.
@@ -1116,7 +1138,8 @@ EXTRAHIERE ALLE sichtbaren Positionen vollständig und präzise!
             return self._fallback_skr03_classification(line_items)
 
     def _fallback_skr03_classification(
-        self, line_items: list[dict[str, Any]]
+        self,
+        line_items: list[dict[str, Any]],
     ) -> list[dict[str, Any]]:
         """
         Fallback-Klassifizierung ohne RAG-System bei Fehlern.
@@ -1172,7 +1195,9 @@ EXTRAHIERE ALLE sichtbaren Positionen vollständig und präzise!
         return classifications
 
     def _generate_spacy_annotations_robust(
-        self, structured_result: dict[str, Any], classifications: list[dict[str, Any]]
+        self,
+        structured_result: dict[str, Any],
+        classifications: list[dict[str, Any]],
     ) -> list[dict[str, Any]]:
         """
         Robuste spaCy-Annotation-Generierung mit Position-Korrektur.
@@ -1320,7 +1345,9 @@ EXTRAHIERE ALLE sichtbaren Positionen vollständig und präzise!
             return ""
 
     def _store_in_rag_system_robust(
-        self, structured_result: dict[str, Any], pdf_path: Path
+        self,
+        structured_result: dict[str, Any],
+        pdf_path: Path,
     ) -> None:
         """
         Robuste RAG-Speicherung mit Error Handling.
@@ -1344,7 +1371,10 @@ EXTRAHIERE ALLE sichtbaren Positionen vollständig und präzise!
             logger.warning(f"⚠️ RAG-Speicherung nicht kritisch, fortfahren: {e}")
 
     def _write_error_log_detailed(
-        self, pdf_path: Path, error: Exception, context: dict[str, Any]
+        self,
+        pdf_path: Path,
+        error: Exception,
+        context: dict[str, Any],
     ) -> None:
         """
         Detailliertes Error-Logging mit Kontext für Debugging.
