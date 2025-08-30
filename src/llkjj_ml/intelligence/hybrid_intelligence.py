@@ -620,6 +620,10 @@ class HybridIntelligenceEngine:
         }
 
 
+# Alias für Backward Compatibility
+HybridIntelligence = HybridIntelligenceEngine
+
+
 # Convenience Functions
 def create_hybrid_engine(
     config: ConfigBridge | None = None,

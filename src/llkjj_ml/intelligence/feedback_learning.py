@@ -542,3 +542,7 @@ class FeedbackLearningEngine:
         except Exception as e:
             logger.error("❌ Learning-Stats fehlgeschlagen: %s", e)
             return {"error": str(e)}
+
+
+# Alias für Backward Compatibility
+FeedbackLearning = FeedbackLearningEngine

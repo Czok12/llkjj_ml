@@ -406,5 +406,9 @@ def enhance_classification_with_context(
     return enhanced_items
 
 
+# Alias für Backward Compatibility
+ContextClassifier = ContextAwareClassifier
+
+
 # Export für mypy
-__all__ = ["ContextAwareClassifier", "enhance_classification_with_context"]
+__all__ = ["ContextAwareClassifier", "ContextClassifier", "enhance_classification_with_context"]

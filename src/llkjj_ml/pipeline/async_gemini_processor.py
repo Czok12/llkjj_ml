@@ -868,6 +868,10 @@ class AsyncGeminiDirectProcessor(GeminiDirectProcessor):
         return deleted_count
 
 
+# Alias für Backward Compatibility
+AsyncGeminiProcessor = AsyncGeminiDirectProcessor
+
+
 # Convenience-Funktion für CLI-Integration
 async def process_pdf_async(
     pdf_path: str, config: ConfigBridge | None = None
