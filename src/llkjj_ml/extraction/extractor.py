@@ -13,8 +13,6 @@ from typing import Any
 
 from docling.document_converter import DocumentConverter
 
-from ..settings_bridge import Config
-
 logger = logging.getLogger(__name__)
 
 
@@ -41,11 +39,12 @@ class DataExtractor:
 
         # Optional: Gemini AI Client für Verbesserung
         self.gemini_client = None
-        
+
         # Robuste Config-Abfrage ohne Fehler
         try:
             # Versuche Config zu laden, aber akzeptiere wenn nicht verfügbar
             from ..settings_bridge import Config
+
             if hasattr(Config, "USE_GEMINI") and hasattr(Config, "GEMINI_API_KEY"):
                 # Gemini würde hier initialisiert werden
                 pass

@@ -999,6 +999,7 @@ def create_advanced_docling_processor(**kwargs: Any) -> AdvancedDoclingProcessor
 # Alias für Backward Compatibility
 DoclingProcessor = AdvancedDoclingProcessor
 
+
 # Rückwärtskompatibilität mit alter API
 def create_optimized_docling_processor(**kwargs: Any) -> AdvancedDoclingProcessor:
     """Rückwärtskompatibilität - verwendet jetzt AdvancedDoclingProcessor."""

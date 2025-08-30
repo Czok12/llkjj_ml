@@ -543,11 +543,11 @@ class FeedbackLearningEngine:
         if self.feedback_db_path is None:
             logger.warning("⚠️ Feedback-Datenbank nicht verfügbar (Test-Modus)")
             return {
-                'total_feedback_entries': 0,
-                'learning_pattern_extraction_success': False,
-                'accuracy_trend': 'unknown',
-                'most_common_corrections': [],
-                'error': 'Database not initialized'
+                "total_feedback_entries": 0,
+                "learning_pattern_extraction_success": False,
+                "accuracy_trend": "unknown",
+                "most_common_corrections": [],
+                "error": "Database not initialized",
             }
 
         try:
@@ -560,8 +560,8 @@ class FeedbackLearningEngine:
                 # Feedback type distribution
                 feedback_types = conn.execute(
                     """
-                    SELECT feedback_type, COUNT(*) 
-                    FROM feedback_records 
+                    SELECT feedback_type, COUNT(*)
+                    FROM feedback_records
                     GROUP BY feedback_type
                     """
                 ).fetchall()
@@ -570,7 +570,7 @@ class FeedbackLearningEngine:
                 corrections = conn.execute(
                     """
                     SELECT corrected_classification, COUNT(*) as count
-                    FROM feedback_records 
+                    FROM feedback_records
                     WHERE feedback_type = 'correction'
                     GROUP BY corrected_classification
                     ORDER BY count DESC
@@ -582,20 +582,18 @@ class FeedbackLearningEngine:
                 for correction_json, count in corrections:
                     try:
                         correction_data = json.loads(correction_json)
-                        from_account = correction_data.get('original_account', 'Unknown')
-                        to_account = correction_data.get('skr03_account', 'Unknown')
-                        most_common_corrections.append({
-                            'from': from_account,
-                            'to': to_account,
-                            'count': count
-                        })
+                        from_account = correction_data.get(
+                            "original_account", "Unknown"
+                        )
+                        to_account = correction_data.get("skr03_account", "Unknown")
+                        most_common_corrections.append(
+                            {"from": from_account, "to": to_account, "count": count}
+                        )
                     except (json.JSONDecodeError, KeyError):
                         # Fallback for malformed data
-                        most_common_corrections.append({
-                            'from': 'Unknown',
-                            'to': 'Unknown', 
-                            'count': count
-                        })
+                        most_common_corrections.append(
+                            {"from": "Unknown", "to": "Unknown", "count": count}
+                        )
 
                 # Pattern extraction success
                 pattern_count = conn.execute(
@@ -605,52 +603,54 @@ class FeedbackLearningEngine:
                 # Accuracy trend (simplified)
                 recent_confirmations = conn.execute(
                     """
-                    SELECT COUNT(*) FROM feedback_records 
-                    WHERE feedback_type = 'confirmation' 
+                    SELECT COUNT(*) FROM feedback_records
+                    WHERE feedback_type = 'confirmation'
                     AND datetime(timestamp) > datetime('now', '-30 days')
                     """
                 ).fetchone()[0]
 
                 recent_corrections = conn.execute(
                     """
-                    SELECT COUNT(*) FROM feedback_records 
-                    WHERE feedback_type = 'correction' 
+                    SELECT COUNT(*) FROM feedback_records
+                    WHERE feedback_type = 'correction'
                     AND datetime(timestamp) > datetime('now', '-30 days')
                     """
                 ).fetchone()[0]
 
                 # Calculate trend
                 if recent_confirmations + recent_corrections > 0:
-                    accuracy_ratio = recent_confirmations / (recent_confirmations + recent_corrections)
+                    accuracy_ratio = recent_confirmations / (
+                        recent_confirmations + recent_corrections
+                    )
                     if accuracy_ratio > 0.7:
-                        accuracy_trend = 'improving'
+                        accuracy_trend = "improving"
                     elif accuracy_ratio > 0.5:
-                        accuracy_trend = 'stable'
+                        accuracy_trend = "stable"
                     else:
-                        accuracy_trend = 'declining'
+                        accuracy_trend = "declining"
                 else:
-                    accuracy_trend = 'insufficient_data'
+                    accuracy_trend = "insufficient_data"
 
                 return {
-                    'total_feedback_entries': total_feedback,
-                    'learning_pattern_extraction_success': pattern_count > 0,
-                    'accuracy_trend': accuracy_trend,
-                    'most_common_corrections': most_common_corrections,
-                    'feedback_distribution': {
-                        ft[0]: ft[1] for ft in feedback_types
-                    },
-                    'learned_patterns_count': pattern_count,
-                    'recent_accuracy_ratio': accuracy_ratio if 'accuracy_ratio' in locals() else 0.0
+                    "total_feedback_entries": total_feedback,
+                    "learning_pattern_extraction_success": pattern_count > 0,
+                    "accuracy_trend": accuracy_trend,
+                    "most_common_corrections": most_common_corrections,
+                    "feedback_distribution": {ft[0]: ft[1] for ft in feedback_types},
+                    "learned_patterns_count": pattern_count,
+                    "recent_accuracy_ratio": accuracy_ratio
+                    if "accuracy_ratio" in locals()
+                    else 0.0,
                 }
 
         except Exception as e:
             logger.error("❌ Learning-Stats fehlgeschlagen: %s", e)
             return {
-                'total_feedback_entries': 0,
-                'learning_pattern_extraction_success': False,
-                'accuracy_trend': 'error',
-                'most_common_corrections': [],
-                'error': str(e)
+                "total_feedback_entries": 0,
+                "learning_pattern_extraction_success": False,
+                "accuracy_trend": "error",
+                "most_common_corrections": [],
+                "error": str(e),
             }
 
 
