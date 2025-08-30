@@ -510,3 +510,24 @@ class UnifiedProcessor:
                 else None,
             },
         }
+
+    def cleanup(self) -> None:
+        """
+        Bereinigt Ressourcen und führt Memory-Optimization durch.
+
+        Diese Methode wird von Tests erwartet für saubere Ressourcenbereinigung.
+        """
+        try:
+            # Strategien bereinigen
+            for strategy in self._strategies.values():
+                if hasattr(strategy, "cleanup"):
+                    strategy.cleanup()
+
+            # Memory-Optimizer bereinigen
+            if self._memory_optimizer:
+                self._memory_optimizer.optimize_memory()
+
+            logger.debug("🧹 UnifiedProcessor cleanup abgeschlossen")
+
+        except Exception as e:
+            logger.warning(f"⚠️ UnifiedProcessor cleanup Fehler: {e}")

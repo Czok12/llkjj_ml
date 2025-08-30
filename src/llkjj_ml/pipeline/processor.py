@@ -53,6 +53,18 @@ class ResourceManager:
 _resource_manager = None  # ResourceManager() disabled in v2.0.0
 
 
+class _DummyResourceManager:
+    """Dummy ResourceManager für Tests."""
+
+    def cleanup(self):
+        pass
+
+
+# Fallback für Tests
+if _resource_manager is None:
+    _resource_manager = _DummyResourceManager()
+
+
 # ProcessingResult removed - using import from models.processing_result
 
 
