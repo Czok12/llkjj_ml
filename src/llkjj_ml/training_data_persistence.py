@@ -543,8 +543,8 @@ class TrainingDataPersistence:
             if documents:
                 self.collection.add(
                     documents=documents,
-                    metadatas=metadatas,
-                    embeddings=embeddings,
+                    metadatas=metadatas,  # type: ignore[arg-type]
+                    embeddings=embeddings,  # type: ignore[arg-type] 
                     ids=ids,
                 )
 

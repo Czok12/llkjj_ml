@@ -27,7 +27,6 @@ if TYPE_CHECKING:
 from llkjj_business.models.embedding_models import (
     DimensionError,
     EmbeddingResult,
-    ModelLoadingError,
     SimilarityResult,
     StorageResult,
     UpdateResult,
@@ -75,16 +74,19 @@ class VectorEmbeddingService:
     @property
     def model(self) -> SentenceTransformer:
         """Get sentence transformer model."""
-        if self._model is None:
-            self._model = SentenceTransformer("all-MiniLM-L6-v2")
-        return self._model
+        if not hasattr(self._thread_local, "model") or self._thread_local.model is None:
+            self._thread_local.model = SentenceTransformer("all-MiniLM-L6-v2")
+        return self._thread_local.model  # type: ignore[no-any-return]
 
     @property
     def spacy_model(self) -> "SpacyLanguage":
         """Get configured spaCy language model."""
-        if self._spacy_model is None:
-            self._spacy_model = spacy.load("de_core_news_sm")
-        return self._spacy_model
+        if (
+            not hasattr(self._thread_local, "spacy_model")
+            or self._thread_local.spacy_model is None
+        ):
+            self._thread_local.spacy_model = spacy.load("de_core_news_sm")
+        return self._thread_local.spacy_model  # type: ignore[no-any-return]
 
     def _get_db_connection(self) -> psycopg2.extensions.connection:
         """Get database connection with exponential backoff retry."""
@@ -104,6 +106,8 @@ class VectorEmbeddingService:
                     f"DB connection attempt {attempt + 1} failed, retrying in {delay}s: {e}"
                 )
                 time.sleep(delay)
+        # This line should never be reached due to the raise in the loop
+        raise RuntimeError("Failed to establish database connection after all retries")
 
     def _clean_and_normalize_text(self, text: str) -> str:
         """Clean and normalize text for embedding generation.
@@ -233,7 +237,7 @@ class VectorEmbeddingService:
 
             # Generate embedding
             start_time = time.time()
-            embedding = self.sentence_transformer.encode(cleaned_text)
+            embedding = self.model.encode(cleaned_text)
             embedding_time = time.time() - start_time
 
             # Validate dimensions
@@ -359,13 +363,19 @@ class VectorEmbeddingService:
                     if cached_result:
                         import json
 
-                        return json.loads(cached_result)
+                        # Ensure cached_result is bytes/str before json.loads
+                        if isinstance(cached_result, bytes):
+                            cached_result = cached_result.decode("utf-8")
+                        elif not isinstance(cached_result, str):
+                            # Handle other types (e.g., Awaitable) by converting to string
+                            cached_result = str(cached_result)
+                        return json.loads(cached_result)  # type: ignore[no-any-return]
                 except Exception as e:
                     logger.warning(f"Cache retrieval failed: {e}")
 
             # Create query embedding
             cleaned_query = self._clean_and_normalize_text(query)
-            query_embedding = self.sentence_transformer.encode(cleaned_query)
+            query_embedding = self.model.encode(cleaned_query)
 
             if len(query_embedding) != self.VECTOR_DIMENSION:
                 raise DimensionError("Query embedding dimension mismatch")
@@ -432,9 +442,9 @@ class VectorEmbeddingService:
                         if "created_at" in cacheable_result["invoice_data"]:
                             created_at = cacheable_result["invoice_data"]["created_at"]
                             if isinstance(created_at, datetime):
-                                cacheable_result["invoice_data"]["created_at"] = (
-                                    created_at.isoformat()
-                                )
+                                cacheable_result["invoice_data"][
+                                    "created_at"
+                                ] = created_at.isoformat()
                         cacheable_results.append(cacheable_result)
 
                     self._redis_client.setex(
@@ -558,7 +568,7 @@ class VectorEmbeddingService:
 
                 # Batch encode embeddings
                 start_time = time.time()
-                embeddings = self.sentence_transformer.encode(texts)
+                embeddings = self.model.encode(texts)
                 batch_time = time.time() - start_time
 
                 # Process individual results
