@@ -14,7 +14,7 @@ import threading
 import time
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 import psycopg2
 import redis
@@ -138,7 +138,7 @@ class VectorEmbeddingService:
 
         return text
 
-    def _extract_entities_with_spacy(self, text: str) -> Dict[str, List[str]]:
+    def _extract_entities_with_spacy(self, text: str) -> dict[str, list[str]]:
         """Extract key entities using SpaCy NER.
 
         Args:
@@ -178,7 +178,7 @@ class VectorEmbeddingService:
 
         return entities
 
-    def _create_structured_text(self, invoice_data: Dict[str, Any]) -> str:
+    def _create_structured_text(self, invoice_data: dict[str, Any]) -> str:
         """Create structured text representation for embedding.
 
         Args:
@@ -213,7 +213,7 @@ class VectorEmbeddingService:
 
         return " | ".join(text_parts)
 
-    def create_embedding(self, text: str, metadata: Dict[str, Any]) -> EmbeddingResult:
+    def create_embedding(self, text: str, metadata: dict[str, Any]) -> EmbeddingResult:
         """Create embedding for given text with metadata.
 
         Args:
@@ -270,7 +270,7 @@ class VectorEmbeddingService:
             raise
 
     def store_invoice_embedding(
-        self, invoice_id: str, invoice_data: Dict[str, Any]
+        self, invoice_id: str, invoice_data: dict[str, Any]
     ) -> StorageResult:
         """Store embedding for invoice data in database.
 
@@ -344,7 +344,7 @@ class VectorEmbeddingService:
 
     def search_similar(
         self, query: str, limit: int = 10, threshold: float = 0.7
-    ) -> List[SimilarityResult]:
+    ) -> list[SimilarityResult]:
         """Search for similar invoices using vector similarity.
 
         Args:
@@ -458,7 +458,7 @@ class VectorEmbeddingService:
             return []
 
     def update_embedding(
-        self, invoice_id: str, new_data: Dict[str, Any]
+        self, invoice_id: str, new_data: dict[str, Any]
     ) -> UpdateResult:
         """Update existing embedding with new invoice data.
 
@@ -530,8 +530,8 @@ class VectorEmbeddingService:
             )
 
     def batch_create_embeddings(
-        self, items: List[Tuple[str, Dict]]
-    ) -> List[EmbeddingResult]:
+        self, items: list[tuple[str, dict]]
+    ) -> list[EmbeddingResult]:
         """Create embeddings for multiple items in batch.
 
         Args:
