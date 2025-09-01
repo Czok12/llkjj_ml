@@ -14,12 +14,15 @@ import threading
 import time
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import psycopg2
 import redis
 import spacy
 from sentence_transformers import SentenceTransformer
+
+if TYPE_CHECKING:
+    from spacy.language import Language as SpacyLanguage
 
 from llkjj_business.models.embedding_models import (
     DimensionError,
@@ -70,26 +73,18 @@ class VectorEmbeddingService:
                 self._redis_client = None
 
     @property
-    def sentence_transformer(self) -> SentenceTransformer:
-        """Get thread-local SentenceTransformer instance."""
-        if not hasattr(self._thread_local, "transformer"):
-            try:
-                self._thread_local.transformer = SentenceTransformer(self.MODEL_NAME)
-                logger.info(f"Loaded SentenceTransformer model: {self.MODEL_NAME}")
-            except Exception as e:
-                raise ModelLoadingError(f"Failed to load transformer model: {e}")
-        return self._thread_local.transformer
+    def model(self) -> SentenceTransformer:
+        """Get sentence transformer model."""
+        if self._model is None:
+            self._model = SentenceTransformer("all-MiniLM-L6-v2")
+        return self._model
 
     @property
-    def spacy_model(self) -> spacy.Language:
-        """Get thread-local SpaCy model instance."""
-        if not hasattr(self._thread_local, "spacy_nlp"):
-            try:
-                self._thread_local.spacy_nlp = spacy.load(self.spacy_model_name)
-                logger.info(f"Loaded SpaCy model: {self.spacy_model_name}")
-            except Exception as e:
-                raise ModelLoadingError(f"Failed to load SpaCy model: {e}")
-        return self._thread_local.spacy_nlp
+    def spacy_model(self) -> "SpacyLanguage":
+        """Get configured spaCy language model."""
+        if self._spacy_model is None:
+            self._spacy_model = spacy.load("de_core_news_sm")
+        return self._spacy_model
 
     def _get_db_connection(self) -> psycopg2.extensions.connection:
         """Get database connection with exponential backoff retry."""
@@ -148,7 +143,7 @@ class VectorEmbeddingService:
             Dictionary of extracted entities by type
         """
         doc = self.spacy_model(text)
-        entities = {
+        entities: dict[str, list[str]] = {
             "suppliers": [],
             "amounts": [],
             "dates": [],

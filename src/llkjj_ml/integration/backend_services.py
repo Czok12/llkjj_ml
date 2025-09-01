@@ -227,7 +227,7 @@ class MLPluginFactory:
             Configured MLPlugin instance
         """
         try:
-            from llkjj_ml.llkjj_ml_plugin_v2 import (  # type: ignore[import-not-found]
+            from llkjj_ml.llkjj_ml_plugin_v2 import (
                 MLPlugin,
                 MLPluginConfig,
             )
@@ -262,7 +262,7 @@ class MLPluginFactory:
             )
 
             logger.info("✅ MLPlugin v2.0 erfolgreich über Backend-Registry erstellt")
-            return plugin  # type: ignore[no-any-return]
+            return plugin
 
         except Exception as e:
             logger.error(f"Fehler bei MLPlugin-Factory: {e}")
@@ -314,7 +314,7 @@ class MLPluginFactory:
             )
 
             logger.info("✅ MLPlugin v2.0 mit custom Services erstellt")
-            return plugin  # type: ignore[no-any-return]
+            return plugin
 
         except Exception as e:
             logger.error(f"Fehler bei Custom MLPlugin-Factory: {e}")

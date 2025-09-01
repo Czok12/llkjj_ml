@@ -46,22 +46,26 @@ class MLPlugin:
     # Beispielmethoden für PDF-Processing und Klassifikation
     async def process_pdf(self, pdf_path: str) -> dict[str, Any]:
         if hasattr(self.gemini_client, "process_pdf_direct"):
-            return await self.gemini_client.process_pdf_direct(pdf_path)
+            result = await self.gemini_client.process_pdf_direct(pdf_path)
+            return dict(result)  # Ensure it's a dict
         return {"success": False, "error": "GeminiClient nicht verfügbar"}
 
     def encode_text(self, text: str) -> list[float]:
         if hasattr(self.embedding_provider, "encode"):
-            return self.embedding_provider.encode(text)
+            result = self.embedding_provider.encode(text)
+            return list(result) if result else []  # Ensure it's a list of floats
         return []
 
     def encode_batch(self, texts: list[str]) -> list[list[float]]:
         if hasattr(self.embedding_provider, "encode_batch"):
-            return self.embedding_provider.encode_batch(texts)
+            result = self.embedding_provider.encode_batch(texts)
+            return list(result) if result else []  # Ensure it's a list of lists
         return []
 
     def similarity(self, text1: str, text2: str) -> float:
         if hasattr(self.embedding_provider, "similarity"):
-            return self.embedding_provider.similarity(text1, text2)
+            result = self.embedding_provider.similarity(text1, text2)
+            return float(result) if result is not None else 0.0
         return 0.0
 
     # Weitere Methoden können nach Bedarf ergänzt werden
