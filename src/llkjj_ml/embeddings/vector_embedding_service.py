@@ -38,7 +38,9 @@ logger = logging.getLogger(__name__)
 class VectorEmbeddingService:
     """Service for creating, storing and searching vector embeddings of invoices."""
 
-    VECTOR_DIMENSION = 768  # paraphrase-multilingual-MiniLM-L12-v2 model dimensions = 384  # all-MiniLM-L6-v2 model dimensions = 768
+    VECTOR_DIMENSION = (
+        768  # paraphrase-multilingual-MiniLM-L12-v2 model dimensions = 768
+    )
     MODEL_NAME = "paraphrase-multilingual-MiniLM-L12-v2"
 
     def __init__(
@@ -74,10 +76,13 @@ class VectorEmbeddingService:
     @property
     def model(self) -> SentenceTransformer:
         """Get sentence transformer model."""
-        if not hasattr(self._thread_local, "model") or self._thread_local.model is None:
-            # Verwende das korrekte multilingual Modell statt all-MiniLM-L6-v2
+        # Lazy-load model per thread to avoid heavy global initialization and ensure thread safety
+        if (
+            not hasattr(self._thread_local, "model")
+            or getattr(self._thread_local, "model") is None
+        ):
             self._thread_local.model = SentenceTransformer(self.MODEL_NAME)
-        return self._thread_local.model  # type: ignore[no-any-return]  # type: ignore[no-any-return]
+        return self._thread_local.model  # type: ignore[no-any-return]
 
     @property
     def spacy_model(self) -> "SpacyLanguage":
@@ -443,9 +448,9 @@ class VectorEmbeddingService:
                         if "created_at" in cacheable_result["invoice_data"]:
                             created_at = cacheable_result["invoice_data"]["created_at"]
                             if isinstance(created_at, datetime):
-                                cacheable_result["invoice_data"]["created_at"] = (
-                                    created_at.isoformat()
-                                )
+                                cacheable_result["invoice_data"][
+                                    "created_at"
+                                ] = created_at.isoformat()
                         cacheable_results.append(cacheable_result)
 
                     self._redis_client.setex(
