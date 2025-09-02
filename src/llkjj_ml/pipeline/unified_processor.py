@@ -442,7 +442,8 @@ class UnifiedProcessor:
                     # Create error result with required fields
                     error_result = ProcessingResult(
                         pdf_path=str(pdf_path),
-                        processing_timestamp=datetime.utcnow().isoformat() + "Z",
+                        processing_timestamp=datetime.now(datetime.UTC).isoformat()
+                        + "Z",
                         processing_method="gemini_first",
                         processing_time_ms=0,
                         confidence_score=0.0,

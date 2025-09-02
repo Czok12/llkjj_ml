@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 class VectorEmbeddingService:
     """Service for creating, storing and searching vector embeddings of invoices."""
 
-    VECTOR_DIMENSION = 768
+    VECTOR_DIMENSION = 768  # paraphrase-multilingual-MiniLM-L12-v2 model dimensions = 384  # all-MiniLM-L6-v2 model dimensions = 768
     MODEL_NAME = "paraphrase-multilingual-MiniLM-L12-v2"
 
     def __init__(
@@ -75,8 +75,9 @@ class VectorEmbeddingService:
     def model(self) -> SentenceTransformer:
         """Get sentence transformer model."""
         if not hasattr(self._thread_local, "model") or self._thread_local.model is None:
-            self._thread_local.model = SentenceTransformer("all-MiniLM-L6-v2")
-        return self._thread_local.model  # type: ignore[no-any-return]
+            # Verwende das korrekte multilingual Modell statt all-MiniLM-L6-v2
+            self._thread_local.model = SentenceTransformer(self.MODEL_NAME)
+        return self._thread_local.model  # type: ignore[no-any-return]  # type: ignore[no-any-return]
 
     @property
     def spacy_model(self) -> "SpacyLanguage":
