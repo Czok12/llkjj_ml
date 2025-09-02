@@ -502,12 +502,14 @@ class UnifiedMLProcessor:
             RuntimeError: Processing failed with all strategies
             MemoryError: Insufficient memory for processing
         """
+        from ..utils.german_errors import GermanErrorMessages
+        
         # Validate inputs
         if not pdf_path.exists():
-            raise ValueError(f"PDF file not found: {pdf_path}")
+            raise ValueError(GermanErrorMessages.pdf_not_found(pdf_path))
 
         if not pdf_path.suffix.lower() == ".pdf":
-            raise ValueError(f"File is not a PDF: {pdf_path}")
+            raise ValueError(GermanErrorMessages.pdf_invalid_format(pdf_path))
 
         options = options or ProcessingOptions()
 
@@ -515,14 +517,14 @@ class UnifiedMLProcessor:
         file_size_mb = pdf_path.stat().st_size / (1024 * 1024)
         if file_size_mb > options.file_size_limit_mb:
             raise ValueError(
-                f"File too large: {file_size_mb:.1f}MB > {options.file_size_limit_mb}MB limit"
+                GermanErrorMessages.pdf_too_large(file_size_mb, options.file_size_limit_mb)
             )
 
         # Memory availability check
         estimated_memory_mb = file_size_mb * 10  # Conservative estimate
         if not self.memory_manager.check_memory_availability(estimated_memory_mb):
             raise MemoryError(
-                f"Insufficient memory for processing {file_size_mb:.1f}MB file"
+                GermanErrorMessages.memory_insufficient(estimated_memory_mb)
             )
 
         # Strategy selection
@@ -601,7 +603,7 @@ class UnifiedMLProcessor:
 
         # All strategies failed
         processing_time_ms = int((time.time() - start_time) * 1000)
-        error_message = f"All processing strategies failed. Last error: {last_error}"
+        error_message = GermanErrorMessages.processing_failed(pdf_path.name)
 
         logger.error(f"💥 Processing failed for {pdf_path.name}: {error_message}")
 

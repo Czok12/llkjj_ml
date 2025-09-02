@@ -231,19 +231,19 @@ class GeminiDirectProcessor:
             FileNotFoundError: PDF file does not exist
             ValueError: Invalid PDF file or configuration
         """
+        from ..utils.german_errors import GermanErrorMessages
+        
         pdf_path = Path(pdf_path)
 
         # Initiale Validierung
         if not pdf_path.exists():
-            raise FileNotFoundError(f"PDF-Datei nicht gefunden: {pdf_path}")
+            raise FileNotFoundError(GermanErrorMessages.pdf_not_found(pdf_path))
 
         if not pdf_path.suffix.lower() == ".pdf":
-            raise ValueError(
-                f"Nur PDF-Dateien werden unterstützt, erhalten: {pdf_path.suffix}"
-            )
+            raise ValueError(GermanErrorMessages.pdf_invalid_format(pdf_path))
 
         if pdf_path.stat().st_size == 0:
-            raise ValueError(f"PDF-Datei ist leer: {pdf_path}")
+            raise ValueError(GermanErrorMessages.pdf_empty(pdf_path))
 
         logger.info(
             "🚀 GEMINI-FIRST Pipeline startet: %s (%.1f KB)",
