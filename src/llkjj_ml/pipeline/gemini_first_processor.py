@@ -232,7 +232,7 @@ class GeminiDirectProcessor:
             ValueError: Invalid PDF file or configuration
         """
         from ..utils.german_errors import GermanErrorMessages
-        
+
         pdf_path = Path(pdf_path)
 
         # Initiale Validierung

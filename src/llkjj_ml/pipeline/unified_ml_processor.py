@@ -503,7 +503,7 @@ class UnifiedMLProcessor:
             MemoryError: Insufficient memory for processing
         """
         from ..utils.german_errors import GermanErrorMessages
-        
+
         # Validate inputs
         if not pdf_path.exists():
             raise ValueError(GermanErrorMessages.pdf_not_found(pdf_path))
@@ -548,7 +548,6 @@ class UnifiedMLProcessor:
 
         # Processing with fallback chain
         start_time = time.time()
-        last_error = None
 
         strategies_to_try = [selected_strategy] + [
             s for s in self._fallback_chain if s != selected_strategy
@@ -595,7 +594,6 @@ class UnifiedMLProcessor:
                 return result
 
             except Exception as e:
-                last_error = e
                 logger.warning(f"❌ {strategy_name} strategy failed: {e}")
 
                 # Try next strategy in chain
