@@ -517,7 +517,9 @@ class UnifiedMLProcessor:
         file_size_mb = pdf_path.stat().st_size / (1024 * 1024)
         if file_size_mb > options.file_size_limit_mb:
             raise ValueError(
-                GermanErrorMessages.pdf_too_large(file_size_mb, options.file_size_limit_mb)
+                GermanErrorMessages.pdf_too_large(
+                    file_size_mb, options.file_size_limit_mb
+                )
             )
 
         # Memory availability check

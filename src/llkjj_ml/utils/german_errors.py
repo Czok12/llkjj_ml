@@ -27,7 +27,9 @@ class GermanErrorMessages:
     @staticmethod
     def pdf_too_large(file_size_mb: float, limit_mb: float) -> str:
         """PDF-Datei ist zu groß."""
-        return f"📄 PDF-Datei ist zu groß ({file_size_mb:.1f} MB). Maximum: {limit_mb} MB"
+        return (
+            f"📄 PDF-Datei ist zu groß ({file_size_mb:.1f} MB). Maximum: {limit_mb} MB"
+        )
 
     @staticmethod
     def pdf_invalid_format(pdf_path: Path) -> str:
@@ -40,7 +42,10 @@ class GermanErrorMessages:
         base_msg = "🤖 Gemini AI ist momentan nicht erreichbar"
         if "quota" in original_error.lower() or "limit" in original_error.lower():
             return f"{base_msg} - API-Limit erreicht"
-        elif "network" in original_error.lower() or "connection" in original_error.lower():
+        elif (
+            "network" in original_error.lower()
+            or "connection" in original_error.lower()
+        ):
             return f"{base_msg} - Netzwerkproblem"
         else:
             return f"{base_msg} - Bitte später erneut versuchen"
@@ -67,6 +72,7 @@ def wrap_pdf_errors(func):
 
     Wandelt technische Exceptions in benutzerfreundliche deutsche Meldungen um.
     """
+
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)
@@ -74,7 +80,7 @@ def wrap_pdf_errors(func):
             # PDF path aus Args extrahieren
             pdf_path = None
             for arg in args:
-                if isinstance(arg, Path) and str(arg).endswith('.pdf'):
+                if isinstance(arg, Path) and str(arg).endswith(".pdf"):
                     pdf_path = arg
                     break
 
@@ -105,8 +111,10 @@ def wrap_pdf_errors(func):
                 if "MB" in str(e):
                     try:
                         parts = str(e).split()
-                        size_idx = next(i for i, part in enumerate(parts) if "MB" in part)
-                        size_str = parts[size_idx-1].replace("MB", "")
+                        size_idx = next(
+                            i for i, part in enumerate(parts) if "MB" in part
+                        )
+                        size_str = parts[size_idx - 1].replace("MB", "")
                         file_size = float(size_str)
                         german_msg = GermanErrorMessages.pdf_too_large(file_size, 100)
                     except (ValueError, StopIteration):
