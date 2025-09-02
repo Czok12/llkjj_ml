@@ -7,6 +7,7 @@ Pragmatische Lösung für 2 interne Nutzer.
 
 import logging
 from pathlib import Path
+from typing import Any, Callable
 
 logger = logging.getLogger(__name__)
 
@@ -66,14 +67,14 @@ class GermanErrorMessages:
         return "📊 SKR03-Kontenzuordnung konnte nicht automatisch bestimmt werden"
 
 
-def wrap_pdf_errors(func):
+def wrap_pdf_errors(func: Callable[..., Any]) -> Callable[..., Any]:
     """
     Decorator für deutsche PDF-Fehlermeldungen.
 
     Wandelt technische Exceptions in benutzerfreundliche deutsche Meldungen um.
     """
 
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
         try:
             return func(*args, **kwargs)
         except FileNotFoundError as e:
