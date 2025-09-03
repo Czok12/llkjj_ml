@@ -17,7 +17,7 @@ Datum: 18. August 2025
 """
 
 import logging
-from datetime import datetime
+from datetime import timezone, datetime
 from pathlib import Path
 from typing import Any, Literal
 
@@ -442,7 +442,7 @@ class UnifiedProcessor:
                     # Create error result with required fields
                     error_result = ProcessingResult(
                         pdf_path=str(pdf_path),
-                        processing_timestamp=datetime.now(datetime.UTC).isoformat()
+                        processing_timestamp=datetime.now(timezone.utc).isoformat()
                         + "Z",
                         processing_method="gemini_first",
                         processing_time_ms=0,
