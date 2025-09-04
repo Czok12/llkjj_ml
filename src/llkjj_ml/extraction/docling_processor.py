@@ -366,13 +366,16 @@ class AdvancedDoclingProcessor:
                     logger.warning("⚠️ Keine Ergebnisse mit %s", engine_name)
                     continue
                 doc = doc_result.document
-                # Prefer markdown if available, otherwise fall back to plain text
-                if hasattr(doc, "export_to_markdown"):
-                    raw_content = doc.export_to_markdown()
-                elif hasattr(doc, "export_to_text"):
-                    raw_content = doc.export_to_text()
-                else:
-                    raw_content = ""
+                # Prefer markdown if it returns a string; otherwise fall back to plain text
+                raw_content_obj: Any = None
+                export_md = getattr(doc, "export_to_markdown", None)
+                if callable(export_md):
+                    raw_content_obj = export_md()
+                if not isinstance(raw_content_obj, str):
+                    export_txt = getattr(doc, "export_to_text", None)
+                    if callable(export_txt):
+                        raw_content_obj = export_txt()
+                raw_content = raw_content_obj if isinstance(raw_content_obj, str) else ""
                 if not raw_content or len(raw_content.strip()) < 100:
                     logger.warning(
                         "⚠️ Zu wenig Content mit %s: %d Zeichen",
@@ -620,12 +623,19 @@ class AdvancedDoclingProcessor:
 
         # WICHTIG: Original Docling Tables für neue API verfügbar machen
         original_tables: list[Any] = []
-        if hasattr(document, "tables"):
-            original_tables = document.tables
+        doc_tables = getattr(document, "tables", None)
+        if isinstance(doc_tables, list):
+            original_tables = doc_tables
 
         # Metadaten sammeln
+        pages_attr = getattr(document, "pages", None)
+        try:
+            page_count = len(pages_attr) if pages_attr is not None else 1
+        except Exception:
+            page_count = 1
+
         metadata = {
-            "page_count": len(document.pages) if hasattr(document, "pages") else 1,
+            "page_count": page_count,
             "processing_method": "docling_optimized",
             "table_count": len(tables),
             "original_table_count": len(original_tables),
@@ -717,7 +727,7 @@ class AdvancedDoclingProcessor:
         return tables
 
     def _parse_docling_table(
-        self, table: Any, table_idx: int, page_number: int = 1
+        self, table: Any, table_idx: int | None = None, page_number: int | None = None
     ) -> dict[str, Any] | None:
         """
         Parst eine Docling-Tabelle korrekt basierend auf der offiziellen API.
@@ -754,8 +764,8 @@ class AdvancedDoclingProcessor:
                 normalized_headers = self._normalize_german_headers(headers)
 
                 return {
-                    "page": page_number,
-                    "table_index": table_idx,
+                    "page": (page_number or 1),
+                    "table_index": table_idx or 0,
                     "headers": headers,
                     "normalized_headers": normalized_headers,
                     "rows": rows,
@@ -769,7 +779,8 @@ class AdvancedDoclingProcessor:
                 logger.debug(
                     f"Tabelle {table_idx}: Kein export_to_dataframe verfügbar, verwende Fallback"
                 )
-                return self._parse_table_data(table, page_number - 1, table_idx)
+                # page_number is 1-based in return; _parse_table_data expects 0-based
+                return self._parse_table_data(table, (page_number or 1) - 1, table_idx or 0)
 
         except Exception as e:
             logger.warning(f"Fehler beim Parsen von Tabelle {table_idx}: {e}")
