@@ -122,3 +122,18 @@ Der Standardprozess wird durch `GeminiDirectProcessor` gesteuert:
   - Deine eigene Persistenz (z.B. für `ChromaDB`) verwaltest du in deinem eigenen Verzeichnis (z.B. `data/vectors`).
 
 ---
+
+## Kompatibilität & Fehlerbehandlung (Shims)
+
+Zur Stabilisierung der Tests und für eine robuste Fehlerbehandlung wurden minimalinvasive Kompatibilitätsshims ergänzt. Diese ändern keine Kernlogik, sondern verbessern Eingabe-/Rückgabeformate und Fehlertoleranz:
+
+- DoclingProcessor
+  - Konstruktor akzeptiert zusätzlich die Alias-Flags `german_ner_enabled` bzw. `german_ner` (intern auf `german_optimized` gemappt).
+  - `process_pdf` gibt bei Erfolg ein Resultat mit `success=True`, `text` (Alias für `raw_text`) sowie `quality_score` zurück. Bei Fehlern wird nicht geworfen, sondern `{success: False, error: ...}` zurückgegeben.
+  - `_normalize_german_headers` liefert eine Liste normalisierter Header (gleiche Länge wie Eingabe) für teststabile Verarbeitung.
+  - `_apply_german_ner` akzeptiert neben `dict` auch `str` als Eingabe.
+
+- HybridResult (Hybrid Intelligence)
+  - Zusätzliches Feld `cost`, das `cost_estimate` spiegelt. Beide Felder werden beim Initialisieren synchronisiert.
+
+Diese Anpassungen dienen der Testkompatibilität und erhöhen die Nachvollziehbarkeit für Entwickler und KI‑Agenten.

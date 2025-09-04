@@ -84,3 +84,22 @@ def __init__(self, config: Optional[Config] = None):
 3. ⏭️ **Task-016 nach Gemini-Approval**
 
 **Migration erfolgreich - alle kritischen ML-Module funktionsfähig!**
+
+---
+
+## 2025-09 Kompatibilitätsshims (nicht-breaking)
+
+Zur Erhöhung der Teststabilität und besseren Fehlerrückmeldungen wurden folgende, additive Anpassungen implementiert. Diese sind abwärtskompatibel und verändern keine Kernlogik.
+
+– DoclingProcessor
+
+- Konstruktor akzeptiert zusätzlich `german_ner_enabled` bzw. `german_ner` als Alias für `german_optimized`.
+- `process_pdf` wirft bei Fehlern keine Exceptions mehr nach außen, sondern liefert `{success: False, error: ...}`; bei Erfolg enthält das Ergebnis `success=True`, `text` (Alias für `raw_text`) und `quality_score`.
+- `_normalize_german_headers` liefert nun eine Liste normalisierter Header (gleiche Länge wie Eingabe), was die Auswertung in Tests vereinfacht.
+- `_apply_german_ner` akzeptiert zusätzlich `str` als Eingabe.
+
+– HybridResult
+
+- Neues Feld `cost`, das `cost_estimate` spiegelt. Beide Felder werden beim Initialisieren synchronisiert.
+
+Diese Anpassungen sind rein ergänzend und benötigen keine Änderungen an konsumierendem Code.

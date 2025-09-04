@@ -77,10 +77,7 @@ class VectorEmbeddingService:
     def model(self) -> SentenceTransformer:
         """Get sentence transformer model."""
         # Lazy-load model per thread to avoid heavy global initialization and ensure thread safety
-        if (
-            not hasattr(self._thread_local, "model")
-            or getattr(self._thread_local, "model") is None
-        ):
+        if not hasattr(self._thread_local, "model") or self._thread_local.model is None:
             self._thread_local.model = SentenceTransformer(self.MODEL_NAME)
         return self._thread_local.model  # type: ignore[no-any-return]
 
@@ -178,8 +175,8 @@ class VectorEmbeddingService:
                 entities["products"].append(entity_text)
 
         # Remove duplicates while preserving order
-        for key in entities:
-            entities[key] = list(dict.fromkeys(entities[key]))
+        for key, values in entities.items():
+            entities[key] = list(dict.fromkeys(values))
 
         return entities
 
@@ -448,9 +445,9 @@ class VectorEmbeddingService:
                         if "created_at" in cacheable_result["invoice_data"]:
                             created_at = cacheable_result["invoice_data"]["created_at"]
                             if isinstance(created_at, datetime):
-                                cacheable_result["invoice_data"][
-                                    "created_at"
-                                ] = created_at.isoformat()
+                                cacheable_result["invoice_data"]["created_at"] = (
+                                    created_at.isoformat()
+                                )
                         cacheable_results.append(cacheable_result)
 
                     self._redis_client.setex(

@@ -51,22 +51,22 @@ class SentenceTransformerProvider:
         self.model_name = model_name
         self.cache_folder = cache_folder
         self._model: SentenceTransformer | None = None  # Lazy loading
-        
+
         if eager_loading:
             self._load_model()
 
         logger.info(f"✅ SentenceTransformerProvider initialisiert: {model_name}")
 
     def encode(
-        self, 
-        texts: str | list[str], 
+        self,
+        texts: str | list[str],
         normalize_embeddings: bool = False,
         convert_to_numpy: bool = True,
-        **kwargs
+        **kwargs: Any,
     ) -> np.ndarray:
         """
         Encode text(s) to embeddings.
-        
+
         Args:
             texts: Single text or list of texts
             normalize_embeddings: Whether to normalize embeddings
@@ -75,36 +75,37 @@ class SentenceTransformerProvider:
         """
         if self._model is None:
             self._load_model()
-        
+
         # Handle empty input
         if not texts:
             if isinstance(texts, str):
-                return np.array([0.0] * 384) if convert_to_numpy else [0.0] * 384
+                return np.array([0.0] * 384)
             else:
-                return np.array([[0.0] * 384]) if convert_to_numpy else [[0.0] * 384]
-        
+                return np.array([[0.0] * 384])
+
         # Convert single string to list
         if isinstance(texts, str):
             texts = [texts]
-        
+
         try:
             assert self._model is not None, "Model should be loaded after _load_model()"
             embeddings = self._model.encode(
-                texts, 
+                texts,
                 normalize_embeddings=normalize_embeddings,
                 convert_to_numpy=convert_to_numpy,
-                **kwargs
+                **kwargs,
             )
-            
-            return embeddings
-            
+
+            # Always return numpy array
+            return np.array(embeddings)
+
         except Exception as e:
             logger.error(f"Fehler bei Text-Encoding: {e}")
             # Return zero vector as fallback
             if len(texts) == 1:
-                return np.array([0.0] * 384) if convert_to_numpy else [0.0] * 384
+                return np.array([0.0] * 384)
             else:
-                return np.array([[0.0] * 384 for _ in texts]) if convert_to_numpy else [[0.0] * 384 for _ in texts]
+                return np.array([[0.0] * 384 for _ in texts])
 
     def encode_batch(
         self,
@@ -112,11 +113,11 @@ class SentenceTransformerProvider:
         batch_size: int = 32,
         show_progress_bar: bool = True,
         normalize_embeddings: bool = False,
-        **kwargs
+        **kwargs: Any,
     ) -> list[np.ndarray]:
         """
         Encode batch of texts with custom batch size.
-        
+
         Args:
             texts: List of texts to encode
             batch_size: Batch size for processing
@@ -129,23 +130,29 @@ class SentenceTransformerProvider:
 
         if self._model is None:
             self._load_model()
-        
+
         try:
             assert self._model is not None, "Model should be loaded after _load_model()"
-            
+
             results = []
             for i in range(0, len(texts), batch_size):
-                batch = texts[i:i + batch_size]
+                batch = texts[i : i + batch_size]
                 embeddings = self._model.encode(
                     batch,
                     normalize_embeddings=normalize_embeddings,
                     show_progress_bar=show_progress_bar and i == 0,
-                    **kwargs
+                    **kwargs,
                 )
-                results.extend(embeddings)
-            
+                # Ensure each batch result is an ndarray
+                if isinstance(embeddings, np.ndarray):
+                    # If model returns ndarray for whole batch, split rows
+                    for row in np.atleast_2d(embeddings):
+                        results.append(np.array(row))
+                else:
+                    results.extend([np.array(e) for e in embeddings])
+
             return results
-            
+
         except Exception as e:
             logger.error(f"Fehler bei Batch-Encoding: {e}")
             # Return zero vectors as fallback
@@ -237,30 +244,27 @@ class SentenceTransformerProvider:
 def similarity(embedding1: np.ndarray, embedding2: np.ndarray) -> float:
     """
     Calculate cosine similarity between two embeddings.
-    
+
     Args:
         embedding1: First embedding vector
         embedding2: Second embedding vector
-        
+
     Returns:
         Cosine similarity score
     """
     from sklearn.metrics.pairwise import cosine_similarity
-    
+
     # Ensure 2D arrays
     if embedding1.ndim == 1:
         embedding1 = embedding1.reshape(1, -1)
     if embedding2.ndim == 1:
         embedding2 = embedding2.reshape(1, -1)
-    
-    return cosine_similarity(embedding1, embedding2)[0][0]
+
+    return float(cosine_similarity(embedding1, embedding2)[0][0])
 
 
 # Export functions
-__all__ = [
-    "SentenceTransformerProvider",
-    "similarity"
-]
+__all__ = ["SentenceTransformerProvider", "similarity"]
 
 
 # =============================================================================

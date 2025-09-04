@@ -221,6 +221,19 @@ class ConfigBridge:
             "max_output_tokens": self.max_output_tokens,
         }
 
+    # Optional ML/Hybrid-Settings (für HybridIntelligenceEngine Overrides)
+    @property
+    def confidence_threshold(self) -> float:
+        return getattr(self._ml_config, "confidence_threshold", 0.75)
+
+    @property
+    def cost_threshold_daily(self) -> float:
+        return getattr(self._ml_config, "cost_threshold_daily", 5.0)
+
+    @property
+    def fallback_enabled(self) -> bool:
+        return getattr(self._ml_config, "fallback_enabled", True)
+
     @property
     def umsatzsteuer_regulaer(self) -> float:
         return getattr(self._ml_config, "umsatzsteuer_regulaer", 0.19)

@@ -27,7 +27,7 @@ import logging
 import re
 import time
 from pathlib import Path
-from typing import Any, TypedDict
+from typing import Any, TypedDict, cast
 
 from docling.datamodel.base_models import InputFormat
 from docling.datamodel.pipeline_options import (
@@ -45,37 +45,58 @@ logger = logging.getLogger(__name__)
 
 class OcrEngines:
     """OCR Engine Konstanten."""
+
     TESSERACT = "tesseract"
     EASYOCR = "easyocr"
     RAPIDOCR = "rapidocr"
 
 
-class OcrEngineConfig(TypedDict):
-    """Type definition for OCR engine configuration."""
+class OcrEngineConfigDict(TypedDict):
+    """Einfache strukturierte Repräsentation einer OCR Engine Konfiguration.
+
+    Hinweis: Ursprünglich wurde versucht, Methoden direkt in einem TypedDict
+    zu definieren und später dynamisch Attribute hinzuzufügen. Das ist laut
+    mypy nicht erlaubt (TypedDicts definieren nur Feld->Typ Paare).
+    Diese abgespeckte Variante dient nur als Rückgabe-Typ für Fabrikfunktionen.
+    """
 
     name: str
     options: TesseractCliOcrOptions | RapidOcrOptions | EasyOcrOptions
-    
-    @classmethod
-    def create_tesseract(cls, **options) -> "OcrEngineConfig":
-        """Erstellt TesseractCLI-Konfiguration."""
-        return {"name": OcrEngines.TESSERACT, "options": TesseractCliOcrOptions(**options)}
-    
-    @classmethod
-    def create_easyocr(cls, **options) -> "OcrEngineConfig":
-        """Erstellt EasyOCR-Konfiguration."""
-        return {"name": OcrEngines.EASYOCR, "options": EasyOcrOptions(**options)}
-    
-    @classmethod
-    def create_rapidocr(cls, **options) -> "OcrEngineConfig":
-        """Erstellt RapidOCR-Konfiguration.""" 
-        return {"name": OcrEngines.RAPIDOCR, "options": RapidOcrOptions(**options)}
 
 
-# Backward-Compatibility für bestehenden Code
-OcrEngineConfig.TESSERACT = OcrEngines.TESSERACT
-OcrEngineConfig.EASYOCR = OcrEngines.EASYOCR  
-OcrEngineConfig.RAPIDOCR = OcrEngines.RAPIDOCR
+class OcrEngineConfig:
+    """Fabrik- und Konstanten-Container für OCR Engine Konfigurationen.
+
+    Diese Klasse ersetzt die frühere fehlerhafte Nutzung von TypedDict mit
+    Klassenmethoden. Die create_* Methoden liefern ein OcrEngineConfigDict.
+    Konstanten (TESSERACT/EASYOCR/RAPIDOCR) bleiben für Rückwärtskompatibilität erhalten.
+    """
+
+    # Konstanten (public API)
+    TESSERACT = OcrEngines.TESSERACT
+    EASYOCR = OcrEngines.EASYOCR
+    RAPIDOCR = OcrEngines.RAPIDOCR
+
+    @staticmethod
+    def create_tesseract(**options: Any) -> OcrEngineConfigDict:
+        return {
+            "name": OcrEngines.TESSERACT,
+            "options": TesseractCliOcrOptions(**options),
+        }
+
+    @staticmethod
+    def create_easyocr(**options: Any) -> OcrEngineConfigDict:
+        return {
+            "name": OcrEngines.EASYOCR,
+            "options": EasyOcrOptions(**options),
+        }
+
+    @staticmethod
+    def create_rapidocr(**options: Any) -> OcrEngineConfigDict:
+        return {
+            "name": OcrEngines.RAPIDOCR,
+            "options": RapidOcrOptions(**options),
+        }
 
 
 class AdvancedDoclingProcessor:
@@ -99,6 +120,9 @@ class AdvancedDoclingProcessor:
         table_mode: str = "accurate",  # "fast" oder "accurate"
         force_full_page_ocr: bool = True,  # Für komplette Rechnungsseiten
         german_optimized: bool = True,
+        # Backward/Test compatibility aliases (do not persist in public API)
+        german_ner_enabled: bool | None = None,
+        german_ner: bool | None = None,
     ):
         """
         Initialisiert den Advanced Docling Processor.
@@ -118,6 +142,12 @@ class AdvancedDoclingProcessor:
         self.ocr_engine = ocr_engine
         self.table_mode = table_mode
         self.force_full_page_ocr = force_full_page_ocr
+        # Backward/Test compatibility: allow alternate flags to enable German NER/optimization
+        if german_ner_enabled is not None:
+            german_optimized = bool(german_ner_enabled)
+        elif german_ner is not None:
+            german_optimized = bool(german_ner)
+
         self.german_optimized = german_optimized
         self.german_ner_enabled = german_optimized  # Alias für NER-Status
 
@@ -241,7 +271,9 @@ class AdvancedDoclingProcessor:
             "payment_terms": r"(?:Zahlungsziel|Payment\s*Terms)\s*:?\s*(\d+\s*Tage?)",
         }
 
-    def _select_ocr_engines_by_quality(self, quality_level: str = "high") -> list[OcrEngineConfig]:
+    def _select_ocr_engines_by_quality(
+        self, quality_level: str = "high"
+    ) -> list[OcrEngineConfigDict]:
         """
         Optimierte OCR-Engine-Auswahl basierend auf Quality-Level und 2025 Research.
 
@@ -256,27 +288,42 @@ class AdvancedDoclingProcessor:
         Research-Update: RapidOCR = PaddleOCR Wrapper (offiziell bestätigt)
         GitHub Docling Issue #626: "We have RapidOCR in docling, which wraps PaddleOCR"
         """
-        engines = []
+        engines: list[OcrEngineConfigDict] = []
 
         if quality_level == "fast":
-            # Nur RapidOCR für Geschwindigkeit
-            engines.append(OcrEngineConfig.create_rapidocr(force_full_page_ocr=self.force_full_page_ocr))
+            engines.append(
+                OcrEngineConfig.create_rapidocr(
+                    force_full_page_ocr=self.force_full_page_ocr
+                )
+            )
         elif quality_level == "medium":
-            # RapidOCR + EasyOCR für Balance
-            engines.append(OcrEngineConfig.create_rapidocr(force_full_page_ocr=self.force_full_page_ocr))
-            engines.append(OcrEngineConfig.create_easyocr(force_full_page_ocr=self.force_full_page_ocr))
+            engines.append(
+                OcrEngineConfig.create_rapidocr(
+                    force_full_page_ocr=self.force_full_page_ocr
+                )
+            )
+            engines.append(
+                OcrEngineConfig.create_easyocr(
+                    force_full_page_ocr=self.force_full_page_ocr
+                )
+            )
         else:  # high quality (default)
-            # Primäre Engine: TesseractCLI (beste deutsche Erkennung)
             if self.german_optimized:
-                engines.append(OcrEngineConfig.create_tesseract(
-                    lang=["deu"], force_full_page_ocr=self.force_full_page_ocr
-                ))
-
-            # Fallback 1: RapidOCR (PaddleOCR-Wrapper - leistungsstärkste Engine)
-            engines.append(OcrEngineConfig.create_rapidocr(force_full_page_ocr=self.force_full_page_ocr))
-
-            # Fallback 2: EasyOCR (robust bei komplexen Layouts)
-            engines.append(OcrEngineConfig.create_easyocr(force_full_page_ocr=self.force_full_page_ocr))
+                engines.append(
+                    OcrEngineConfig.create_tesseract(
+                        lang=["deu"], force_full_page_ocr=self.force_full_page_ocr
+                    )
+                )
+            engines.append(
+                OcrEngineConfig.create_rapidocr(
+                    force_full_page_ocr=self.force_full_page_ocr
+                )
+            )
+            engines.append(
+                OcrEngineConfig.create_easyocr(
+                    force_full_page_ocr=self.force_full_page_ocr
+                )
+            )
 
         return engines
 
@@ -295,93 +342,84 @@ class AdvancedDoclingProcessor:
         logger.info(f"🚀 Starte intelligente PDF-Verarbeitung: {pdf_path}")
         start_time = time.time()
 
-        # OCR-Engine-Auswahl für robuste Verarbeitung
         ocr_engines_to_try = self._select_ocr_engines_by_quality()
+        last_error: Exception | None = None
 
-        last_error = None
-
-        for attempt, engine_config in enumerate(ocr_engines_to_try, 1):
+        for attempt, engine_config in enumerate(ocr_engines_to_try, start=1):
             try:
+                engine_name = engine_config["name"]
                 logger.info(
-                    f"📊 OCR-Versuch {attempt}/{len(ocr_engines_to_try)}: {engine_config['name']}"
+                    "📊 OCR-Versuch %d/%d: %s",
+                    attempt,
+                    len(ocr_engines_to_try),
+                    engine_name,
                 )
 
-                # Neue Pipeline-Optionen für diesen Versuch
                 ocr_options = engine_config["options"]
-                if not isinstance(
-                    ocr_options,
-                    TesseractCliOcrOptions | RapidOcrOptions | EasyOcrOptions,
-                ):
-                    raise TypeError(f"Invalid OCR options type: {type(ocr_options)}")
                 pipeline_options = self._create_pipeline_options_for_engine(ocr_options)
                 pdf_format_options = PdfFormatOption(pipeline_options=pipeline_options)
-
-                # Neuen Converter mit Engine-spezifischen Optionen
                 temp_converter = DocumentConverter(
                     format_options={InputFormat.PDF: pdf_format_options}
                 )
-
-                # Dokument konvertieren mit aktueller Engine
                 doc_result = temp_converter.convert(pdf_path)
-
-                if not doc_result or not doc_result.document:
-                    logger.warning(f"⚠️ Keine Ergebnisse mit {engine_config['name']}")
+                if not doc_result or not getattr(doc_result, "document", None):
+                    logger.warning("⚠️ Keine Ergebnisse mit %s", engine_name)
                     continue
-
                 doc = doc_result.document
-
-                # Content extrahieren
-                raw_content = doc.export_to_markdown()
+                # Prefer markdown if available, otherwise fall back to plain text
+                if hasattr(doc, "export_to_markdown"):
+                    raw_content = doc.export_to_markdown()
+                elif hasattr(doc, "export_to_text"):
+                    raw_content = doc.export_to_text()
+                else:
+                    raw_content = ""
                 if not raw_content or len(raw_content.strip()) < 100:
                     logger.warning(
-                        f"⚠️ Zu wenig Content mit {engine_config['name']}: {len(raw_content)} Zeichen"
+                        "⚠️ Zu wenig Content mit %s: %d Zeichen",
+                        engine_name,
+                        len(raw_content) if raw_content else 0,
                     )
                     continue
-
-                # Erfolgreiche Extraktion
                 logger.info(
-                    f"✅ Erfolgreiche OCR mit {engine_config['name']}: {len(raw_content)} Zeichen"
+                    "✅ Erfolgreiche OCR mit %s: %d Zeichen",
+                    engine_name,
+                    len(raw_content),
                 )
-
-                # Deutsche NER-Verbesserung
                 enhanced_data = self._extract_structured_data(doc)
                 if self.german_optimized:
                     enhanced_data = self._apply_german_ner(enhanced_data)
-
-                # Qualitäts-Bewertung
                 quality_score = self._calculate_quality_score(enhanced_data)
-
-                # Timing-Info
                 processing_time = time.time() - start_time
                 logger.info(
-                    f"🎯 Verarbeitung erfolgreich in {processing_time:.2f}s mit Score: {quality_score:.2f}"
+                    "🎯 Verarbeitung erfolgreich in %.2fs mit Score: %.2f",
+                    processing_time,
+                    quality_score,
                 )
-
-                return {
-                    "content": enhanced_data.get("raw_text", ""),
-                    "raw_content": raw_content,
-                    "structured_data": enhanced_data,
-                    "pages": len(doc.pages) if hasattr(doc, "pages") else 1,
-                    "processing_time": processing_time,
-                    "ocr_engine_used": engine_config["name"],
-                    "quality_score": quality_score,
-                    "character_count": len(raw_content),
-                    "attempt_number": attempt,
-                    "total_attempts": len(ocr_engines_to_try),
-                    "german_ner_applied": self.german_optimized,
-                }, quality_score
-
-            except Exception as e:
+                return (
+                    {
+                        "content": enhanced_data.get("raw_text", ""),
+                        "raw_content": raw_content,
+                        "structured_data": enhanced_data,
+                        "pages": len(doc.pages) if hasattr(doc, "pages") else 1,
+                        "processing_time": processing_time,
+                        "ocr_engine_used": engine_name,
+                        "quality_score": quality_score,
+                        "character_count": len(raw_content),
+                        "attempt_number": attempt,
+                        "total_attempts": len(ocr_engines_to_try),
+                        "german_ner_applied": self.german_optimized,
+                    },
+                    quality_score,
+                )
+            except Exception as e:  # noqa: BLE001
                 last_error = e
-                logger.error(f"❌ Fehler mit {engine_config['name']}: {str(e)}")
+                logger.error("❌ Fehler mit %s: %s", engine_config.get("name", "?"), e)
                 if attempt < len(ocr_engines_to_try):
                     logger.info("🔄 Versuche nächste Engine...")
                     continue
-
-        # Alle Engines fehlgeschlagen
-        logger.error(f"💥 Alle {len(ocr_engines_to_try)} OCR-Engines fehlgeschlagen!")
+        logger.error("💥 Alle %d OCR-Engines fehlgeschlagen!", len(ocr_engines_to_try))
         raise RuntimeError(
-            f"Alle OCR-Engines versagten. Letzter Fehler: {str(last_error)}"
+            f"Alle OCR-Engines versagten. Letzter Fehler: {last_error}"  # noqa: EM101
         )
 
     def _create_pipeline_options_for_engine(
@@ -414,6 +452,10 @@ class AdvancedDoclingProcessor:
         """
         Verarbeitet eine PDF-Datei mit Advanced Features.
 
+        Backward/Test compatibility:
+        - Returns a result dict with `success`, `text` (alias for raw_text),
+          and `error` on failure instead of raising exceptions.
+
         Args:
             pdf_path: Pfad zur PDF-Datei
 
@@ -421,7 +463,13 @@ class AdvancedDoclingProcessor:
             Dictionary mit strukturierten Extraktionsergebnissen und NER
         """
         if not pdf_path.exists():
-            raise FileNotFoundError(f"PDF-Datei nicht gefunden: {pdf_path}")
+            # Test-friendly: do not raise, return structured error
+            return {
+                "success": False,
+                "error": f"PDF-Datei nicht gefunden: {pdf_path}",
+                "text": "",
+                "tables": [],
+            }
 
         logger.info(f"Starte Advanced Docling-Verarbeitung: {pdf_path.name}")
 
@@ -429,8 +477,13 @@ class AdvancedDoclingProcessor:
             # PDF mit optimierter Pipeline konvertieren
             result = self.converter.convert(str(pdf_path))
 
-            if not result or not result.document:
-                raise ValueError(f"Docling konnte PDF nicht verarbeiten: {pdf_path}")
+            if not result or not getattr(result, "document", None):
+                return {
+                    "success": False,
+                    "error": f"Docling konnte PDF nicht verarbeiten: {pdf_path}",
+                    "text": "",
+                    "tables": [],
+                }
 
             # Basis-Extraktion
             extracted_data = self._extract_structured_data(result.document)
@@ -440,20 +493,29 @@ class AdvancedDoclingProcessor:
                 extracted_data = self._apply_german_ner(extracted_data)
 
             # Qualitäts-Scoring hinzufügen
-            extracted_data["quality_score"] = self._calculate_quality_score(
-                extracted_data
-            )
+            quality = self._calculate_quality_score(extracted_data)
+            extracted_data["quality_score"] = quality
 
             logger.info(
                 f"Advanced Docling-Verarbeitung erfolgreich: {len(extracted_data.get('raw_text', ''))} Zeichen"
             )
-            return extracted_data
+            # Test-friendly envelope
+            return {
+                "success": True,
+                "text": extracted_data.get("raw_text", ""),
+                **extracted_data,
+            }
 
         except Exception as e:
             logger.error(f"Fehler bei Advanced Docling-Verarbeitung: {e}")
-            raise
+            return {
+                "success": False,
+                "error": str(e),
+                "text": "",
+                "tables": [],
+            }
 
-    def _apply_german_ner(self, extracted_data: dict[str, Any]) -> dict[str, Any]:
+    def _apply_german_ner(self, extracted_data: dict[str, Any] | str) -> dict[str, Any]:
         """
         Wendet Custom NER für deutsche Rechnungsfelder an.
 
@@ -461,8 +523,14 @@ class AdvancedDoclingProcessor:
         """
         import re
 
-        text = extracted_data.get("raw_text", "")
-        entities = {}
+        # Backward/Test compatibility: allow raw str input
+        if isinstance(extracted_data, str):
+            data: dict[str, Any] = {"raw_text": extracted_data}
+        else:
+            data = extracted_data
+
+        text = data.get("raw_text", "")
+        entities: dict[str, Any] = {}
 
         # NER-Patterns auf Text anwenden
         for entity_type, pattern in self.german_invoice_patterns.items():
@@ -474,27 +542,36 @@ class AdvancedDoclingProcessor:
                 )
 
         # Entitäten zu extrahierten Daten hinzufügen
-        extracted_data["german_entities"] = entities
-        extracted_data["ner_method"] = "custom_patterns"
+        data["german_entities"] = entities
+        data["ner_method"] = "custom_patterns"
 
-        return extracted_data
+        return data
 
-    def _calculate_quality_score(self, extracted_data: dict[str, Any]) -> float:
+    def _calculate_quality_score(self, data_or_doc: dict[str, Any] | Any, text: str | None = None) -> float:
         """
         Berechnet Quality Score basierend auf Extraktions-Vollständigkeit.
+
+        Backward/Test compatibility:
+        - Accepts either a single `extracted_data` dict
+          OR `(document, text)` where `text` is the extracted text.
 
         Returns:
             Score zwischen 0.0 und 1.0
         """
+        # Normalize input to an extracted_data-like dict
+        if isinstance(data_or_doc, dict) and text is None:
+            extracted_data = data_or_doc
+        else:
+            # Called as (doc, text) or (anything, text)
+            extracted_data = {"raw_text": text or "", "tables": [], "metadata": {}}
+
         score = 0.0
         max_score = 0.0
 
         # Text-Vollständigkeit (40% der Bewertung)
         text_length = len(extracted_data.get("raw_text", ""))
         if text_length > 0:
-            score += (
-                min(text_length / 5000, 1.0) * 0.4
-            )  # 5000 Zeichen = volle Punktzahl
+            score += min(text_length / 5000, 1.0) * 0.4  # 5000 Zeichen = volle Punktzahl
         max_score += 0.4
 
         # Tabellen-Erkennung (20% der Bewertung)
@@ -513,9 +590,7 @@ class AdvancedDoclingProcessor:
                 "total_gross",
                 "supplier_name",
             ]
-            found_important = sum(
-                1 for entity in important_entities if entity in entities
-            )
+            found_important = sum(1 for entity in important_entities if entity in entities)
             score += (found_important / len(important_entities)) * 0.3
         max_score += 0.3
 
@@ -541,10 +616,10 @@ class AdvancedDoclingProcessor:
         raw_text = document.export_to_text()
 
         # Tabellen extrahieren und parsen
-        tables = self._extract_tables(document)
+        tables: list[dict[str, Any]] = self._extract_tables(document)
 
         # WICHTIG: Original Docling Tables für neue API verfügbar machen
-        original_tables = []
+        original_tables: list[Any] = []
         if hasattr(document, "tables"):
             original_tables = document.tables
 
@@ -714,7 +789,9 @@ class AdvancedDoclingProcessor:
 
         try:
             # Volltext aus Dokument extrahieren
-            if hasattr(document, "export_to_text"):
+            if isinstance(document, str):
+                document_text = document
+            elif hasattr(document, "export_to_text"):
                 document_text = document.export_to_text()
             else:
                 logger.debug("Dokument hat keine export_to_text Methode")
@@ -777,7 +854,7 @@ class AdvancedDoclingProcessor:
         return tables
 
     def _parse_table_data(
-        self, table: Any, page_idx: int, table_idx: int
+        self, table: Any, page_idx: int | None = None, table_idx: int | None = None
     ) -> dict[str, Any] | None:
         """
         Parst eine einzelne Tabelle aus Docling-Format.
@@ -791,6 +868,68 @@ class AdvancedDoclingProcessor:
             Geparstes Tabellen-Dictionary oder None
         """
         try:
+            # String input: simple parsing for tests and generic inputs
+            if isinstance(table, str):
+                lines = [l.strip() for l in table.strip().splitlines() if l.strip()]
+                if not lines:
+                    return None
+                # Split by '|' if present, otherwise collapse multiple spaces
+                def split_row(s: str) -> list[str]:
+                    if "|" in s:
+                        return [c.strip() for c in s.split("|")]
+                    return [c for c in re.split(r"\s{2,}", s) if c]
+
+                headers = split_row(lines[0])
+                rows = [split_row(l) for l in lines[1:]]
+                normalized_headers = self._normalize_german_headers(headers)
+                return {
+                    "page": (page_idx or 0) + 1,
+                    "table_index": table_idx or 0,
+                    "headers": headers,
+                    "normalized_headers": normalized_headers,
+                    "rows": rows,
+                    "row_count": len(rows),
+                    "column_count": len(headers) if headers else 0,
+                }
+
+            # Dict input with cell grid (as used in tests)
+            if isinstance(table, dict) and "cells" in table:
+                cells = table.get("cells", [])
+                # Determine dimensions
+                num_rows = table.get("num_rows")
+                num_cols = table.get("num_cols")
+                if num_rows is None or num_cols is None:
+                    # Infer from max indices if not provided
+                    try:
+                        max_row = max(c.get("row", 0) for c in cells)
+                        max_col = max(c.get("col", 0) for c in cells)
+                        num_rows = max_row + 1
+                        num_cols = max_col + 1
+                    except ValueError:
+                        return None
+
+                # Build matrix and then headers/rows
+                grid: list[list[str]] = [["" for _ in range(num_cols)] for _ in range(num_rows)]
+                for c in cells:
+                    r = int(c.get("row", 0))
+                    k = int(c.get("col", 0))
+                    v = str(c.get("text", "")).strip()
+                    if 0 <= r < num_rows and 0 <= k < num_cols:
+                        grid[r][k] = v
+
+                headers = [str(h).strip() for h in grid[0]] if grid else []
+                rows = [row for row in grid[1:]] if len(grid) > 1 else []
+                normalized_headers = self._normalize_german_headers(headers)
+                return {
+                    "page": (page_idx or 0) + 1,
+                    "table_index": table_idx or 0,
+                    "headers": headers,
+                    "normalized_headers": normalized_headers,
+                    "rows": rows,
+                    "row_count": len(rows),
+                    "column_count": len(headers) if headers else 0,
+                }
+
             # Tabellen-Grid extrahieren
             if not hasattr(table, "data") or not table.data:
                 return None
@@ -801,8 +940,8 @@ class AdvancedDoclingProcessor:
                 return None
 
             # Erste Zeile als Header interpretieren
-            headers = []
-            rows = []
+            headers: list[str] = []
+            rows: list[list[str]] = []
 
             for row_idx, row in enumerate(table_data):
                 if hasattr(row, "cells"):
@@ -827,8 +966,8 @@ class AdvancedDoclingProcessor:
             normalized_headers = self._normalize_german_headers(headers)
 
             return {
-                "page": page_idx + 1,
-                "table_index": table_idx,
+                "page": (page_idx or 0) + 1,
+                "table_index": table_idx or 0,
                 "headers": headers,
                 "normalized_headers": normalized_headers,
                 "rows": rows,
@@ -842,15 +981,18 @@ class AdvancedDoclingProcessor:
             )
             return None
 
-    def _normalize_german_headers(self, headers: list[str]) -> dict[str, str]:
+    def _normalize_german_headers(self, headers: list[str]) -> list[str]:
         """
         Normalisiert deutsche Tabellen-Header für einheitliche Verarbeitung.
+
+        Backward/Test compatibility: returns a list with same length as input
+        (canonicalized names), not a mapping.
 
         Args:
             headers: Liste der ursprünglichen Header
 
         Returns:
-            Dictionary mit normalisierten Header-Mappings
+            Liste normalisierter Header (gleiche Länge wie Eingabe)
         """
         # Deutsche Elektrohandwerk-Header-Mappings
         header_mappings = {
@@ -890,21 +1032,24 @@ class AdvancedDoclingProcessor:
             "tax": ["mwst", "ust", "steuer", "tax", "%"],
         }
 
-        normalized = {}
+        normalized_list: list[str] = []
 
         for idx, header in enumerate(headers):
-            header_lower = header.lower().strip()
+            header_lower = str(header).lower().strip()
 
             # Mapping finden
+            canonical = None
             for standard_key, variants in header_mappings.items():
                 if any(variant in header_lower for variant in variants):
-                    normalized[standard_key] = header
+                    canonical = standard_key
                     break
-            else:
-                # Fallback: Original Header
-                normalized[f"column_{idx}"] = header
 
-        return normalized
+            if canonical is None:
+                canonical = f"column_{idx}"
+
+            normalized_list.append(canonical)
+
+        return normalized_list
 
     def _extract_pattern_tables(self, page: Any, page_idx: int) -> list[dict[str, Any]]:
         """

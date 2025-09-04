@@ -41,13 +41,13 @@ class ProcessingMode(Enum):
 
 class ClassificationSource(Enum):
     """Quelle der Klassifizierung."""
-    
+
     # Bestehende Werte
     LOCAL_SPACY = "local_spacy"
     LOCAL_CONTEXT_AWARE = "local_context_aware"
     GEMINI_DIRECT = "gemini_direct"
     HYBRID_COMBINED = "hybrid_combined"
-    
+
     # Alias-Werte für Tests (Backward-Compatibility)
     LOCAL = "local_spacy"  # Alias für LOCAL_SPACY
     GEMINI = "gemini_direct"  # Alias für GEMINI_DIRECT
@@ -59,34 +59,48 @@ class HybridResult(BaseModel):
 
     # Backward-Compatibility: Tests erwarten diese Felder
     account: str = Field(default="", description="Klassifiziertes Konto (für Tests)")
-    classification: dict[str, Any] = Field(default_factory=dict, description="Finale Klassifizierung")
+    classification: dict[str, Any] = Field(
+        default_factory=dict, description="Finale Klassifizierung"
+    )
     source: ClassificationSource = Field(..., description="Verwendete Quelle")
     confidence: float = Field(..., description="Finale Konfidenz")
     local_confidence: float = Field(default=0.0, description="Lokale Modell-Konfidenz")
     gemini_confidence: float = Field(default=0.0, description="Gemini-Konfidenz")
-    
+
     # Flexible Verarbeitungszeit (beide Varianten unterstützen)
-    processing_time_ms: float = Field(default=0.0, description="Verarbeitungszeit in ms")
-    processing_time: float = Field(default=0.0, description="Verarbeitungszeit in s (Legacy)")
-    
+    processing_time_ms: float = Field(
+        default=0.0, description="Verarbeitungszeit in ms"
+    )
+    processing_time: float = Field(
+        default=0.0, description="Verarbeitungszeit in s (Legacy)"
+    )
+
     cost_estimate: float = Field(default=0.0, description="Geschätzte API-Kosten")
+    # Backward/Test compatibility: some tests expect `cost`
+    cost: float = Field(default=0.0, description="Alias für geschätzte API-Kosten")
     fallback_triggered: bool = Field(default=False, description="Fallback verwendet")
     performance_comparison: dict[str, Any] = Field(default_factory=dict)
-    
-    def __init__(self, **data):
+
+    def __init__(self, **data: Any) -> None:
         """Custom init für Backward-Compatibility."""
         # Verarbeitung für processing_time -> processing_time_ms Konvertierung
         if "processing_time" in data and "processing_time_ms" not in data:
             data["processing_time_ms"] = data["processing_time"] * 1000  # s zu ms
         elif "processing_time_ms" in data and "processing_time" not in data:
             data["processing_time"] = data["processing_time_ms"] / 1000  # ms zu s
-            
+
+        # Synchronize cost fields
+        if "cost" in data and "cost_estimate" not in data:
+            data["cost_estimate"] = data["cost"]
+        elif "cost_estimate" in data and "cost" not in data:
+            data["cost"] = data["cost_estimate"]
+
         # Account in classification einbetten falls vorhanden
         if "account" in data and not data.get("classification"):
             data["classification"] = {"account": data["account"]}
         elif data.get("classification", {}).get("account") and not data.get("account"):
             data["account"] = data["classification"]["account"]
-            
+
         super().__init__(**data)
 
 
@@ -112,49 +126,52 @@ class HybridIntelligenceEngine:
     """
 
     def __init__(
-        self, 
-        config: ConfigBridge | None = None,
+        self,
+        config: ConfigBridge | dict[str, Any] | None = None,
         db_path: str | Path | None = None,
         confidence_threshold: float | None = None,
         cost_threshold_daily: float | None = None,
-        fallback_enabled: bool | None = None
+        fallback_enabled: bool | None = None,
     ):
         self.config = config or config_instance
-        self.db_path: Path = Path(db_path) if db_path else Path("data") / "training" / "hybrid_intelligence.db"
-        
+        self.db_path: Path = (
+            Path(db_path)
+            if db_path
+            else Path("data") / "training" / "hybrid_intelligence.db"
+        )
+
         # Threshold-Konfiguration mit Overrides
         # Priority: direct parameter > config > default
         if confidence_threshold is not None:
             self.confidence_threshold = confidence_threshold
-        elif config is not None and isinstance(config, dict) and "confidence_threshold" in config:
-            self.confidence_threshold = config["confidence_threshold"]
-        elif hasattr(config, "confidence_threshold") if config else False:
-            self.confidence_threshold = config.confidence_threshold
+        elif isinstance(config, dict) and "confidence_threshold" in config:
+            self.confidence_threshold = float(config["confidence_threshold"])
+        elif isinstance(config, ConfigBridge):
+            self.confidence_threshold = float(config.confidence_threshold)
         else:
             self.confidence_threshold = 0.75
-            
+
         if cost_threshold_daily is not None:
             self.cost_threshold_daily = cost_threshold_daily
-        elif config is not None and isinstance(config, dict) and "cost_threshold_daily" in config:
-            self.cost_threshold_daily = config["cost_threshold_daily"]
-        elif hasattr(config, "cost_threshold_daily") if config else False:
-            self.cost_threshold_daily = config.cost_threshold_daily
+        elif isinstance(config, dict) and "cost_threshold_daily" in config:
+            self.cost_threshold_daily = float(config["cost_threshold_daily"])
         else:
             self.cost_threshold_daily = 5.0
-            
+
         if fallback_enabled is not None:
             self.fallback_enabled = fallback_enabled
-        elif config is not None and isinstance(config, dict) and "fallback_enabled" in config:
-            self.fallback_enabled = config["fallback_enabled"]
-        elif hasattr(config, "fallback_enabled") if config else False:
-            self.fallback_enabled = config.fallback_enabled
+        elif isinstance(config, dict) and "fallback_enabled" in config:
+            self.fallback_enabled = bool(config["fallback_enabled"])
+        elif isinstance(config, ConfigBridge):
+            self.fallback_enabled = bool(config.fallback_enabled)
         else:
             self.fallback_enabled = True
-        
+
         # Performance-Tracking
         self._init_database()
-        
+
         logger.info("🧠 Hybrid Intelligence Engine initialisiert")
+
     def _init_database(self) -> None:
         """Initialisiert Performance-Tracking-Datenbank."""
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -243,17 +260,28 @@ class HybridIntelligenceEngine:
 
             # Entscheidungslogik basierend auf Modus
             if mode == ProcessingMode.LOCAL_ONLY or cost_limit_reached:
-                return self._classify_local_only(text, {"supplier": supplier, "start_time": start_time})
+                return self._classify_local_only(
+                    text, {"supplier": supplier, "start_time": start_time}
+                )
 
             elif mode == ProcessingMode.GEMINI_ONLY:
-                return self._classify_gemini_only(text, {"supplier": supplier, "start_time": start_time})
+                return self._classify_gemini_only(
+                    text, {"supplier": supplier, "start_time": start_time}
+                )
 
             elif mode == ProcessingMode.HYBRID_AUTO:
-                return self._classify_hybrid_auto(text, {"supplier": supplier, "start_time": start_time})
+                return self._classify_hybrid_auto(
+                    text, {"supplier": supplier, "start_time": start_time}
+                )
 
             elif mode == ProcessingMode.COST_OPTIMIZED:
                 return self._classify_cost_optimized(
-                    text, {"supplier": supplier, "start_time": start_time, "daily_cost": daily_cost}
+                    text,
+                    {
+                        "supplier": supplier,
+                        "start_time": start_time,
+                        "daily_cost": daily_cost,
+                    },
                 )
 
         except Exception as e:
@@ -263,13 +291,13 @@ class HybridIntelligenceEngine:
             return self._emergency_fallback(text, start_time, str(e))
 
     def _classify_local_only(
-        self, text: str, context: dict = None
+        self, text: str, context: dict[str, Any] | None = None
     ) -> HybridResult:
         """🏠 Lokale Klassifizierung mit Context-Aware-Logik."""
         context = context or {}
         start_time = context.get("start_time", datetime.now())
         supplier = context.get("supplier", "")
-        
+
         try:
             # Simuliere lokale Klassifizierung (würde in Realität Context-Aware-Classifier verwenden)
             local_confidence = 0.85  # Simulierte lokale Konfidenz
@@ -309,13 +337,13 @@ class HybridIntelligenceEngine:
             return self._emergency_fallback(text, start_time, str(e))
 
     def _classify_gemini_only(
-        self, text: str, context: dict = None
+        self, text: str, context: dict[str, Any] | None = None
     ) -> HybridResult:
         """☁️ Gemini-only Klassifizierung."""
         context = context or {}
         start_time = context.get("start_time", datetime.now())
         supplier = context.get("supplier", "")
-        
+
         try:
             # Simuliere Gemini-Klassifizierung (würde in Realität GeminiDirectProcessor verwenden)
             gemini_confidence = 0.95  # Gemini typisch höhere Konfidenz
@@ -359,16 +387,18 @@ class HybridIntelligenceEngine:
             return self._emergency_fallback(text, start_time, str(e))
 
     def _classify_hybrid_auto(
-        self, text: str, context: dict = None
+        self, text: str, context: dict[str, Any] | None = None
     ) -> HybridResult:
         """🤖 Automatischer Hybrid-Modus basierend auf lokaler Konfidenz."""
         context = context or {}
         start_time = context.get("start_time", datetime.now())
         supplier = context.get("supplier", "")
-        
+
         try:
             # Zuerst lokale Klassifizierung versuchen
-            local_result = self._classify_local_only(text, {"start_time": start_time, "supplier": supplier})
+            local_result = self._classify_local_only(
+                text, {"start_time": start_time, "supplier": supplier}
+            )
 
             # Entscheidung basierend auf lokaler Konfidenz
             if local_result.local_confidence >= self.confidence_threshold:
@@ -386,7 +416,9 @@ class HybridIntelligenceEngine:
                     local_result.local_confidence,
                 )
 
-                gemini_result = self._classify_gemini_only(text, {"start_time": start_time, "supplier": supplier})
+                gemini_result = self._classify_gemini_only(
+                    text, {"start_time": start_time, "supplier": supplier}
+                )
 
                 # Hybrid-Ergebnis kombinieren
                 return HybridResult(
@@ -411,14 +443,14 @@ class HybridIntelligenceEngine:
             return self._emergency_fallback(text, start_time, str(e))
 
     def _classify_cost_optimized(
-        self, text: str, context: dict = None
+        self, text: str, context: dict[str, Any] | None = None
     ) -> HybridResult:
         """💰 Kosten-optimierte Klassifizierung."""
         context = context or {}
         start_time = context.get("start_time", datetime.now())
         supplier = context.get("supplier", "")
         daily_cost = context.get("daily_cost", 0.0)
-        
+
         try:
             # Budget-basierte Entscheidung
             remaining_budget = max(0, self.cost_threshold_daily - daily_cost)
@@ -427,10 +459,14 @@ class HybridIntelligenceEngine:
             if remaining_budget < estimated_gemini_cost:
                 # Budget erschöpft → nur lokale Modelle
                 logger.info("💸 Budget erschöpft, verwende lokale Modelle")
-                return self._classify_local_only(text, {"start_time": start_time, "supplier": supplier})
+                return self._classify_local_only(
+                    text, {"start_time": start_time, "supplier": supplier}
+                )
 
             # Lokale Klassifizierung zuerst versuchen
-            local_result = self._classify_local_only(text, {"start_time": start_time, "supplier": supplier})
+            local_result = self._classify_local_only(
+                text, {"start_time": start_time, "supplier": supplier}
+            )
 
             # Strengerer Threshold für Cost-Optimization
             cost_optimized_threshold = self.confidence_threshold + 0.1
@@ -440,7 +476,9 @@ class HybridIntelligenceEngine:
             else:
                 # Gemini nur bei wirklich unsicheren Fällen
                 logger.info("📊 Cost-Optimization: Gemini für schwierigen Fall")
-                return self._classify_gemini_only(text, {"start_time": start_time, "supplier": supplier})
+                return self._classify_gemini_only(
+                    text, {"start_time": start_time, "supplier": supplier}
+                )
 
         except Exception as e:
             logger.error("❌ Cost-Optimized Klassifizierung fehlgeschlagen: %s", e)
@@ -707,23 +745,21 @@ HybridIntelligence = HybridIntelligenceEngine
 def create_hybrid_engine(
     config: ConfigBridge | None = None,
     db_path: str | Path | None = None,
-    **kwargs
+    **kwargs: Any,
 ) -> HybridIntelligenceEngine:
     """Factory-Function für HybridIntelligenceEngine."""
-    return HybridIntelligenceEngine(
-        config=config,
-        db_path=db_path,
-        **kwargs
-    )
+    return HybridIntelligenceEngine(config=config, db_path=db_path, **kwargs)
 
 
-def create_ml_plugin_for_backend(config: dict = None) -> "HybridIntelligenceEngine":
+def create_ml_plugin_for_backend(
+    config: dict[str, Any] | None = None,
+) -> "HybridIntelligenceEngine":
     """Factory für ML-Plugin (für Backend-Tests)."""
     if config:
         return HybridIntelligenceEngine(
             confidence_threshold=config.get("confidence_threshold", 0.75),
             cost_threshold_daily=config.get("cost_threshold_daily", 5.0),
-            fallback_enabled=config.get("fallback_enabled", True)
+            fallback_enabled=config.get("fallback_enabled", True),
         )
     return HybridIntelligenceEngine()
 
@@ -731,14 +767,14 @@ def create_ml_plugin_for_backend(config: dict = None) -> "HybridIntelligenceEngi
 # Module exports
 __all__ = [
     "HybridIntelligenceEngine",
-    "ClassificationSource", 
+    "ClassificationSource",
     "ProcessingMode",
     "HybridResult",
     "PerformanceMetrics",
     "create_hybrid_engine",
     "create_ml_plugin_for_backend",
     "classify_with_hybrid_intelligence",
-    "HybridIntelligence"  # Alias
+    "HybridIntelligence",  # Alias
 ]
 
 

@@ -343,6 +343,8 @@ class DataClassifier:
     def find_best_skr03_match_fallback(self, description: str) -> dict[str, Any]:
         """
         Fallback-Klassifizierung für den Fall dass Manager nicht verfügbar ist.
+        Test-/Observability-Verbesserung: gibt zusätzlich `matched_keywords`
+        zurück, damit Keyword-Matches transparent geprüft werden können.
         """
         best_score = 0.0
         best_category = "elektromaterial"  # Default
@@ -408,6 +410,7 @@ class DataClassifier:
                 if matched_keywords
                 else "Default classification"
             ),
+            "matched_keywords": matched_keywords,
             "method": "rule_fallback",
             "validation_info": {
                 "konto_gueltig": (
