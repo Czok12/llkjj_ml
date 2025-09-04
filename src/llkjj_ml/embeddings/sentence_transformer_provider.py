@@ -38,6 +38,7 @@ class SentenceTransformerProvider:
         self,
         model_name: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
         cache_folder: Path | None = None,
+        eager_loading: bool = False,
     ):
         """
         Initialize Sentence Transformer Provider.
@@ -45,99 +46,110 @@ class SentenceTransformerProvider:
         Args:
             model_name: Sentence-Transformers Model zu verwenden
             cache_folder: Optional custom cache directory
+            eager_loading: Load model immediately in constructor
         """
         self.model_name = model_name
         self.cache_folder = cache_folder
         self._model: SentenceTransformer | None = None  # Lazy loading
+        
+        if eager_loading:
+            self._load_model()
 
         logger.info(f"✅ SentenceTransformerProvider initialisiert: {model_name}")
 
-    def encode(self, text: str) -> list[float]:
+    def encode(
+        self, 
+        texts: str | list[str], 
+        normalize_embeddings: bool = False,
+        convert_to_numpy: bool = True,
+        **kwargs
+    ) -> np.ndarray:
         """
-        Encode Text zu Embedding-Vector.
-
+        Encode text(s) to embeddings.
+        
         Args:
-            text: Text zu encoden
-
-        Returns:
-            384-dimensionaler Float-Vector
+            texts: Single text or list of texts
+            normalize_embeddings: Whether to normalize embeddings
+            convert_to_numpy: Convert to numpy array
+            **kwargs: Additional arguments for sentence transformer
         """
-        if not text or not text.strip():
-            # Return zero vector for empty text
-            return [0.0] * 384
-
+        if self._model is None:
+            self._load_model()
+        
+        # Handle empty input
+        if not texts:
+            if isinstance(texts, str):
+                return np.array([0.0] * 384) if convert_to_numpy else [0.0] * 384
+            else:
+                return np.array([[0.0] * 384]) if convert_to_numpy else [[0.0] * 384]
+        
+        # Convert single string to list
+        if isinstance(texts, str):
+            texts = [texts]
+        
         try:
-            # Lazy load model
-            if self._model is None:
-                self._load_model()
-
-            # Encode text
             assert self._model is not None, "Model should be loaded after _load_model()"
-            embedding = self._model.encode(text)
-
-            # Convert to list and ensure 384 dimensions
-            embedding_list = embedding.tolist()
-
-            # Validate dimensions
-            if len(embedding_list) != 384:
-                logger.warning(
-                    f"Unexpected embedding dimension: {len(embedding_list)}, expected 384"
-                )
-                # Pad or truncate to 384
-                if len(embedding_list) < 384:
-                    embedding_list.extend([0.0] * (384 - len(embedding_list)))
-                else:
-                    embedding_list = embedding_list[:384]
-
-            return embedding_list
-
+            embeddings = self._model.encode(
+                texts, 
+                normalize_embeddings=normalize_embeddings,
+                convert_to_numpy=convert_to_numpy,
+                **kwargs
+            )
+            
+            return embeddings
+            
         except Exception as e:
             logger.error(f"Fehler bei Text-Encoding: {e}")
             # Return zero vector as fallback
-            return [0.0] * 384
+            if len(texts) == 1:
+                return np.array([0.0] * 384) if convert_to_numpy else [0.0] * 384
+            else:
+                return np.array([[0.0] * 384 for _ in texts]) if convert_to_numpy else [[0.0] * 384 for _ in texts]
 
-    def encode_batch(self, texts: list[str]) -> list[list[float]]:
+    def encode_batch(
+        self,
+        texts: list[str],
+        batch_size: int = 32,
+        show_progress_bar: bool = True,
+        normalize_embeddings: bool = False,
+        **kwargs
+    ) -> list[np.ndarray]:
         """
-        Encode multiple texts in batch for better performance.
-
+        Encode batch of texts with custom batch size.
+        
         Args:
-            texts: Liste von Texten zu encoden
-
-        Returns:
-            Liste von 384-dimensionalen Float-Vectors
+            texts: List of texts to encode
+            batch_size: Batch size for processing
+            show_progress_bar: Show progress bar
+            normalize_embeddings: Whether to normalize embeddings
+            **kwargs: Additional arguments
         """
         if not texts:
             return []
 
+        if self._model is None:
+            self._load_model()
+        
         try:
-            # Lazy load model
-            if self._model is None:
-                self._load_model()
-
-            # Encode batch
             assert self._model is not None, "Model should be loaded after _load_model()"
-            embeddings = self._model.encode(texts)
-
-            # Convert to list of lists
-            embeddings_list = []
-            for embedding in embeddings:
-                embedding_list = embedding.tolist()
-
-                # Validate and fix dimensions
-                if len(embedding_list) != 384:
-                    if len(embedding_list) < 384:
-                        embedding_list.extend([0.0] * (384 - len(embedding_list)))
-                    else:
-                        embedding_list = embedding_list[:384]
-
-                embeddings_list.append(embedding_list)
-
-            return embeddings_list
-
+            
+            results = []
+            for i in range(0, len(texts), batch_size):
+                batch = texts[i:i + batch_size]
+                embeddings = self._model.encode(
+                    batch,
+                    normalize_embeddings=normalize_embeddings,
+                    show_progress_bar=show_progress_bar and i == 0,
+                    **kwargs
+                )
+                results.extend(embeddings)
+            
+            return results
+            
         except Exception as e:
             logger.error(f"Fehler bei Batch-Encoding: {e}")
             # Return zero vectors as fallback
-            return [[0.0] * 384 for _ in texts]
+            return [np.array([0.0] * 384) for _ in texts]
 
     def similarity(self, text1: str, text2: str) -> float:
         """
@@ -220,6 +232,35 @@ class SentenceTransformerProvider:
             # but we can clear the reference
             self._model = None
             logger.debug("✅ SentenceTransformer Model resources released")
+
+
+def similarity(embedding1: np.ndarray, embedding2: np.ndarray) -> float:
+    """
+    Calculate cosine similarity between two embeddings.
+    
+    Args:
+        embedding1: First embedding vector
+        embedding2: Second embedding vector
+        
+    Returns:
+        Cosine similarity score
+    """
+    from sklearn.metrics.pairwise import cosine_similarity
+    
+    # Ensure 2D arrays
+    if embedding1.ndim == 1:
+        embedding1 = embedding1.reshape(1, -1)
+    if embedding2.ndim == 1:
+        embedding2 = embedding2.reshape(1, -1)
+    
+    return cosine_similarity(embedding1, embedding2)[0][0]
+
+
+# Export functions
+__all__ = [
+    "SentenceTransformerProvider",
+    "similarity"
+]
 
 
 # =============================================================================

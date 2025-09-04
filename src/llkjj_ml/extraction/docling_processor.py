@@ -43,11 +43,39 @@ from docling.document_converter import DocumentConverter, PdfFormatOption
 logger = logging.getLogger(__name__)
 
 
+class OcrEngines:
+    """OCR Engine Konstanten."""
+    TESSERACT = "tesseract"
+    EASYOCR = "easyocr"
+    RAPIDOCR = "rapidocr"
+
+
 class OcrEngineConfig(TypedDict):
     """Type definition for OCR engine configuration."""
 
     name: str
     options: TesseractCliOcrOptions | RapidOcrOptions | EasyOcrOptions
+    
+    @classmethod
+    def create_tesseract(cls, **options) -> "OcrEngineConfig":
+        """Erstellt TesseractCLI-Konfiguration."""
+        return {"name": OcrEngines.TESSERACT, "options": TesseractCliOcrOptions(**options)}
+    
+    @classmethod
+    def create_easyocr(cls, **options) -> "OcrEngineConfig":
+        """Erstellt EasyOCR-Konfiguration."""
+        return {"name": OcrEngines.EASYOCR, "options": EasyOcrOptions(**options)}
+    
+    @classmethod
+    def create_rapidocr(cls, **options) -> "OcrEngineConfig":
+        """Erstellt RapidOCR-Konfiguration.""" 
+        return {"name": OcrEngines.RAPIDOCR, "options": RapidOcrOptions(**options)}
+
+
+# Backward-Compatibility für bestehenden Code
+OcrEngineConfig.TESSERACT = OcrEngines.TESSERACT
+OcrEngineConfig.EASYOCR = OcrEngines.EASYOCR  
+OcrEngineConfig.RAPIDOCR = OcrEngines.RAPIDOCR
 
 
 class AdvancedDoclingProcessor:
@@ -213,9 +241,12 @@ class AdvancedDoclingProcessor:
             "payment_terms": r"(?:Zahlungsziel|Payment\s*Terms)\s*:?\s*(\d+\s*Tage?)",
         }
 
-    def _select_ocr_engines_by_quality(self) -> list[OcrEngineConfig]:
+    def _select_ocr_engines_by_quality(self, quality_level: str = "high") -> list[OcrEngineConfig]:
         """
-        Optimierte OCR-Engine-Auswahl basierend auf 2025 Research.
+        Optimierte OCR-Engine-Auswahl basierend auf Quality-Level und 2025 Research.
+
+        Args:
+            quality_level: "high" für beste Qualität, "medium" für Balance, "fast" für Geschwindigkeit
 
         Korrigierte Reihenfolge nach neuester Analyse:
         1. TesseractCLI: Beste deutsche Spracherkennung (primär)
@@ -227,36 +258,27 @@ class AdvancedDoclingProcessor:
         """
         engines = []
 
-        # Primäre Engine: TesseractCLI (beste deutsche Erkennung)
-        if self.german_optimized:
-            engines.append(
-                {
-                    "name": "TesseractCLI (Deutsch)",
-                    "options": TesseractCliOcrOptions(
-                        lang=["deu"], force_full_page_ocr=self.force_full_page_ocr
-                    ),
-                }
-            )
+        if quality_level == "fast":
+            # Nur RapidOCR für Geschwindigkeit
+            engines.append(OcrEngineConfig.create_rapidocr(force_full_page_ocr=self.force_full_page_ocr))
+        elif quality_level == "medium":
+            # RapidOCR + EasyOCR für Balance
+            engines.append(OcrEngineConfig.create_rapidocr(force_full_page_ocr=self.force_full_page_ocr))
+            engines.append(OcrEngineConfig.create_easyocr(force_full_page_ocr=self.force_full_page_ocr))
+        else:  # high quality (default)
+            # Primäre Engine: TesseractCLI (beste deutsche Erkennung)
+            if self.german_optimized:
+                engines.append(OcrEngineConfig.create_tesseract(
+                    lang=["deu"], force_full_page_ocr=self.force_full_page_ocr
+                ))
 
-        # Fallback 1: RapidOCR (PaddleOCR-Wrapper - leistungsstärkste Engine)
-        engines.append(
-            {
-                "name": "RapidOCR (PaddleOCR)",
-                "options": RapidOcrOptions(
-                    force_full_page_ocr=self.force_full_page_ocr
-                ),
-            }
-        )
+            # Fallback 1: RapidOCR (PaddleOCR-Wrapper - leistungsstärkste Engine)
+            engines.append(OcrEngineConfig.create_rapidocr(force_full_page_ocr=self.force_full_page_ocr))
 
-        # Fallback 2: EasyOCR (robust bei komplexen Layouts)
-        engines.append(
-            {
-                "name": "EasyOCR",
-                "options": EasyOcrOptions(force_full_page_ocr=self.force_full_page_ocr),
-            }
-        )
+            # Fallback 2: EasyOCR (robust bei komplexen Layouts)
+            engines.append(OcrEngineConfig.create_easyocr(force_full_page_ocr=self.force_full_page_ocr))
 
-        return engines  # type: ignore[return-value]
+        return engines
 
     def process(self, pdf_path: str) -> tuple[dict[str, Any], float]:
         """
