@@ -191,6 +191,27 @@ class ProcessingResult(BaseModel):
         description="Anzahl SKR03-klassifizierter Positionen",
         examples=[10],
     )
+    
+    # === ERROR HANDLING ===
+    errors: list[str] = Field(
+        default_factory=list,
+        description="List of error messages encountered during processing",
+        examples=[["Memory limit exceeded", "Timeout during classification"]],
+    )
+
+    @property
+    def success(self) -> bool:
+        """
+        Determine if processing was successful based on quality indicators.
+        
+        Returns:
+            True if processing was successful (no errors and good quality)
+        """
+        return (
+            len(self.errors) == 0 
+            and self.confidence_score >= 0.5 
+            and self.extraction_quality in ["high", "medium"]
+        )
 
     @field_validator("processing_timestamp")
     @classmethod
@@ -421,6 +442,55 @@ for item in result.skr03_classifications:
             # Statistics
             extracted_positions=len(line_items),
             classified_positions=len(skr03_classifications),
+        )
+
+    
+    @classmethod
+    def create_error(
+        cls,
+        pdf_path: str,
+        error_message: str,
+        processing_method: str = "unknown",
+        processing_time_ms: int = 0,
+    ) -> "ProcessingResult":
+        """
+        Factory method to create error ProcessingResult.
+
+        Args:
+            pdf_path: Path to the PDF file that failed
+            error_message: Error message describing the failure
+            processing_method: Method that was attempted
+            processing_time_ms: Time spent before failure
+
+        Returns:
+            ProcessingResult instance with error state
+        """
+        return cls(
+            # Source Information
+            pdf_path=pdf_path,
+            processing_method=processing_method,  # type: ignore
+            processing_timestamp=datetime.now().isoformat(),
+            # Extraction Results (empty)
+            raw_text="",
+            structured_data={},
+            invoice_header={},
+            line_items=[],
+            skr03_classifications=[],
+            # Performance Metrics
+            processing_time_ms=processing_time_ms,
+            gemini_time_ms=0,
+            ocr_time_ms=0,
+            classification_time_ms=0,
+            # Quality Indicators (low quality for errors)
+            confidence_score=0.0,
+            extraction_quality="poor",
+            # Training Data (empty)
+            training_annotations=[],
+            # Statistics (empty)
+            extracted_positions=0,
+            classified_positions=0,
+            # Errors
+            errors=[error_message],
         )
 
 

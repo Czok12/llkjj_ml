@@ -568,7 +568,7 @@ class FeedbackLearningEngine:
                 "learning_pattern_extraction_success": False,
                 "accuracy_trend": "unknown",
                 "most_common_corrections": [],
-                "error": "Database not initialized",
+                "error": "service_unavailable",
             }
 
         try:
@@ -579,7 +579,7 @@ class FeedbackLearningEngine:
                     "learning_pattern_extraction_success": False,
                     "accuracy_trend": "unknown",
                     "most_common_corrections": [],
-                    "error": "Database not initialized",
+                    "error": "service_unavailable",
                 }
             with sqlite3.connect(self.feedback_db_path) as conn:
                 # Total feedback entries
