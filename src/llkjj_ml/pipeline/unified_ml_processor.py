@@ -659,7 +659,9 @@ class UnifiedMLProcessor:
                 result.processing_method = strategy_name  # type: ignore
                 processing_time_ms = int((time.time() - start_time) * 1000)
                 # Respect existing processing_time_ms from mocks/strategies
-                result.processing_time_ms = max(processing_time_ms, result.processing_time_ms)
+                result.processing_time_ms = max(
+                    processing_time_ms, result.processing_time_ms
+                )
 
                 # Cache successful result
                 if options.cache_enabled and cache_key and self.cache_manager:
@@ -733,7 +735,7 @@ class UnifiedMLProcessor:
     ) -> BatchResult:
         """
         Synchronous batch processing implementation.
-        
+
         Args:
             pdf_paths: List of PDF file paths to process
             options: Batch processing options
@@ -748,7 +750,7 @@ class UnifiedMLProcessor:
         valid_paths = [
             path
             for path in pdf_paths
-            if (str(path.name).startswith("test") or path.exists()) 
+            if (str(path.name).startswith("test") or path.exists())
             and path.suffix.lower() == ".pdf"
         ]
         invalid_count = len(pdf_paths) - len(valid_paths)
@@ -909,7 +911,6 @@ class UnifiedMLProcessor:
 
     # Backward compatibility alias for async tests
     # Note: Tests expect process_batch to be awaitable
-    
 
     async def process_async(self, pdf_path: Path) -> ProcessingResult:
         """

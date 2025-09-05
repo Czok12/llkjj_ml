@@ -73,6 +73,10 @@ class VectorEmbeddingService:
                 logger.warning(f"Redis connection failed: {e}")
                 self._redis_client = None
 
+        # Add thread safety lock
+        self._lock = threading.Lock()
+        self._embedding_cache: dict[str, Any] = {}
+
     @property
     def model(self) -> SentenceTransformer:
         """Get sentence transformer model."""
@@ -215,12 +219,14 @@ class VectorEmbeddingService:
 
         return " | ".join(text_parts)
 
-    def create_embedding(self, text: str, metadata: dict[str, Any]) -> EmbeddingResult:
+    def create_embedding(
+        self, text: str, metadata: dict[str, Any] | None = None
+    ) -> EmbeddingResult:
         """Create embedding for given text with metadata.
 
         Args:
             text: Text to create embedding for
-            metadata: Additional metadata to store
+            metadata: Additional metadata to store (optional for thread-safety tests)
 
         Returns:
             EmbeddingResult with embedding details
@@ -229,43 +235,50 @@ class VectorEmbeddingService:
             DimensionError: If vector dimensions don't match expected values
             ModelLoadingError: If model loading fails
         """
+        # Default metadata if not provided (for thread-safety tests)
+        if metadata is None:
+            metadata = {}
+
         try:
-            # Clean and normalize text
-            cleaned_text = self._clean_and_normalize_text(text)
-            if not cleaned_text:
-                raise ValueError("Text is empty after cleaning")
+            with self._lock if hasattr(self, "_lock") else threading.RLock():
+                # Clean and normalize text
+                cleaned_text = self._clean_and_normalize_text(text)
+                if not cleaned_text:
+                    raise ValueError("Text is empty after cleaning")
 
-            # Extract entities
-            entities = self._extract_entities_with_spacy(cleaned_text)
+                # Extract entities
+                entities = self._extract_entities_with_spacy(cleaned_text)
 
-            # Generate embedding
-            start_time = time.time()
-            embedding = self.model.encode(cleaned_text)
-            embedding_time = time.time() - start_time
+                # Generate embedding
+                start_time = time.time()
+                embedding = self.model.encode(cleaned_text)
+                embedding_time = time.time() - start_time
 
-            # Validate dimensions
-            if len(embedding) != self.VECTOR_DIMENSION:
-                raise DimensionError(
-                    f"Expected {self.VECTOR_DIMENSION} dimensions, got {len(embedding)}"
+                # Validate dimensions
+                if len(embedding) != self.VECTOR_DIMENSION:
+                    raise DimensionError(
+                        f"Expected {self.VECTOR_DIMENSION} dimensions, got {len(embedding)}"
+                    )
+
+                # Create result
+                embedding_id = str(uuid.uuid4())
+                result: EmbeddingResult = {
+                    "embedding_id": embedding_id,
+                    "vector": embedding.tolist(),
+                    "metadata": {
+                        **metadata,
+                        "entities": entities,
+                        "text_length": len(cleaned_text),
+                        "embedding_time": embedding_time,
+                    },
+                    "model_used": self.MODEL_NAME,
+                    "created_at": datetime.now(),
+                }
+
+                logger.info(
+                    f"Created embedding {embedding_id} in {embedding_time:.3f}s"
                 )
-
-            # Create result
-            embedding_id = str(uuid.uuid4())
-            result: EmbeddingResult = {
-                "embedding_id": embedding_id,
-                "vector": embedding.tolist(),
-                "metadata": {
-                    **metadata,
-                    "entities": entities,
-                    "text_length": len(cleaned_text),
-                    "embedding_time": embedding_time,
-                },
-                "model_used": self.MODEL_NAME,
-                "created_at": datetime.now(),
-            }
-
-            logger.info(f"Created embedding {embedding_id} in {embedding_time:.3f}s")
-            return result
+                return result
 
         except Exception as e:
             logger.error(f"Failed to create embedding: {e}")
@@ -614,3 +627,29 @@ class VectorEmbeddingService:
         except Exception as e:
             logger.error(f"Batch embedding creation failed: {e}")
             raise
+
+    def test_thread_safety_with_concurrent_access(self) -> None:
+        """Thread-safe concurrent access test."""
+        texts = ["test1", "test2", "test3"]
+        results = []
+        embedding_ids = []  # Initialisierung hinzugefügt
+
+        def worker(text_batch: list[str]) -> None:
+            with self._lock:
+                for text in text_batch:
+                    embedding = self.create_embedding(text)
+                    embedding_ids.append(id(embedding))
+                    results.append(embedding)
+
+        threads = []
+        for i in range(3):
+            t = threading.Thread(target=worker, args=([texts[i]],))
+            threads.append(t)
+            t.start()
+
+        for t in threads:
+            t.join()
+
+        # Validierung
+        assert len(embedding_ids) == 3
+        assert len(results) == 3

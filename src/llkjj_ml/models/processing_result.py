@@ -191,7 +191,7 @@ class ProcessingResult(BaseModel):
         description="Anzahl SKR03-klassifizierter Positionen",
         examples=[10],
     )
-    
+
     # === ERROR HANDLING ===
     errors: list[str] = Field(
         default_factory=list,
@@ -203,13 +203,13 @@ class ProcessingResult(BaseModel):
     def success(self) -> bool:
         """
         Determine if processing was successful based on quality indicators.
-        
+
         Returns:
             True if processing was successful (no errors and good quality)
         """
         return (
-            len(self.errors) == 0 
-            and self.confidence_score >= 0.5 
+            len(self.errors) == 0
+            and self.confidence_score >= 0.5
             and self.extraction_quality in ["high", "medium"]
         )
 
@@ -444,7 +444,6 @@ for item in result.skr03_classifications:
             classified_positions=len(skr03_classifications),
         )
 
-    
     @classmethod
     def create_error(
         cls,

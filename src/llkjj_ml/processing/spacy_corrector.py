@@ -209,6 +209,89 @@ class SpacyAnnotationCorrector:
 
         return None
 
+    def find_exact_position_window_search(
+        self, text: str, entity_text: str, start_hint: int = 0, window_size: int = 50
+    ) -> tuple[int, int] | None:
+        """
+        Find exact position using window search.
+
+        Args:
+            text: Full text to search in
+            entity_text: Entity text to find
+            start_hint: Starting position hint
+            window_size: Search window size
+
+        Returns:
+            (start, end) positions or None
+        """
+        entity_text = entity_text.strip()
+
+        # Direkte Suche zuerst
+        pos = text.find(entity_text, start_hint)
+        if pos != -1:
+            return (pos, pos + len(entity_text))
+
+        # Fenster-Suche mit Fuzzy-Matching
+        for offset in range(-window_size, window_size + 1, 5):
+            search_start = max(0, start_hint + offset)
+            search_end = min(len(text), search_start + len(entity_text) + window_size)
+
+            window_text = text[search_start:search_end]
+
+            # Fuzzy-Match in Window
+            pos = self._fuzzy_find(window_text, entity_text)
+            if pos != -1:
+                actual_start = search_start + pos
+                actual_end = actual_start + len(entity_text)
+                return (actual_start, actual_end)
+
+        return None
+
+    def _fuzzy_find(self, text: str, entity_text: str) -> int:
+        """Internal fuzzy find method."""
+        # Case-insensitive Suche
+        text_lower = text.lower()
+        entity_lower = entity_text.lower()
+        pos = text_lower.find(entity_lower)
+        if pos != -1:
+            return pos
+
+        # Regex-based fuzzy search
+        import re
+
+        pattern = re.escape(entity_text)
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            return match.start()
+
+        return -1
+
+    def fuzzy_correction_known_brand(
+        self, entity_text: str, threshold: float = 0.8
+    ) -> str:
+        """Apply fuzzy correction for known brands."""
+        known_brands = ["GIRA", "HAGER", "SIEMENS", "ABB", "SCHNEIDER"]
+
+        entity_upper = entity_text.upper()
+
+        # Exakte Übereinstimmung zuerst
+        if entity_upper in known_brands:
+            return entity_upper
+
+        # Fuzzy-Matching
+        from difflib import SequenceMatcher
+
+        best_match = None
+        best_score = 0.0
+
+        for brand in known_brands:
+            score = SequenceMatcher(None, entity_upper, brand).ratio()
+            if score > best_score and score >= threshold:
+                best_score = score
+                best_match = brand
+
+        return best_match or entity_text
+
     def _fuzzy_correction(
         self, text: str, entity_text: str, label: str, start_char: int, end_char: int
     ) -> dict[str, Any]:
