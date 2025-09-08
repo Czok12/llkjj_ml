@@ -1417,7 +1417,7 @@ def run_cache_cleanup_schema(args: argparse.Namespace) -> None:
     from llkjj_ml.monitoring.cache_invalidation_manager import CacheInvalidationManager
 
     engine = CacheInvalidationManager()
-    stats = engine.invalidate_by_schema_version(current_version=args.version)
+    stats = engine.invalidate_by_schema_version(target_version=args.version)
 
     print("🔄 SCHEMA-VERSION CACHE-INVALIDATION:")
     print(f"   Schema-Version: {stats['schema_version']}")

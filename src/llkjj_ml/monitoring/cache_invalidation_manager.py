@@ -665,6 +665,288 @@ class CacheInvalidationManager:
             logger.error("❌ Invalidation-Statistiken-Abruf fehlgeschlagen: %s", e)
             return {"status": "error", "message": str(e)}
 
+    def get_cache_health_report(self) -> dict[str, Any]:
+        """
+        📊 Erstellt umfassenden Cache-Health-Report.
+
+        Returns:
+            Dictionary mit Cache-Health-Informationen
+        """
+        try:
+            if not Path(self.cache_db_path).exists():
+                return {"status": "no_cache"}
+
+            with sqlite3.connect(self.cache_db_path) as conn:
+                # Cache-Größe ermitteln
+                cache_size_bytes = Path(self.cache_db_path).stat().st_size
+                cache_size_mb = cache_size_bytes / (1024 * 1024)
+
+                # Anzahl Einträge
+                cursor = conn.execute("SELECT COUNT(*) FROM pdf_cache")
+                total_entries = cursor.fetchone()[0]
+
+                if total_entries == 0:
+                    return {
+                        "status": "empty",
+                        "cache_size_mb": cache_size_mb,
+                        "total_entries": 0,
+                    }
+
+                # Ältester Eintrag
+                cursor = conn.execute(
+                    "SELECT MIN(processed_at) FROM pdf_cache"
+                )
+                oldest_entry = cursor.fetchone()[0]
+
+                # Durchschnittliches Alter
+                cursor = conn.execute("""
+                    SELECT AVG(julianday('now') - julianday(processed_at))
+                    FROM pdf_cache
+                """)
+                avg_days_since_access = cursor.fetchone()[0] or 0
+
+                # Cache-Auslastung bestimmen
+                max_size_mb = 1000  # Default max cache size
+                usage_percent = (cache_size_mb / max_size_mb) * 100
+
+                # Empfehlungen generieren
+                recommendations = []
+                if usage_percent > 80:
+                    recommendations.append("🚨 Cache-Größe überschreitet 80% - Cleanup empfohlen")
+                if avg_days_since_access > 30:
+                    recommendations.append("⏰ Viele alte Einträge - Age-based Cleanup empfohlen")
+                if total_entries > 10000:
+                    recommendations.append("📦 Hohe Anzahl Einträge - Maintenance empfohlen")
+
+                return {
+                    "status": "healthy" if usage_percent < 80 else "warning",
+                    "cache_size_mb": cache_size_mb,
+                    "max_size_mb": max_size_mb,
+                    "usage_percent": usage_percent,
+                    "total_entries": total_entries,
+                    "oldest_entry": oldest_entry,
+                    "avg_days_since_access": avg_days_since_access,
+                    "recommendations": recommendations,
+                }
+
+        except Exception as e:
+            logger.error("❌ Cache-Health-Report fehlgeschlagen: %s", e)
+            return {"status": "error", "message": str(e)}
+
+    def invalidate_by_age(self, max_age_days: int) -> dict[str, Any]:
+        """
+        Alias für invalidate_cache_by_age für CLI-Kompatibilität.
+
+        Args:
+            max_age_days: Maximales Alter in Tagen
+
+        Returns:
+            Dictionary mit Invalidation-Statistiken
+        """
+        result = self.invalidate_cache_by_age(max_age_days)
+        return {
+            "invalidated_entries": result.get("invalidated_entries", 0),
+            "space_freed_mb": 0,  # Placeholder
+            "cutoff_date": result.get("cutoff_date", ""),
+        }
+
+    def invalidate_by_schema_version(self, target_version: str | None = None) -> dict[str, Any]:
+        """
+        🔄 Schema-basierte Cache-Invalidation bei Modell-Updates.
+
+        Args:
+            target_version: Schema-Version zum Invalidieren
+
+        Returns:
+            Dictionary mit Invalidation-Statistiken
+        """
+        start_time = time.time()
+
+        try:
+            with sqlite3.connect(self.cache_db_path) as conn:
+                # Zähle betroffene Einträge
+                cursor = conn.execute(
+                    "SELECT COUNT(*) FROM pdf_cache WHERE schema_version != ? OR schema_version IS NULL",
+                    (target_version or "current",)
+                )
+                affected_count = cursor.fetchone()[0]
+
+                if affected_count > 0:
+                    # Lösche inkompatible Einträge
+                    conn.execute(
+                        "DELETE FROM pdf_cache WHERE schema_version != ? OR schema_version IS NULL",
+                        (target_version or "current",)
+                    )
+                    conn.execute("VACUUM")
+
+            invalidation_time_ms = int((time.time() - start_time) * 1000)
+
+            if affected_count > 0:
+                self._log_invalidation(
+                    invalidation_type="schema_based",
+                    reason=f"schema_version_mismatch_{target_version}",
+                    affected_entries=affected_count,
+                    trigger_data=json.dumps({"target_version": target_version}),
+                    performance_impact_ms=invalidation_time_ms,
+                )
+
+                logger.info(
+                    "🔄 Schema-basierte Invalidation: %d Einträge gelöscht in %dms",
+                    affected_count,
+                    invalidation_time_ms,
+                )
+
+            return {
+                "status": "success",
+                "invalidated_entries": affected_count,
+                "target_version": target_version,
+                "processing_time_ms": invalidation_time_ms,
+            }
+
+        except Exception as e:
+            logger.error("❌ Schema-basierte Invalidation fehlgeschlagen: %s", e)
+            return {"status": "error", "message": str(e)}
+
+    def emergency_cleanup(self, force: bool = False) -> dict[str, Any]:
+        """
+        🚨 Notfall-Cache-Cleanup bei kritischen Speicherproblemen.
+
+        Args:
+            force: Erzwinge aggressive Bereinigung
+
+        Returns:
+            Dictionary mit Cleanup-Statistiken
+        """
+        start_time = time.time()
+
+        try:
+            with sqlite3.connect(self.cache_db_path) as conn:
+                # Gesamtgröße vor Cleanup
+                cursor = conn.execute("SELECT COUNT(*) FROM pdf_cache")
+                initial_count = cursor.fetchone()[0]
+
+                if force:
+                    # Aggressive Bereinigung: Lösche alles älter als 7 Tage
+                    cutoff_date = datetime.now() - timedelta(days=7)
+                    conn.execute(
+                        "DELETE FROM pdf_cache WHERE processed_at < ?",
+                        (cutoff_date,)
+                    )
+                else:
+                    # Standard-Notfall: Lösche älteste 50%
+                    cursor = conn.execute(
+                        "SELECT processed_at FROM pdf_cache ORDER BY processed_at LIMIT 1 OFFSET (SELECT COUNT(*)/2 FROM pdf_cache)"
+                    )
+                    result = cursor.fetchone()
+                    if result:
+                        median_date = result[0]
+                        conn.execute(
+                            "DELETE FROM pdf_cache WHERE processed_at <= ?",
+                            (median_date,)
+                        )
+
+                # Neue Anzahl ermitteln
+                cursor = conn.execute("SELECT COUNT(*) FROM pdf_cache")
+                final_count = cursor.fetchone()[0]
+
+                cleaned_entries = initial_count - final_count
+
+                if cleaned_entries > 0:
+                    conn.execute("VACUUM")
+
+            cleanup_time_ms = int((time.time() - start_time) * 1000)
+
+            if cleaned_entries > 0:
+                self._log_invalidation(
+                    invalidation_type="emergency",
+                    reason="emergency_cleanup_triggered",
+                    affected_entries=cleaned_entries,
+                    trigger_data=json.dumps({"force": force}),
+                    performance_impact_ms=cleanup_time_ms,
+                )
+
+                logger.warning(
+                    "🚨 Emergency Cleanup: %d Einträge gelöscht in %dms",
+                    cleaned_entries,
+                    cleanup_time_ms,
+                )
+
+            return {
+                "status": "success",
+                "initial_entries": initial_count,
+                "final_entries": final_count,
+                "cleaned_entries": cleaned_entries,
+                "force_mode": force,
+                "processing_time_ms": cleanup_time_ms,
+            }
+
+        except Exception as e:
+            logger.error("❌ Emergency Cleanup fehlgeschlagen: %s", e)
+            return {"status": "error", "message": str(e)}
+
+    def run_scheduled_maintenance(self) -> dict[str, Any]:
+        """
+        🔧 Führt geplante Cache-Wartung durch.
+
+        Returns:
+            Dictionary mit Wartungs-Statistiken
+        """
+        start_time = time.time()
+        maintenance_actions = []
+
+        try:
+            # 1. Health Check
+            health_report = self.get_cache_health_report()
+            maintenance_actions.append(f"Health Check: {health_report.get('status', 'unknown')}")
+
+            # 2. Age-based Cleanup (> 30 Tage)
+            age_result = self.invalidate_cache_by_age(30)
+            if age_result.get("invalidated_entries", 0) > 0:
+                maintenance_actions.append(
+                    f"Age Cleanup: {age_result['invalidated_entries']} Einträge gelöscht"
+                )
+
+            # 3. Quality-based Cleanup
+            quality_result = self.invalidate_cache_by_quality(min_confidence=0.7)
+            if quality_result.get("invalidated_entries", 0) > 0:
+                maintenance_actions.append(
+                    f"Quality Cleanup: {quality_result['invalidated_entries']} Einträge gelöscht"
+                )
+
+            # 4. Database Optimization
+            with sqlite3.connect(self.cache_db_path) as conn:
+                conn.execute("VACUUM")
+                conn.execute("ANALYZE")
+                maintenance_actions.append("Database optimiert")
+
+            maintenance_time_ms = int((time.time() - start_time) * 1000)
+
+            # Wartung protokollieren
+            self._log_invalidation(
+                invalidation_type="maintenance",
+                reason="scheduled_maintenance",
+                affected_entries=0,
+                trigger_data=json.dumps({"actions": maintenance_actions}),
+                performance_impact_ms=maintenance_time_ms,
+            )
+
+            logger.info(
+                "🔧 Scheduled Maintenance abgeschlossen in %dms: %s",
+                maintenance_time_ms,
+                ", ".join(maintenance_actions),
+            )
+
+            return {
+                "status": "success",
+                "actions_performed": maintenance_actions,
+                "processing_time_ms": maintenance_time_ms,
+                "health_after_maintenance": self.get_cache_health_report(),
+            }
+
+        except Exception as e:
+            logger.error("❌ Scheduled Maintenance fehlgeschlagen: %s", e)
+            return {"status": "error", "message": str(e)}
+
     async def run_automated_invalidation_check(self) -> dict[str, Any]:
         """
         🤖 Automatisierte Invalidation-Prüfung: Alle Strategien durchlaufen.
