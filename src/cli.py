@@ -1358,9 +1358,9 @@ def run_cache_health(args: argparse.Namespace) -> None:
     Args:
         args: CLI-Argumente
     """
-    from llkjj_ml.monitoring.cache_invalidation import CacheInvalidationEngine
+    from llkjj_ml.monitoring.cache_invalidation_manager import CacheInvalidationManager
 
-    engine = CacheInvalidationEngine()
+    engine = CacheInvalidationManager()
     health_report = engine.get_cache_health_report()
 
     print("📊 CACHE HEALTH REPORT:")
@@ -1395,9 +1395,9 @@ def run_cache_cleanup_age(args: argparse.Namespace) -> None:
     Args:
         args: CLI-Argumente mit max_age_days
     """
-    from llkjj_ml.monitoring.cache_invalidation import CacheInvalidationEngine
+    from llkjj_ml.monitoring.cache_invalidation_manager import CacheInvalidationManager
 
-    engine = CacheInvalidationEngine()
+    engine = CacheInvalidationManager()
     stats = engine.invalidate_by_age(max_age_days=args.max_age_days)
 
     print("🕐 AGE-BASIERTE CACHE-INVALIDATION:")
@@ -1414,9 +1414,9 @@ def run_cache_cleanup_schema(args: argparse.Namespace) -> None:
     Args:
         args: CLI-Argumente mit optionaler version
     """
-    from llkjj_ml.monitoring.cache_invalidation import CacheInvalidationEngine
+    from llkjj_ml.monitoring.cache_invalidation_manager import CacheInvalidationManager
 
-    engine = CacheInvalidationEngine()
+    engine = CacheInvalidationManager()
     stats = engine.invalidate_by_schema_version(current_version=args.version)
 
     print("🔄 SCHEMA-VERSION CACHE-INVALIDATION:")
@@ -1432,9 +1432,9 @@ def run_cache_cleanup_emergency(args: argparse.Namespace) -> None:
     Args:
         args: CLI-Argumente
     """
-    from llkjj_ml.monitoring.cache_invalidation import CacheInvalidationEngine
+    from llkjj_ml.monitoring.cache_invalidation_manager import CacheInvalidationManager
 
-    engine = CacheInvalidationEngine()
+    engine = CacheInvalidationManager()
     stats = engine.emergency_cleanup()
 
     print("🚨 NOTFALL-CACHE-CLEANUP:")
@@ -1462,9 +1462,9 @@ def run_cache_maintenance(args: argparse.Namespace) -> None:
     Args:
         args: CLI-Argumente
     """
-    from llkjj_ml.monitoring.cache_invalidation import CacheInvalidationEngine
+    from llkjj_ml.monitoring.cache_invalidation_manager import CacheInvalidationManager
 
-    engine = CacheInvalidationEngine()
+    engine = CacheInvalidationManager()
     maintenance_stats = engine.run_scheduled_maintenance()
 
     print("🔧 GEPLANTE CACHE-WARTUNG:")
