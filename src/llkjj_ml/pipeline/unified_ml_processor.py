@@ -494,7 +494,7 @@ class UnifiedMLProcessor:
                 # In real async context, this would be awaited properly
                 try:
                     result.close()  # Clean up the unawaited coroutine
-                except:
+                except Exception:
                     pass
                 return True
 
@@ -857,7 +857,7 @@ class UnifiedMLProcessor:
                 # For AsyncMock in tests, close the unawaited coroutine
                 try:
                     result.close()
-                except:
+                except Exception:
                     pass
                 # Return a mock ProcessingResult for tests
                 from llkjj_ml.models.processing_result import ProcessingResult

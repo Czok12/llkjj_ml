@@ -383,7 +383,9 @@ class CacheInvalidationManager:
                 "processing_time_ms": int((time.time() - start_time) * 1000),
             }
 
-    def invalidate_cache_by_quality(self, min_confidence: float = 0.7) -> dict[str, Any]:
+    def invalidate_cache_by_quality(
+        self, min_confidence: float = 0.7
+    ) -> dict[str, Any]:
         """
         📊 Quality-based Cache-Invalidation: Entferne Einträge mit degradierter Qualität.
 

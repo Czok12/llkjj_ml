@@ -11,9 +11,10 @@ Version: 4.0.0 (Hybrid Implementation)
 Datum: 18. August 2025
 """
 
+from collections.abc import Generator
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Generator, Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
