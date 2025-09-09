@@ -161,7 +161,7 @@ class BatchResult(BaseModel):
         return (self.successful / self.total_files) * 100
 
     # Allow awaiting a BatchResult in async tests (returns itself)
-    def __await__(self):
+    def __await__(self) -> Any:
         async def _identity() -> "BatchResult":
             return self
 
@@ -485,10 +485,10 @@ class UnifiedMLProcessor:
         # Basic availability check
         if hasattr(strategy, "is_available"):
             result = strategy.is_available()
-            
+
             # Handle AsyncMock case - check if it's a coroutine
-            import asyncio
             import inspect
+
             if inspect.iscoroutine(result):
                 # For AsyncMock in tests, we just return True
                 # In real async context, this would be awaited properly
@@ -497,7 +497,7 @@ class UnifiedMLProcessor:
                 except:
                     pass
                 return True
-            
+
             return bool(result)
 
         # Fallback check
@@ -538,8 +538,11 @@ class UnifiedMLProcessor:
                         try:
                             # Try to get a quick estimate using a dry-run/process attribute
                             if hasattr(strat, "process"):
-                                result = strat.process({})  # type: ignore[arg-type]
-                                if isinstance(result, dict) and "processing_time" in result:
+                                result = strat.process({})
+                                if (
+                                    isinstance(result, dict)
+                                    and "processing_time" in result
+                                ):
                                     t = float(result["processing_time"])  # seconds
                                     if best_time is None or t < best_time:
                                         best_time = t
@@ -566,7 +569,12 @@ class UnifiedMLProcessor:
 
             # File-based selection (skip stat() for test files)
             import os
-            testing_mode = os.environ.get("LLKJJ_TESTING", "").lower() in {"1", "true", "yes"}
+
+            testing_mode = os.environ.get("LLKJJ_TESTING", "").lower() in {
+                "1",
+                "true",
+                "yes",
+            }
             if testing_mode or str(pdf_path.name).startswith("test"):
                 file_size_mb = 1.0  # Mock file size for tests
             else:
@@ -608,7 +616,7 @@ class UnifiedMLProcessor:
 
     def process_pdf(
         self, pdf_path: Path, options: ProcessingOptions | None = None
-    ) -> "UnifiedMLProcessor._ProcessingResultProxy | ProcessingResult":
+    ) -> ProcessingResult:
         """
         Process single PDF file with selected strategy.
 
@@ -634,7 +642,11 @@ class UnifiedMLProcessor:
         # Skip existence check in test mode or for test files
         import os
 
-        testing_mode = os.environ.get("LLKJJ_TESTING", "").lower() in {"1", "true", "yes"}
+        testing_mode = os.environ.get("LLKJJ_TESTING", "").lower() in {
+            "1",
+            "true",
+            "yes",
+        }
         if not str(pdf_path.name).startswith("test") and not pdf_path.exists():
             # In test mode, tests expect ValueError; otherwise FileNotFoundError
             if testing_mode:
@@ -649,18 +661,14 @@ class UnifiedMLProcessor:
             return ProcessingResult(
                 pdf_path=str(pdf_path),
                 processing_timestamp=datetime.now().isoformat(),
-                processing_method=self.default_strategy,
-                extracted_text="",
-                extracted_items=[],
-                token_usage={},
-                cache_hit=False,
+                processing_method=self.default_strategy,  # type: ignore
+                raw_text="",
                 confidence_score=0.0,
                 extraction_quality="poor",
                 training_annotations=[],
                 extracted_positions=0,
                 classified_positions=0,
                 errors=["timeout"],
-                success=False,
                 processing_time_ms=0,
             )
 
@@ -681,18 +689,15 @@ class UnifiedMLProcessor:
         # Support both check_memory_availability and test-friendly check_available
         mem_check = (
             getattr(self.memory_manager, "check_available", None)
-            or getattr(self.memory_manager, "check_memory_availability")
+            or self.memory_manager.check_memory_availability
         )
         if not mem_check(estimated_memory_mb):
             # Graceful failure result for tests
             return ProcessingResult(
                 pdf_path=str(pdf_path),
                 processing_timestamp=datetime.now().isoformat(),
-                processing_method=self.default_strategy,
-                extracted_text="",
-                extracted_items=[],
-                token_usage={},
-                cache_hit=False,
+                processing_method=self.default_strategy,  # type: ignore
+                raw_text="",
                 confidence_score=0.0,
                 extraction_quality="poor",
                 training_annotations=[],
@@ -702,7 +707,6 @@ class UnifiedMLProcessor:
                     GermanErrorMessages.memory_insufficient(estimated_memory_mb)
                     + " (memory)"
                 ],
-                success=False,
                 processing_time_ms=0,
             )
 
@@ -735,7 +739,9 @@ class UnifiedMLProcessor:
 
         # In tight timeout scenarios, try gemini first to exercise timeout handling in tests
         if options.timeout_seconds <= 1 and "gemini" in strategies_to_try:
-            strategies_to_try = ["gemini"] + [s for s in strategies_to_try if s != "gemini"]
+            strategies_to_try = ["gemini"] + [
+                s for s in strategies_to_try if s != "gemini"
+            ]
 
         for attempt, strategy_name in enumerate(strategies_to_try):
             if not self._is_strategy_available(strategy_name):
@@ -748,18 +754,15 @@ class UnifiedMLProcessor:
                     return ProcessingResult(
                         pdf_path=str(pdf_path),
                         processing_timestamp=datetime.now().isoformat(),
-                        processing_method=strategy_name,
-                        extracted_text="",
-                        extracted_items=[],
-                        token_usage={},
-                        cache_hit=False,
+                        processing_method=strategy_name,  # type: ignore
+                        raw_text="",
                         confidence_score=0.0,
                         extraction_quality="poor",
                         training_annotations=[],
                         extracted_positions=0,
                         classified_positions=0,
                         errors=[f"Timeout after {options.timeout_seconds}s"],
-                        success=False,
+                        processing_time_ms=0,
                     )
                 logger.info(
                     f"🔄 Processing with {strategy_name} (attempt {attempt + 1})"
@@ -806,18 +809,14 @@ class UnifiedMLProcessor:
                     return ProcessingResult(
                         pdf_path=str(pdf_path),
                         processing_timestamp=datetime.now().isoformat(),
-                        processing_method=strategy_name,
-                        extracted_text="",
-                        extracted_items=[],
-                        token_usage={},
-                        cache_hit=False,
+                        processing_method=strategy_name,  # type: ignore
+                        raw_text="",
                         confidence_score=0.0,
                         extraction_quality="poor",
                         training_annotations=[],
                         extracted_positions=0,
                         classified_positions=0,
                         errors=["timeout"],
-                        success=False,
                         processing_time_ms=int((time.time() - start_time) * 1000),
                     )
 
@@ -833,18 +832,14 @@ class UnifiedMLProcessor:
         return ProcessingResult(
             pdf_path=str(pdf_path),
             processing_timestamp=datetime.now().isoformat(),
-            processing_method=self.default_strategy,
-            extracted_text="",
-            extracted_items=[],
-            token_usage={},
-            cache_hit=False,
+            processing_method=self.default_strategy,  # type: ignore
+            raw_text="",
             confidence_score=0.0,
             extraction_quality="poor",
             training_annotations=[],
             extracted_positions=0,
             classified_positions=0,
             errors=[error_message],
-            success=False,
             processing_time_ms=processing_time_ms,
         )
 
@@ -852,12 +847,11 @@ class UnifiedMLProcessor:
         self, pdf_path: Path, strategy_name: str, options: ProcessingOptions
     ) -> ProcessingResult:
         """Process PDF with specific strategy implementation."""
-        import asyncio
         import inspect
-        
+
         strategy = self._strategies[strategy_name]
 
-        def _handle_async_mock_result(result):
+        def _handle_async_mock_result(result: Any) -> ProcessingResult:
             """Handle potential AsyncMock coroutine results."""
             if inspect.iscoroutine(result):
                 # For AsyncMock in tests, close the unawaited coroutine
@@ -867,14 +861,20 @@ class UnifiedMLProcessor:
                     pass
                 # Return a mock ProcessingResult for tests
                 from llkjj_ml.models.processing_result import ProcessingResult
+
                 return ProcessingResult(
-                    extracted_text="mock test result",
-                    extracted_items=[],
+                    pdf_path="test_mock.pdf",
+                    processing_timestamp=datetime.now().isoformat(),
+                    processing_method=strategy_name,  # type: ignore
+                    raw_text="mock test result",
                     processing_time_ms=100,
                     confidence_score=0.9,
-                    processing_method=strategy_name
+                    extraction_quality="medium",
+                    training_annotations=[],
+                    extracted_positions=0,
+                    classified_positions=0,
                 )
-            return result
+            return result  # type: ignore[no-any-return]
 
         if strategy_name == "gemini_first":
             # GeminiDirectProcessor interface
@@ -1000,7 +1000,30 @@ class UnifiedMLProcessor:
                         )
 
                         results.append(result)
-                        successful += 1
+
+                        # Check if processing was successful
+                        if hasattr(result, "success") and result.success:
+                            successful += 1
+                        else:
+                            failed += 1
+                            # Add error detail for failed results
+                            error_detail = {
+                                "file_path": str(pdf_path),
+                                "error": (
+                                    getattr(result, "errors", ["Processing failed"])[0]
+                                    if hasattr(result, "errors") and result.errors
+                                    else "Processing failed"
+                                ),
+                                "timestamp": datetime.now().isoformat(),
+                            }
+                            errors.append(error_detail)
+
+                            # Fail fast option for unsuccessful processing results
+                            if options.fail_fast:
+                                logger.info(
+                                    f"⚡ Fail fast activated after {pdf_path.name} failed"
+                                )
+                                break
 
                         logger.debug(
                             f"✅ Batch item {file_idx + 1}/{len(chunk_paths)}: {pdf_path.name}"
@@ -1168,11 +1191,13 @@ class UnifiedMLProcessor:
                 "hits": self._metrics["cache_hits"],
                 "misses": self._metrics["cache_misses"],
                 "hit_rate": (
-                    self._metrics["cache_hits"]
-                    / (self._metrics["cache_hits"] + self._metrics["cache_misses"])
-                )
-                if (self._metrics["cache_hits"] + self._metrics["cache_misses"]) > 0
-                else 0.0,
+                    (
+                        self._metrics["cache_hits"]
+                        / (self._metrics["cache_hits"] + self._metrics["cache_misses"])
+                    )
+                    if (self._metrics["cache_hits"] + self._metrics["cache_misses"]) > 0
+                    else 0.0
+                ),
             }
         )
 
@@ -1278,7 +1303,10 @@ class UnifiedMLProcessor:
                 available_mb = float(usage.get("available_mb", 0))
                 total = used_mb + available_mb if (used_mb + available_mb) > 0 else 1.0
                 usage_percent = (used_mb / total) * 100.0
-                memory_metrics = {"usage_percent": usage_percent, "available_mb": available_mb}
+                memory_metrics = {
+                    "usage_percent": usage_percent,
+                    "available_mb": available_mb,
+                }
             else:
                 memory_metrics = {"usage_percent": 0.0, "available_mb": 0.0}
                 usage_percent = 0.0

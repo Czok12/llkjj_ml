@@ -13,7 +13,7 @@ Datum: 18. August 2025
 
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Generator, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -44,7 +44,7 @@ class ProcessingResult(BaseModel):
     """
 
     # Allow awaiting a ProcessingResult in async tests (returns itself)
-    def __await__(self):
+    def __await__(self) -> Generator[Any, None, "ProcessingResult"]:
         async def _identity() -> "ProcessingResult":
             return self
 

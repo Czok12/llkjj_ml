@@ -462,6 +462,12 @@ class SpacyAnnotationCorrector:
                 start_char = annotation.get("start_char")
                 end_char = annotation.get("end_char")
 
+                # Ensure start_char and end_char are integers
+                if not isinstance(start_char, int) or not isinstance(end_char, int):
+                    raise ValueError(
+                        f"Invalid character positions: start_char={start_char}, end_char={end_char}"
+                    )
+
                 # Korrigiere Annotation
                 corrected = self.correct_annotation(
                     full_text, entity_text, start_char, end_char, label

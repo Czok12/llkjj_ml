@@ -462,7 +462,7 @@ class HybridIntelligenceEngine:
         supplier = context.get("supplier", "")
         # Hole Tageskosten aus Kontext oder ermittle sie dynamisch
         if "daily_cost" in context and context["daily_cost"] is not None:
-            daily_cost = float(context["daily_cost"])  # type: ignore[arg-type]
+            daily_cost = float(context["daily_cost"])
         else:
             daily_cost = self._get_daily_gemini_cost()
 

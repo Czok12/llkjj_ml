@@ -102,10 +102,12 @@ class SentenceTransformerProvider:
 
             # Convert outputs to lists consistently
             arr = np.array(embeddings)
+            result: list[float] | list[list[float]]
             if arr.ndim == 1:
                 result = [float(x) for x in arr.tolist()]
             else:
-                result = [[float(x) for x in row] for row in arr.tolist()]
+                arr_list: list[list[float]] = arr.tolist()
+                result = [[float(x) for x in row] for row in arr_list]
 
             # For single text input, return flat list
             if (

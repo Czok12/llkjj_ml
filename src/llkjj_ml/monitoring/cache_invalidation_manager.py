@@ -383,7 +383,7 @@ class CacheInvalidationManager:
                 "processing_time_ms": int((time.time() - start_time) * 1000),
             }
 
-    def invalidate_cache_by_quality(self) -> dict[str, Any]:
+    def invalidate_cache_by_quality(self, min_confidence: float = 0.7) -> dict[str, Any]:
         """
         📊 Quality-based Cache-Invalidation: Entferne Einträge mit degradierter Qualität.
 
@@ -410,13 +410,12 @@ class CacheInvalidationManager:
                 quality_dist = dict(cursor.fetchall())
 
                 # Niedrig-Qualitäts-Einträge identifizieren
-                low_quality_threshold = 0.7  # <70% Konfidenz als "low quality"
                 cursor = conn.execute(
                     """
                     SELECT COUNT(*) FROM pdf_cache
                     WHERE confidence_score < ? OR extraction_quality = 'low'
                 """,
-                    (low_quality_threshold,),
+                    (min_confidence,),
                 )
                 low_quality_count = cursor.fetchone()[0]
 
@@ -435,7 +434,7 @@ class CacheInvalidationManager:
                         DELETE FROM pdf_cache
                         WHERE confidence_score < ? OR extraction_quality = 'low'
                     """,
-                        (low_quality_threshold,),
+                        (min_confidence,),
                     )
                     invalidated_count = cursor.rowcount
 

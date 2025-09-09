@@ -197,7 +197,7 @@ class BackendEmbeddingService:
             if hasattr(emb, "tolist"):
                 vec_list = emb.tolist()
                 result.append([float(x) for x in vec_list])
-            elif isinstance(emb, (list, tuple)):
+            elif isinstance(emb, list | tuple):
                 result.append([float(x) for x in emb])
             else:  # pragma: no cover - unerwartet
                 result.append([0.0] * 384)
