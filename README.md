@@ -1,3 +1,76 @@
+# LLKJJ ML-Pipeline
+
+**KI-gestützte Dokumentenverarbeitung** für die LLKJJ Elektro-Buchhaltungssoftware.
+
+## 🚀 Quick Start
+
+### Installation
+```bash
+cd llkjj_ml
+poetry install --all-extras
+```
+
+### Environment Setup
+```bash
+cp .env.example .env
+# Gemini API Key konfigurieren
+echo "GEMINI_API_KEY=your_api_key_here" >> .env
+```
+
+### Basic Usage
+```python
+from llkjj_ml.processors import GeminiDirectProcessor
+
+processor = GeminiDirectProcessor()
+result = await processor.process_pdf("invoice.pdf")
+
+print(f"Extracted amount: {result.gross_amount}")
+print(f"Supplier: {result.supplier_name}")
+print(f"Confidence: {result.quality_score}")
+```
+
+### Testing
+```bash
+poetry run pytest                              # Alle Tests
+poetry run pytest -m unit                     # Unit Tests
+poetry run pytest -m integration              # Integration Tests
+poetry run pytest --cov=. --cov-report=html   # Mit Coverage
+```
+
+## 📦 Module-Struktur
+
+### processors/
+- **GeminiDirectProcessor**: Hauptprozessor für PDF-Analyse mit Gemini AI
+- **DoclingProcessor**: OCR-basierte Dokumentenverarbeitung
+- **UnifiedMLProcessor**: Standard-Pipeline für neue Features
+
+### quality/
+- **QualityAssessor**: Konfidenz-Score-Berechnung
+- **ValidationService**: Datenvalidierung
+
+### rag/
+- **ChromaDBService**: Vector-basierte Ähnlichkeitssuche
+- **EmbeddingService**: Text-Embedding-Generierung
+
+## 🎯 Features
+
+- ✅ **Gemini-First Pipeline** - Direkte PDF-Analyse mit Google Gemini
+- ✅ **OCR Fallback** - Docling-basierte Textextraktion
+- ✅ **RAG-System** - ChromaDB für Ähnlichkeitssuche
+- ✅ **Quality Assessment** - Automatische Konfidenz-Bewertung
+- ✅ **SKR03 Classification** - Deutsche Buchhaltungskonten-Klassifizierung
+
+## 🛠️ Development
+
+### Code Quality
+```bash
+poetry run ruff check .      # Linting
+poetry run ruff format .     # Code Formatting
+poetry run mypy .            # Type Checking
+```
+
+---
+
 # Umfassender Projektkontext & Entwicklungsrichtlinien für KI-Agenten: Das LLKJJ Projekt
 
 **Version: Master Context 1.0**
