@@ -693,9 +693,7 @@ class CacheInvalidationManager:
                     }
 
                 # Ältester Eintrag
-                cursor = conn.execute(
-                    "SELECT MIN(processed_at) FROM pdf_cache"
-                )
+                cursor = conn.execute("SELECT MIN(processed_at) FROM pdf_cache")
                 oldest_entry = cursor.fetchone()[0]
 
                 # Durchschnittliches Alter
@@ -712,11 +710,17 @@ class CacheInvalidationManager:
                 # Empfehlungen generieren
                 recommendations = []
                 if usage_percent > 80:
-                    recommendations.append("🚨 Cache-Größe überschreitet 80% - Cleanup empfohlen")
+                    recommendations.append(
+                        "🚨 Cache-Größe überschreitet 80% - Cleanup empfohlen"
+                    )
                 if avg_days_since_access > 30:
-                    recommendations.append("⏰ Viele alte Einträge - Age-based Cleanup empfohlen")
+                    recommendations.append(
+                        "⏰ Viele alte Einträge - Age-based Cleanup empfohlen"
+                    )
                 if total_entries > 10000:
-                    recommendations.append("📦 Hohe Anzahl Einträge - Maintenance empfohlen")
+                    recommendations.append(
+                        "📦 Hohe Anzahl Einträge - Maintenance empfohlen"
+                    )
 
                 return {
                     "status": "healthy" if usage_percent < 80 else "warning",
@@ -750,7 +754,9 @@ class CacheInvalidationManager:
             "cutoff_date": result.get("cutoff_date", ""),
         }
 
-    def invalidate_by_schema_version(self, target_version: str | None = None) -> dict[str, Any]:
+    def invalidate_by_schema_version(
+        self, target_version: str | None = None
+    ) -> dict[str, Any]:
         """
         🔄 Schema-basierte Cache-Invalidation bei Modell-Updates.
 
@@ -767,7 +773,7 @@ class CacheInvalidationManager:
                 # Zähle betroffene Einträge
                 cursor = conn.execute(
                     "SELECT COUNT(*) FROM pdf_cache WHERE schema_version != ? OR schema_version IS NULL",
-                    (target_version or "current",)
+                    (target_version or "current",),
                 )
                 affected_count = cursor.fetchone()[0]
 
@@ -775,7 +781,7 @@ class CacheInvalidationManager:
                     # Lösche inkompatible Einträge
                     conn.execute(
                         "DELETE FROM pdf_cache WHERE schema_version != ? OR schema_version IS NULL",
-                        (target_version or "current",)
+                        (target_version or "current",),
                     )
                     conn.execute("VACUUM")
 
@@ -829,8 +835,7 @@ class CacheInvalidationManager:
                     # Aggressive Bereinigung: Lösche alles älter als 7 Tage
                     cutoff_date = datetime.now() - timedelta(days=7)
                     conn.execute(
-                        "DELETE FROM pdf_cache WHERE processed_at < ?",
-                        (cutoff_date,)
+                        "DELETE FROM pdf_cache WHERE processed_at < ?", (cutoff_date,)
                     )
                 else:
                     # Standard-Notfall: Lösche älteste 50%
@@ -842,7 +847,7 @@ class CacheInvalidationManager:
                         median_date = result[0]
                         conn.execute(
                             "DELETE FROM pdf_cache WHERE processed_at <= ?",
-                            (median_date,)
+                            (median_date,),
                         )
 
                 # Neue Anzahl ermitteln
@@ -897,7 +902,9 @@ class CacheInvalidationManager:
         try:
             # 1. Health Check
             health_report = self.get_cache_health_report()
-            maintenance_actions.append(f"Health Check: {health_report.get('status', 'unknown')}")
+            maintenance_actions.append(
+                f"Health Check: {health_report.get('status', 'unknown')}"
+            )
 
             # 2. Age-based Cleanup (> 30 Tage)
             age_result = self.invalidate_cache_by_age(30)

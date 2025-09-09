@@ -241,15 +241,38 @@ class ErrorRecoveryManager:
         """Loggt Error mit angemessenem Level."""
 
         error_dict = ml_error.to_dict()
+        # Filter out reserved LogRecord attributes to avoid logging errors
+        reserved = {
+            "message",
+            "asctime",
+            "msecs",
+            "created",
+            "levelname",
+            "levelno",
+            "pathname",
+            "filename",
+            "module",
+            "lineno",
+            "funcName",
+            "exc_info",
+            "exc_text",
+            "stack_info",
+            "taskName",
+            "processName",
+            "process",
+            "threadName",
+            "thread",
+        }
+        safe_extra = {k: v for k, v in error_dict.items() if k not in reserved}
 
         if ml_error.severity == ErrorSeverity.CRITICAL:
-            logger.critical(f"🚨 CRITICAL: {ml_error.message}", extra=error_dict)
+            logger.critical(f"🚨 CRITICAL: {ml_error.message}", extra=safe_extra)
         elif ml_error.severity == ErrorSeverity.HIGH:
-            logger.error(f"❌ HIGH: {ml_error.message}", extra=error_dict)
+            logger.error(f"❌ HIGH: {ml_error.message}", extra=safe_extra)
         elif ml_error.severity == ErrorSeverity.MEDIUM:
-            logger.warning(f"⚠️ MEDIUM: {ml_error.message}", extra=error_dict)
+            logger.warning(f"⚠️ MEDIUM: {ml_error.message}", extra=safe_extra)
         else:
-            logger.info(f"ℹ️ LOW: {ml_error.message}", extra=error_dict)
+            logger.info(f"ℹ️ LOW: {ml_error.message}", extra=safe_extra)
 
     def _attempt_recovery(self, ml_error: MLPipelineError) -> dict[str, Any]:
         """Versucht automatische Error-Recovery."""

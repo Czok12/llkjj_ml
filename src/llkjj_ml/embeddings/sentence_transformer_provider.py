@@ -108,7 +108,12 @@ class SentenceTransformerProvider:
                 result = [[float(x) for x in row] for row in arr.tolist()]
 
             # For single text input, return flat list
-            if single_text_input and isinstance(result, list) and len(result) == 1 and isinstance(result[0], list):
+            if (
+                single_text_input
+                and isinstance(result, list)
+                and len(result) == 1
+                and isinstance(result[0], list)
+            ):
                 return result[0]
             else:
                 return result

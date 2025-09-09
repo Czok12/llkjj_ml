@@ -117,9 +117,7 @@ class IntelligentCacheWarming:
 
 
 async def warm_cache_intelligent(
-    pdf_directory: str,
-    async_processor: AsyncGeminiDirectProcessor,
-    config: Config
+    pdf_directory: str, async_processor: AsyncGeminiDirectProcessor, config: Config
 ) -> dict[str, Any]:
     """
     🔥 Führt intelligentes Cache-Warming für PDF-Verzeichnis durch.
@@ -188,7 +186,8 @@ async def warm_cache_intelligent(
         "total_suppliers": len(supplier_files),
         "warming_time_seconds": warming_time,
         "efficiency_overall": total_cache_hits / max(total_files_warmed, 1),
-        "performance_improvement_estimate": total_cache_hits * 2.5,  # Geschätzte Zeitersparnis
+        "performance_improvement_estimate": total_cache_hits
+        * 2.5,  # Geschätzte Zeitersparnis
         "supplier_results": supplier_results,
     }
 

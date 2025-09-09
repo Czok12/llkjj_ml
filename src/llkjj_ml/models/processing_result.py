@@ -43,6 +43,13 @@ class ProcessingResult(BaseModel):
     **DATA CONTRACT VERSION:** 4.0.0 (Hybrid)
     """
 
+    # Allow awaiting a ProcessingResult in async tests (returns itself)
+    def __await__(self):
+        async def _identity() -> "ProcessingResult":
+            return self
+
+        return _identity().__await__()
+
     # === SOURCE INFORMATION ===
     pdf_path: str = Field(
         ...,
