@@ -849,6 +849,8 @@ class UnifiedMLProcessor:
         """Process PDF with specific strategy implementation."""
         import inspect
 
+        from llkjj_ml.models.processing_result import ProcessingResult
+
         strategy = self._strategies[strategy_name]
 
         def _handle_async_mock_result(result: Any) -> ProcessingResult:
@@ -860,8 +862,6 @@ class UnifiedMLProcessor:
                 except Exception:
                     pass
                 # Return a mock ProcessingResult for tests
-                from llkjj_ml.models.processing_result import ProcessingResult
-
                 return ProcessingResult(
                     pdf_path="test_mock.pdf",
                     processing_timestamp=datetime.now().isoformat(),
@@ -878,32 +878,24 @@ class UnifiedMLProcessor:
 
         if strategy_name == "gemini_first":
             # GeminiDirectProcessor interface
-            from llkjj_ml.models.processing_result import ProcessingResult
-
             result = strategy.process_pdf_gemini_first(str(pdf_path))
             result = _handle_async_mock_result(result)
             return ProcessingResult(**result) if isinstance(result, dict) else result
 
         elif strategy_name == "docling":
             # DoclingProcessor interface
-            from llkjj_ml.models.processing_result import ProcessingResult
-
             result = strategy.process_pdf(pdf_path)
             result = _handle_async_mock_result(result)
             return ProcessingResult(**result) if isinstance(result, dict) else result
 
         elif strategy_name == "spacy_rag":
             # SpacyRagStrategy interface
-            from llkjj_ml.models.processing_result import ProcessingResult
-
             result = strategy.process_pdf(pdf_path)
             result = _handle_async_mock_result(result)
             return ProcessingResult(**result) if isinstance(result, dict) else result
 
         else:
             # Generic interface fallback
-            from llkjj_ml.models.processing_result import ProcessingResult
-
             result = strategy.process_pdf(pdf_path)
             result = _handle_async_mock_result(result)
             return ProcessingResult(**result) if isinstance(result, dict) else result
