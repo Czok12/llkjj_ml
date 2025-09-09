@@ -84,6 +84,9 @@ class SentenceTransformerProvider:
             else:
                 return [[0.0] * 384]
 
+        # Track if input was a single string
+        single_text_input = isinstance(texts, str)
+
         # Convert single string to list
         if isinstance(texts, str):
             texts = [texts]
@@ -100,14 +103,20 @@ class SentenceTransformerProvider:
             # Convert outputs to lists consistently
             arr = np.array(embeddings)
             if arr.ndim == 1:
-                return [float(x) for x in arr.tolist()]
+                result = [float(x) for x in arr.tolist()]
             else:
-                return [[float(x) for x in row] for row in arr.tolist()]
+                result = [[float(x) for x in row] for row in arr.tolist()]
+
+            # For single text input, return flat list
+            if single_text_input and isinstance(result, list) and len(result) == 1 and isinstance(result[0], list):
+                return result[0]
+            else:
+                return result
 
         except Exception as e:
             logger.error(f"Fehler bei Text-Encoding: {e}")
             # Return zero vector as fallback
-            if len(texts) == 1:
+            if single_text_input:
                 return [0.0] * 384
             else:
                 return [[0.0] * 384 for _ in texts]

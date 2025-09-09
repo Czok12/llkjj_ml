@@ -211,6 +211,30 @@ kategorien:
     standard_konto: "4980"
     beschreibung: "Sonstiger Betriebsbedarf wie Arbeitskleidung oder Verbrauchsmaterial."
 
+  verbrauchsstoffe_kleinteile:
+    schlüsselwörter:
+      # Verbrauchsmaterial
+      - kabelbinder
+      - schrauben
+      - dübel
+      - klebeband
+      - isolierband
+      - klemmen
+      - lüsterklemmen
+      - aderendhülsen
+      - beschriftung
+      - kabelschilder
+      - wärmeschrumpf
+      - schrumpfschlauch
+      - reinigungsmittel
+      - betriebsstoffe
+      - verbrauchsmaterial
+      - kleinteile
+      - befestigungsmaterial
+      - montagematerial
+    standard_konto: "4980"
+    beschreibung: "Verbrauchsstoffe, Kleinteile und Betriebsbedarfstoffe für laufenden Betrieb."
+
   kfz_kosten_laufend:
     schlüsselwörter:
       - kraftstoff
