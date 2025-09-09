@@ -193,11 +193,13 @@ class BackendEmbeddingService:
         batch = self.provider.encode_batch(texts)
         result: list[list[float]] = []
         for emb in batch:
-            # emb ist ndarray; tolist() liefert Sequenz numerischer Werte
-            try:
+            # Unterstütze sowohl numpy-Arrays (mit tolist) als auch Python-Listen
+            if hasattr(emb, "tolist"):
                 vec_list = emb.tolist()
                 result.append([float(x) for x in vec_list])
-            except Exception:  # pragma: no cover - unerwartet
+            elif isinstance(emb, (list, tuple)):
+                result.append([float(x) for x in emb])
+            else:  # pragma: no cover - unerwartet
                 result.append([0.0] * 384)
         return result
 

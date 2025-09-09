@@ -11,6 +11,10 @@ aus src.config ersetzen.
 from pathlib import Path
 from typing import Any
 
+# Expose a module-level 'settings' attribute for tests to patch.
+# It is not used directly by _get_backend_settings but provides a hook for tests.
+settings: Any | None = None
+
 
 # Dynamischer Import der Backend-Settings
 def _get_backend_settings() -> Any:

@@ -88,12 +88,12 @@ class FeatureExtractor(ABC):
         Returns:
             FeatureExtractionResult mit extrahierten Features
         """
-        pass
+        pass  # pragma: no cover (abstract method placeholder)
 
     @abstractmethod
     def get_feature_names(self) -> list[str]:
         """Gebe Liste aller von diesem Extraktor erzeugten Feature-Namen zurück"""
-        pass
+        pass  # pragma: no cover (abstract method placeholder)
 
     def validate_input(self, invoice_data: Any) -> bool:
         """

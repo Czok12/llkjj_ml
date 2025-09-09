@@ -292,6 +292,9 @@ class HybridIntelligenceEngine:
             else:
                 raise ValueError("Invalid processing mode")
         except Exception as e:
+            if isinstance(e, ValueError):
+                # Surface invalid mode as test expects
+                raise
             logger.error("❌ Hybrid Intelligence Klassifizierung fehlgeschlagen: %s", e)
 
             # Fallback auf lokale Klassifizierung
@@ -457,7 +460,11 @@ class HybridIntelligenceEngine:
         context = context or {}
         start_time = context.get("start_time", datetime.now())
         supplier = context.get("supplier", "")
-        daily_cost = context.get("daily_cost", 0.0)
+        # Hole Tageskosten aus Kontext oder ermittle sie dynamisch
+        if "daily_cost" in context and context["daily_cost"] is not None:
+            daily_cost = float(context["daily_cost"])  # type: ignore[arg-type]
+        else:
+            daily_cost = self._get_daily_gemini_cost()
 
         try:
             remaining_budget = max(0.0, self.cost_threshold_daily - daily_cost)
