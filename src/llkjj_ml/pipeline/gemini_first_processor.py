@@ -27,13 +27,12 @@ import chromadb
 from sentence_transformers import SentenceTransformer
 
 # Gemini AI Integration
+GENAI_AVAILABLE: bool = False
 try:
     from google import genai
-
     GENAI_AVAILABLE = True
-except ImportError:
+except ImportError:  # pragma: no cover - optional dependency
     genai = None  # type: ignore[assignment]
-    GENAI_AVAILABLE = False
 
 from ..intelligence.context_classifier import (
     ContextAwareClassifier,
@@ -251,8 +250,14 @@ class GeminiDirectProcessor:
             pdf_path.stat().st_size / 1024,
         )
 
-        # Resource Manager für robustes Memory-Management
-        get_resource_manager()
+        # Resource Manager für robustes Memory-Management (nicht kritisch bei Fehler)
+        try:
+            get_resource_manager()
+        except Exception as rm_error:  # pragma: no cover - Schutzpfad
+            logger.warning(
+                "⚠️ Resource Manager Initialisierung fehlgeschlagen (fahre fort): %s",
+                rm_error,
+            )
 
         return pdf_path
 
@@ -290,7 +295,7 @@ class GeminiDirectProcessor:
         except OSError as e:
             raise RuntimeError(f"Fehler beim Lesen der PDF-Datei: {e}") from e
 
-    def _execute_gemini_analysis(self, pdf_content: bytes, pdf_path: Path) -> dict:
+    def _execute_gemini_analysis(self, pdf_content: bytes, pdf_path: Path) -> dict[str, Any]:
         """
         Executes Gemini analysis on PDF content with retry logic.
 
@@ -321,7 +326,7 @@ class GeminiDirectProcessor:
 
         return structured_result
 
-    def _enhance_with_rag_classification(self, structured_result: dict) -> list:
+    def _enhance_with_rag_classification(self, structured_result: dict[str, Any]) -> list[dict[str, Any]]:
         """
         Enhances Gemini results with RAG-based SKR03 classification.
 
@@ -358,8 +363,8 @@ class GeminiDirectProcessor:
         return enhanced_classifications
 
     def _assess_quality_and_generate_annotations(
-        self, structured_result: dict, enhanced_classifications: list
-    ) -> dict:
+        self, structured_result: dict[str, Any], enhanced_classifications: list[dict[str, Any]]
+    ) -> dict[str, Any]:
         """
         Assesses processing quality and generates spaCy training annotations.
 
@@ -409,9 +414,9 @@ class GeminiDirectProcessor:
     def _build_complete_processing_result(
         self,
         pdf_path: Path,
-        gemini_result: dict,
-        enhanced_classifications: list,
-        quality_data: dict,
+    gemini_result: dict[str, Any],
+    enhanced_classifications: list[dict[str, Any]],
+    quality_data: dict[str, Any],
         start_time: float,
     ) -> ProcessingResult:
         """
@@ -445,7 +450,7 @@ class GeminiDirectProcessor:
 
         return result
 
-    def _validate_extracted_data(self, gemini_result: dict) -> None:
+    def _validate_extracted_data(self, gemini_result: dict[str, Any]) -> None:
         """
         Validates extracted data and logs warnings if incomplete.
 
@@ -458,7 +463,7 @@ class GeminiDirectProcessor:
 
     def _store_in_rag_system_if_enabled(
         self,
-        gemini_result: dict,
+    gemini_result: dict[str, Any],
         pdf_path: Path,
     ) -> None:
         """
@@ -476,9 +481,9 @@ class GeminiDirectProcessor:
     def _create_processing_result_object(
         self,
         pdf_path: Path,
-        gemini_result: dict,
-        enhanced_classifications: list,
-        quality_data: dict,
+    gemini_result: dict[str, Any],
+    enhanced_classifications: list[dict[str, Any]],
+    quality_data: dict[str, Any],
         processing_time_ms: int,
     ) -> ProcessingResult:
         """
@@ -509,8 +514,8 @@ class GeminiDirectProcessor:
 
     def _log_pipeline_success(
         self,
-        enhanced_classifications: list,
-        quality_data: dict,
+        enhanced_classifications: list[dict[str, Any]],
+        quality_data: dict[str, Any],
     ) -> None:
         """
         Logs successful pipeline completion statistics.
@@ -585,7 +590,7 @@ class GeminiDirectProcessor:
         Returns:
             ProcessingResult with error information
         """
-        error_context = self._build_error_context(error, pdf_path, start_time)
+    error_context = self._build_error_context(error, pdf_path, start_time)
         self._log_detailed_error(error_context)
         self._write_error_log_detailed(pdf_path, error, error_context)
         self._record_error_metrics(error, error_context)
@@ -606,7 +611,7 @@ class GeminiDirectProcessor:
         error: Exception,
         pdf_path: Path,
         start_time: float,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """
         Builds comprehensive error context for logging and metrics.
 
@@ -627,7 +632,7 @@ class GeminiDirectProcessor:
             "gemini_model": self.config.gemini_model,
         }
 
-    def _log_detailed_error(self, error_context: dict) -> None:
+    def _log_detailed_error(self, error_context: dict[str, Any]) -> None:
         """
         Logs detailed error information with context.
 
@@ -640,7 +645,7 @@ class GeminiDirectProcessor:
             exc_info=True,
         )
 
-    def _record_error_metrics(self, error: Exception, error_context: dict) -> None:
+    def _record_error_metrics(self, error: Exception, error_context: dict[str, Any]) -> None:
         """
         Records error metrics for monitoring and analysis.
 
