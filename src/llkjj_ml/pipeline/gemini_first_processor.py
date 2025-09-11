@@ -84,7 +84,7 @@ class GeminiDirectProcessor:
         # Quality Assessor
         self._quality_assessor: Any = None
 
-        # 🎯 A2: Training Data Persistence (Strategic TODO)
+        # 🎯 A2: Training Data Persistence (IMPLEMENTED)
         self.training_persistence = TrainingDataPersistence(self.config)
 
         # 📊 Performance Monitoring für Business Metrics
@@ -553,7 +553,7 @@ class GeminiDirectProcessor:
         Note:
             Failures in training data persistence or metrics recording do not fail the main pipeline
         """
-        # 🎯 A2: Training Data Persistence - Collect valuable training data
+        # 🎯 A2: Training Data Persistence - ACTIVE: Collect valuable training data
         try:
             persistence_stats = self.training_persistence.persist_training_data(
                 pdf_path=str(pdf_path),
@@ -1074,7 +1074,7 @@ EXTRAHIERE ALLE sichtbaren Positionen vollständig und präzise!
                 # Fallback auf bestehende Methode
                 raw_result = self._analyze_pdf_with_gemini(pdf_content, analysis_prompt)
 
-                # 🎯 NEUE PYDANTIC-VALIDIERUNG (A1 TODO-Item)
+                # 🎯 PYDANTIC-VALIDIERUNG (A1 IMPLEMENTED)
                 logger.info("🔍 Validiere Gemini-Response mit Pydantic...")
 
                 # DEBUG: Only log in development mode, never in production
