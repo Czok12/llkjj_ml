@@ -103,6 +103,9 @@ class ExportResult(BaseModel):
     @classmethod
     def validate_jsonl_path(cls, v: str) -> str:
         """Validiere JSONL-Dateipfad"""
+        # Allow empty path for edge cases (no data found)
+        if v == "":
+            return v
         if not v.lower().endswith(".jsonl"):
             raise ValueError(f"Pfad muss eine JSONL-Datei sein: {v}")
         return v

@@ -116,7 +116,8 @@ def wrap_pdf_errors(func: Callable[..., Any]) -> Callable[..., Any]:
                         size_idx = next(
                             i for i, part in enumerate(parts) if "MB" in part
                         )
-                        size_str = parts[size_idx - 1].replace("MB", "")
+                        # Extract the size from the part containing "MB"
+                        size_str = parts[size_idx].replace("MB", "")
                         file_size = float(size_str)
                         german_msg = GermanErrorMessages.pdf_too_large(file_size, 100)
                     except (ValueError, StopIteration):
