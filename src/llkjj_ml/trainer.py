@@ -199,12 +199,7 @@ class DataExporter(BaseTrainer):
         json_files = list(input_path.glob("*.json"))
         if not json_files:
             logger.warning("No JSON files found in %s", input_path)
-            return ExportResult(
-                jsonl_path="",
-                total_records=0,
-                skr03_classifications=0,
-                export_timestamp=datetime.now().isoformat(),
-            )
+            raise ValueError(f"No JSON training files found in {input_path}")
 
         logger.info("📁 Found %d JSON files for export", len(json_files))
 
@@ -230,11 +225,8 @@ class DataExporter(BaseTrainer):
 
         if not all_examples:
             logger.warning("No valid examples found")
-            return ExportResult(
-                jsonl_path="",
-                total_records=0,
-                skr03_classifications=0,
-                export_timestamp=datetime.now().isoformat(),
+            raise ValueError(
+                "No valid training examples could be extracted from JSON files"
             )
 
         # Convert to spaCy format and save
