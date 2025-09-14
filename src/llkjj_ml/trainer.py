@@ -29,15 +29,15 @@ try:
     SPACY_AVAILABLE = True
 except ImportError:
     SPACY_AVAILABLE = False
-    spacy = None
-    TextCategorizer = None
-    Example = None
+    spacy = None  # type: ignore[misc]
+    TextCategorizer = None  # type: ignore[misc]
+    Example = None  # type: ignore[misc]
 
 # Additional spacy imports
 try:
     from spacy.util import minibatch
 except ImportError:
-    minibatch = None
+    minibatch = None  # type: ignore[misc]
 
 from .settings_bridge import Config
 

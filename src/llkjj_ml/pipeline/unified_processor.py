@@ -35,7 +35,7 @@ try:
     SPACY_RAG_AVAILABLE = True
 except ImportError:
     SPACY_RAG_AVAILABLE = False
-    SpacyRagStrategy = None
+    SpacyRagStrategy = None  # type: ignore[assignment,misc]
 
 logger = logging.getLogger(__name__)
 

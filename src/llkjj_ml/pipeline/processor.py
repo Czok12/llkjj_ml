@@ -18,9 +18,9 @@ import logging
 from pathlib import Path
 
 try:
-    from google import genai
+    from google import genai  # type: ignore[attr-defined]
 except ImportError:
-    genai = None  # type: ignore[assignment]
+    genai = None
 
 from ..models.processing_result import ProcessingResult
 from ..settings_bridge import ConfigBridge, config_instance

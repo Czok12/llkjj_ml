@@ -23,17 +23,16 @@ from sentence_transformers import SentenceTransformer
 # Optional spacy import
 try:
     import spacy
+    from spacy.language import Language as SpacyLanguageType
 
     SPACY_AVAILABLE = True
 except ImportError:
     SPACY_AVAILABLE = False
-    spacy = None
+    spacy = None  # type: ignore[assignment]
 
 if TYPE_CHECKING:
-    if SPACY_AVAILABLE:
-        from spacy.language import Language as SpacyLanguage
-    else:
-        SpacyLanguage = Any
+    # Handle the Any assignment to type issue more gracefully
+    pass
 
 from llkjj_business.models.embedding_models import (
     DimensionError,
@@ -97,7 +96,7 @@ class VectorEmbeddingService:
         return self._thread_local.model  # type: ignore[no-any-return]
 
     @property
-    def spacy_model(self) -> "SpacyLanguage":
+    def spacy_model(self) -> Any:
         """Get configured spaCy language model."""
         if not SPACY_AVAILABLE:
             raise ImportError(
@@ -107,8 +106,8 @@ class VectorEmbeddingService:
             not hasattr(self._thread_local, "spacy_model")
             or self._thread_local.spacy_model is None
         ):
-            self._thread_local.spacy_model = spacy.load("de_core_news_sm")  # type: ignore[union-attr]
-        return self._thread_local.spacy_model  # type: ignore[no-any-return]
+            self._thread_local.spacy_model = spacy.load("de_core_news_sm")
+        return self._thread_local.spacy_model
 
     def _get_db_connection(self) -> psycopg2.extensions.connection:
         """Get database connection with exponential backoff retry."""
@@ -473,9 +472,9 @@ class VectorEmbeddingService:
                         if "created_at" in cacheable_result["invoice_data"]:
                             created_at = cacheable_result["invoice_data"]["created_at"]
                             if isinstance(created_at, datetime):
-                                cacheable_result["invoice_data"]["created_at"] = (
-                                    created_at.isoformat()
-                                )
+                                cacheable_result["invoice_data"][
+                                    "created_at"
+                                ] = created_at.isoformat()
                         cacheable_results.append(cacheable_result)
 
                     self._redis_client.setex(

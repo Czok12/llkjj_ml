@@ -26,7 +26,7 @@ try:
     SPACY_AVAILABLE = True
 except ImportError:
     SPACY_AVAILABLE = False
-    spacy = None
+    spacy = None  # type: ignore[assignment]
 
 from ..embeddings.vector_embedding_service import VectorEmbeddingService
 from ..models.processing_result import ProcessingResult
