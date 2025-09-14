@@ -18,11 +18,22 @@ from typing import TYPE_CHECKING, Any
 
 import psycopg2
 import redis
-import spacy
 from sentence_transformers import SentenceTransformer
 
+# Optional spacy import
+try:
+    import spacy
+
+    SPACY_AVAILABLE = True
+except ImportError:
+    SPACY_AVAILABLE = False
+    spacy = None
+
 if TYPE_CHECKING:
-    from spacy.language import Language as SpacyLanguage
+    if SPACY_AVAILABLE:
+        from spacy.language import Language as SpacyLanguage
+    else:
+        SpacyLanguage = Any
 
 from llkjj_business.models.embedding_models import (
     DimensionError,
@@ -88,11 +99,15 @@ class VectorEmbeddingService:
     @property
     def spacy_model(self) -> "SpacyLanguage":
         """Get configured spaCy language model."""
+        if not SPACY_AVAILABLE:
+            raise ImportError(
+                "spacy is not available - install spacy to use NLP features"
+            )
         if (
             not hasattr(self._thread_local, "spacy_model")
             or self._thread_local.spacy_model is None
         ):
-            self._thread_local.spacy_model = spacy.load("de_core_news_sm")
+            self._thread_local.spacy_model = spacy.load("de_core_news_sm")  # type: ignore[union-attr]
         return self._thread_local.spacy_model  # type: ignore[no-any-return]
 
     def _get_db_connection(self) -> psycopg2.extensions.connection:

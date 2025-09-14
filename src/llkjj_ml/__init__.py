@@ -26,8 +26,8 @@ from .settings_bridge import ConfigBridge
 
 # Core functionality
 from .skr03_manager import SKR03Manager
-from .training_data_persistence import TrainingDataPersistence
 
+# Optional imports that require external dependencies
 __all__ = [
     # Submodules
     "database",
@@ -50,6 +50,13 @@ __all__ = [
     # Core classes
     "SKR03Manager",
     "ConfigBridge",
-    "TrainingDataPersistence",
     "package_api",
 ]
+
+try:
+    from .training_data_persistence import TrainingDataPersistence
+
+    __all__.append("TrainingDataPersistence")
+except ImportError:
+    # chromadb not available - training persistence unavailable
+    pass

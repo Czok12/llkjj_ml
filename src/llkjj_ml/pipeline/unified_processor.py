@@ -27,7 +27,15 @@ from llkjj_ml.settings_bridge import ConfigBridge, config_instance
 
 from .gemini_strategy import GeminiStrategy
 from .processing_strategy import ProcessingStrategy
-from .spacy_rag_strategy import SpacyRagStrategy
+
+# Optional SpacyRagStrategy import
+try:
+    from .spacy_rag_strategy import SpacyRagStrategy
+
+    SPACY_RAG_AVAILABLE = True
+except ImportError:
+    SPACY_RAG_AVAILABLE = False
+    SpacyRagStrategy = None
 
 logger = logging.getLogger(__name__)
 
@@ -66,8 +74,11 @@ class UnifiedProcessor:
 
         try:
             # SpacyRagStrategy (Phase 2 Placeholder)
-            self._strategies["spacy_rag"] = SpacyRagStrategy(self.config)
-            logger.debug("🔮 SpacyRagStrategy geladen (Placeholder)")
+            if SPACY_RAG_AVAILABLE and SpacyRagStrategy is not None:
+                self._strategies["spacy_rag"] = SpacyRagStrategy(self.config)
+                logger.debug("🔮 SpacyRagStrategy geladen (Placeholder)")
+            else:
+                logger.debug("⚠️ SpacyRagStrategy nicht verfügbar (spacy fehlt)")
         except Exception as e:
             logger.warning("❌ SpacyRagStrategy konnte nicht geladen werden: %s", e)
 
@@ -505,9 +516,9 @@ class UnifiedProcessor:
                     if optimization_history
                     else 0
                 ),
-                "last_optimization": optimization_history[-1].__dict__
-                if optimization_history
-                else None,
+                "last_optimization": (
+                    optimization_history[-1].__dict__ if optimization_history else None
+                ),
             },
         }
 

@@ -20,7 +20,13 @@ import time
 from pathlib import Path
 from typing import Any, TypedDict
 
-import spacy
+try:
+    import spacy
+
+    SPACY_AVAILABLE = True
+except ImportError:
+    SPACY_AVAILABLE = False
+    spacy = None
 
 from ..embeddings.vector_embedding_service import VectorEmbeddingService
 from ..models.processing_result import ProcessingResult
@@ -377,15 +383,17 @@ class SpacyRagStrategy(ProcessingStrategy):
             # Calculate confidence scores
             confidence_scores = {
                 "supplier": supplier["confidence"] if supplier else 0.0,
-                "amounts": sum(a["confidence"] for a in amounts) / len(amounts)
-                if amounts
-                else 0.0,
-                "dates": sum(d["confidence"] for d in dates) / len(dates)
-                if dates
-                else 0.0,
-                "invoice_number": invoice_number["confidence"]
-                if invoice_number
-                else 0.0,
+                "amounts": (
+                    sum(a["confidence"] for a in amounts) / len(amounts)
+                    if amounts
+                    else 0.0
+                ),
+                "dates": (
+                    sum(d["confidence"] for d in dates) / len(dates) if dates else 0.0
+                ),
+                "invoice_number": (
+                    invoice_number["confidence"] if invoice_number else 0.0
+                ),
                 "overall": 0.0,
             }
 

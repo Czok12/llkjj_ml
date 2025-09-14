@@ -22,12 +22,34 @@ import logging
 from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     pass
 
-import psutil
+try:
+    import psutil
+
+    PSUTIL_AVAILABLE = True
+except ImportError:
+    PSUTIL_AVAILABLE = False
+
+    # Define mock psutil for graceful degradation
+    class MockMemory:
+        def __init__(self) -> None:
+            self.available = 8 * 1024**3  # 8GB default
+            self.total = 16 * 1024**3  # 16GB default
+            self.used = 8 * 1024**3  # 8GB used default
+            self.percent = 50.0
+
+    class MockPsutil:
+        def virtual_memory(self) -> MockMemory:
+            return MockMemory()
+
+        def cpu_percent(self, interval: Any = None) -> float:
+            return 50.0
+
+    psutil = MockPsutil()  # type: ignore[assignment]
 
 logger = logging.getLogger(__name__)
 

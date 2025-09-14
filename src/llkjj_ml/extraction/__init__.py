@@ -1,17 +1,26 @@
 """Data extraction modules for LLKJJ ML Pipeline"""
 
-from .docling_processor import (
-    AdvancedDoclingProcessor,
-    OcrEngineConfig,
-    create_advanced_docling_processor,
-    create_optimized_docling_processor,
-)
-from .extractor import DataExtractor
+# All extraction modules require docling - make everything conditional
+__all__ = []
 
-__all__ = [
-    "DataExtractor",
-    "AdvancedDoclingProcessor",
-    "OcrEngineConfig",
-    "create_advanced_docling_processor",
-    "create_optimized_docling_processor",
-]
+try:
+    from .docling_processor import (
+        AdvancedDoclingProcessor,
+        OcrEngineConfig,
+        create_advanced_docling_processor,
+        create_optimized_docling_processor,
+    )
+    from .extractor import DataExtractor
+
+    __all__.extend(
+        [
+            "DataExtractor",
+            "AdvancedDoclingProcessor",
+            "OcrEngineConfig",
+            "create_advanced_docling_processor",
+            "create_optimized_docling_processor",
+        ]
+    )
+except ImportError:
+    # docling not available - extraction modules unavailable
+    pass

@@ -19,11 +19,25 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, cast
 
-import spacy
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
-from spacy.pipeline import TextCategorizer
-from spacy.training import Example
-from spacy.util import minibatch
+
+try:
+    import spacy
+    from spacy.pipeline import TextCategorizer
+    from spacy.training import Example
+
+    SPACY_AVAILABLE = True
+except ImportError:
+    SPACY_AVAILABLE = False
+    spacy = None
+    TextCategorizer = None
+    Example = None
+
+# Additional spacy imports
+try:
+    from spacy.util import minibatch
+except ImportError:
+    minibatch = None
 
 from .settings_bridge import Config
 
