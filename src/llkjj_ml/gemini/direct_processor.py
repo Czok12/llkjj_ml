@@ -104,7 +104,7 @@ class GeminiDirectProcessor:
             return
 
         try:
-            from google import genai
+            from google import genai  # type: ignore[attr-defined]
 
             # Use API key from config or environment
             api_key = getattr(self.config, "google_api_key", None) or getattr(

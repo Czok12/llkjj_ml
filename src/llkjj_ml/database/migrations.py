@@ -199,7 +199,7 @@ class DatabaseMigrator:
 
                     try:
                         # Collection-Statistiken vor Optimierung
-                        pre_count = collection.count()  # type: ignore[misc]
+                        pre_count = collection.count()
 
                         logger.info("Optimiere Collection: %s", collection_name)
 
@@ -285,7 +285,7 @@ class DatabaseMigrator:
                     try:
                         collection_stats = {
                             "name": collection.name,
-                            "count": collection.count(),  # type: ignore[misc]
+                            "count": collection.count(),
                             "metadata": collection.metadata,
                         }
 

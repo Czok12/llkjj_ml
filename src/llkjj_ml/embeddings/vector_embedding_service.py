@@ -23,7 +23,6 @@ from sentence_transformers import SentenceTransformer
 # Optional spacy import
 try:
     import spacy
-    from spacy.language import Language as SpacyLanguageType
 
     SPACY_AVAILABLE = True
 except ImportError:
@@ -472,9 +471,9 @@ class VectorEmbeddingService:
                         if "created_at" in cacheable_result["invoice_data"]:
                             created_at = cacheable_result["invoice_data"]["created_at"]
                             if isinstance(created_at, datetime):
-                                cacheable_result["invoice_data"][
-                                    "created_at"
-                                ] = created_at.isoformat()
+                                cacheable_result["invoice_data"]["created_at"] = (
+                                    created_at.isoformat()
+                                )
                         cacheable_results.append(cacheable_result)
 
                     self._redis_client.setex(
