@@ -1,5 +1,3 @@
-from .settings_bridge import ConfigType
-
 #!/usr/bin/env python3
 """
 LLKJJ ML Pipeline - Refactored Training Service
@@ -29,17 +27,17 @@ try:
     SPACY_AVAILABLE = True
 except ImportError:
     SPACY_AVAILABLE = False
-    spacy = None  # type: ignore[misc]
-    TextCategorizer = None  # type: ignore[misc]
-    Example = None  # type: ignore[misc]
+    spacy = None  # type: ignore[assignment]
+    TextCategorizer = None  # type: ignore[assignment,misc]
+    Example = None  # type: ignore[assignment,misc]
 
 # Additional spacy imports
 try:
     from spacy.util import minibatch
 except ImportError:
-    minibatch = None  # type: ignore[misc]
+    minibatch = None  # type: ignore[assignment]
 
-from .settings_bridge import Config
+from .settings_bridge import Config, ConfigType
 
 logger = logging.getLogger(__name__)
 
