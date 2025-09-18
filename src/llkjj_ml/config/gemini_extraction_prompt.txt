@@ -12,26 +12,42 @@ Eingabedaten (Rohtext der Rechnung):
 Ausgabeformat (ausschließlich valides JSON):
 Gib deine Analyse ausschließlich im folgenden JSON-Format zurück. Fülle alle Felder so präzise wie möglich aus. Wenn ein Feld nicht auf der Rechnung zu finden ist, verwende null.
 
+WICHTIG - Rechtliche Pflichtangaben nach UStG:
+- lieferant.steuernummer ODER lieferant.ust_id ist zwingend erforderlich
+- rechnungsempfaenger.name und rechnungsempfaenger.adresse sind Pflichtfelder
+- rechnungsdetails.lieferung_leistung_datum ist Pflichtfeld (falls identisch mit Rechnungsdatum, trotzdem separat angeben)
+
 {
   "lieferant": {
     "name": "string",
     "adresse": "string",
+    "steuernummer": "string | null",
     "ust_id": "string | null"
+  },
+  "rechnungsempfaenger": {
+    "name": "string",
+    "adresse": "string"
   },
   "rechnungsdetails": {
     "nummer": "string",
     "datum": "YYYY-MM-DD",
+    "lieferung_leistung_datum": "YYYY-MM-DD",
     "faelligkeitsdatum": "YYYY-MM-DD | null",
     "waehrung": "EUR"
   },
   "betraege": {
     "netto_gesamt": "number",
     "umsatzsteuer_gesamt": "number",
-    "brutto_gesamt": "number"
+    "brutto_gesamt": "number",
+    "skonto_prozent": "number | null",
+    "skonto_bis_datum": "YYYY-MM-DD | null",
+    "rabatt_prozent": "number | null"
   },
   "positionen": [
     {
       "beschreibung": "string",
+      "artikelnummer": "string | null",
+      "ean_gtin": "string | null",
       "menge": "number",
       "einheit": "string | null",
       "einzelpreis_netto": "number",
@@ -115,6 +131,8 @@ Beispiel für eine Position:
 
 {
   "beschreibung": "GIRA Adapterrahmen rws-gl quadr. 50x50mm S.55 028203",
+  "artikelnummer": "028203",
+  "ean_gtin": "4010337028208",
   "menge": 10,
   "einheit": "Stück",
   "einzelpreis_netto": 1.82,

@@ -29,11 +29,11 @@ from sentence_transformers import SentenceTransformer
 # Gemini AI Integration
 GENAI_AVAILABLE: bool = False
 try:
-    from google import genai  # type: ignore[attr-defined]
+    from google import genai
 
     GENAI_AVAILABLE = True
 except ImportError:  # pragma: no cover - optional dependency
-    genai = None
+    genai = None  # type: ignore[assignment]
 
 from ..intelligence.context_classifier import (
     ContextAwareClassifier,

@@ -26,29 +26,95 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 logger = logging.getLogger(__name__)
 
 
+class GeminiLieferant(BaseModel):
+    """
+    Pydantic-Schema für Lieferantendaten.
+    Enthält rechtliche Pflichtangaben nach UStG.
+    """
+
+    name: str = Field(
+        ..., min_length=2, max_length=200, description="Firmenname des Lieferanten"
+    )
+    adresse: str = Field(
+        ...,
+        min_length=5,
+        max_length=500,
+        description="Vollständige Adresse des Lieferanten",
+    )
+    steuernummer: str | None = Field(
+        None, max_length=20, description="Steuernummer des Lieferanten"
+    )
+    ust_id: str | None = Field(
+        None, max_length=20, description="Umsatzsteuer-Identifikationsnummer"
+    )
+
+    @field_validator("steuernummer", "ust_id")
+    @classmethod
+    def validate_tax_identification(cls, v: str | None, info: Any) -> str | None:
+        """Stelle sicher, dass mindestens eine Steueridentifikation vorhanden ist"""
+        # Wird in der Hauptklasse validiert
+        return v
+
+
+class GeminiRechnungsempfaenger(BaseModel):
+    """
+    Pydantic-Schema für Rechnungsempfänger.
+    Pflichtangaben nach UStG.
+    """
+
+    name: str = Field(
+        ...,
+        min_length=2,
+        max_length=200,
+        description="Vollständiger Name des Rechnungsempfängers",
+    )
+    adresse: str = Field(
+        ...,
+        min_length=5,
+        max_length=500,
+        description="Vollständige Adresse des Rechnungsempfängers",
+    )
+
+
 class GeminiInvoiceHeader(BaseModel):
     """
     Pydantic-Schema für Gemini Invoice Header Extraktion.
 
     Validiert die Rechnungskopf-Daten aus Gemini AI Response.
+    Erweitert um rechtliche Pflichtangaben nach UStG.
     """
 
-    lieferant: str = Field(
-        ..., min_length=2, max_length=200, description="Firmenname des Lieferanten"
+    lieferant: GeminiLieferant = Field(..., description="Lieferantendaten")
+    rechnungsempfaenger: GeminiRechnungsempfaenger = Field(
+        ..., description="Rechnungsempfängerdaten"
     )
     kundennummer: str | None = Field(None, max_length=50, description="Kundennummer")
     rechnungsnummer: str = Field(
         ..., min_length=1, max_length=100, description="Rechnungsnummer"
     )
     rechnungsdatum: str = Field(..., description="Rechnungsdatum im Format YYYY-MM-DD")
+    lieferung_leistung_datum: str = Field(
+        ..., description="Zeitpunkt der Lieferung/Leistung im Format YYYY-MM-DD"
+    )
     lieferdatum: str | None = Field(
-        None, description="Lieferdatum im Format YYYY-MM-DD"
+        None,
+        description="Separates Lieferdatum im Format YYYY-MM-DD (deprecated - nutze lieferung_leistung_datum)",
     )
     zahlungsziel: str | None = Field(
         None, max_length=50, description="Zahlungsziel in Tagen oder Text"
     )
 
-    @field_validator("rechnungsdatum", "lieferdatum")
+    @field_validator("lieferant")
+    @classmethod
+    def validate_lieferant_tax_id(cls, v: GeminiLieferant) -> GeminiLieferant:
+        """Validiere dass mindestens Steuernummer oder USt-ID vorhanden ist"""
+        if not v.steuernummer and not v.ust_id:
+            raise ValueError(
+                "Mindestens Steuernummer oder USt-ID des Lieferanten muss angegeben werden (UStG-Pflichtangabe)"
+            )
+        return v
+
+    @field_validator("rechnungsdatum", "lieferung_leistung_datum", "lieferdatum")
     @classmethod
     def validate_date_format(cls, v: str | None) -> str | None:
         """Validiere Datumsformat YYYY-MM-DD"""
@@ -78,6 +144,11 @@ class GeminiLineItem(BaseModel):
     position: int = Field(..., ge=1, le=1000, description="Positionsnummer (1-1000)")
     artikelnummer: str | None = Field(
         None, max_length=100, description="Artikelnummer/SKU"
+    )
+    ean_gtin: str | None = Field(
+        None,
+        max_length=20,
+        description="European Article Number (EAN) oder Global Trade Item Number (GTIN)",
     )
     beschreibung: str = Field(
         ...,
@@ -135,6 +206,7 @@ class GeminiTotals(BaseModel):
     Pydantic-Schema für Gemini Totals Extraktion.
 
     Validiert Rechnungssummen aus Gemini AI Response.
+    Erweitert um Skonto- und Rabattinformationen.
     """
 
     nettosumme: float = Field(
@@ -158,6 +230,33 @@ class GeminiTotals(BaseModel):
         le=9999999,
         description="Bruttosumme in EUR (negativ bei Gutschriften)",
     )
+    skonto_prozent: float | None = Field(
+        None, ge=0, le=100, description="Skontosatz in Prozent"
+    )
+    skonto_bis_datum: str | None = Field(
+        None, description="Skonto gültig bis Datum im Format YYYY-MM-DD"
+    )
+    rabatt_prozent: float | None = Field(
+        None, ge=0, le=100, description="Rabattsatz in Prozent"
+    )
+
+    @field_validator("skonto_bis_datum")
+    @classmethod
+    def validate_skonto_date_format(cls, v: str | None) -> str | None:
+        """Validiere Skonto-Datum im Format YYYY-MM-DD"""
+        if v is None:
+            return v
+        try:
+            if len(v) == 10:
+                year, month, day = map(int, v.split("-"))
+                date(year, month, day)
+                return v
+            else:
+                raise ValueError("Skonto-Datum muss im Format YYYY-MM-DD sein")
+        except (ValueError, AttributeError) as exc:
+            raise ValueError(
+                f"Ungültiges Skonto-Datumsformat: {v}. Erwartet: YYYY-MM-DD"
+            ) from exc
 
 
 class GeminiZusatzinfos(BaseModel):
@@ -294,17 +393,27 @@ def create_validation_report(errors: list[str]) -> str:
 # Schema-Example für Testing und Dokumentation
 EXAMPLE_GEMINI_RESPONSE = {
     "invoice_header": {
-        "lieferant": "Sonepar Deutschland AG",
+        "lieferant": {
+            "name": "Sonepar Deutschland AG",
+            "adresse": "Kaiserleistraße 2-4, 63067 Offenbach am Main",
+            "steuernummer": "DE123456789",
+            "ust_id": "DE123456789",
+        },
+        "rechnungsempfaenger": {
+            "name": "LLKJJ Elektrotechnik UG",
+            "adresse": "Musterstraße 123, 27711 Osterholz-Scharmbeck",
+        },
         "kundennummer": "123456",
         "rechnungsnummer": "2024021489",
         "rechnungsdatum": "2024-12-10",
-        "lieferdatum": "2024-12-09",
+        "lieferung_leistung_datum": "2024-12-09",
         "zahlungsziel": "30",
     },
     "line_items": [
         {
             "position": 1,
             "artikelnummer": "6189404",
+            "ean_gtin": "4010337028208",
             "beschreibung": "GIRA Rahmen 1-fach reinweiß glänzend",
             "marke": "GIRA",
             "menge": 10.0,
@@ -321,6 +430,9 @@ EXAMPLE_GEMINI_RESPONSE = {
         "mwst_betrag": 234.56,
         "mwst_satz": 19.0,
         "bruttosumme": 1469.12,
+        "skonto_prozent": 2.0,
+        "skonto_bis_datum": "2024-12-20",
+        "rabatt_prozent": None,
     },
     "gemini_model": "gemini-2.0-flash-exp",
     "extraction_timestamp": "2025-08-18T14:30:00",

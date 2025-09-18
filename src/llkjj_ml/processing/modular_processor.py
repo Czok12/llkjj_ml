@@ -63,7 +63,7 @@ class ModularProcessor:
         """Lazy load Gemini model when needed"""
         if self._gemini_model is None:
             try:
-                from google import genai  # type: ignore[attr-defined]
+                from google import genai
 
                 if self.config.google_api_key:
                     client = genai.Client(api_key=self.config.google_api_key)

@@ -28,6 +28,8 @@ logger = logging.getLogger(__name__)
 class GeminiDirectConfig(BaseModel):
     """Konfiguration für Gemini-Direct-Processing."""
 
+    model_config = {"protected_namespaces": ()}
+
     model_name: str = "gemini-2.5-flash"
     max_pdf_size_mb: int = 20
     temperature: float = 0.1  # Niedrige Temperatur für konsistente Klassifizierung
@@ -104,7 +106,7 @@ class GeminiDirectProcessor:
             return
 
         try:
-            from google import genai  # type: ignore[attr-defined]
+            from google import genai
 
             # Use API key from config or environment
             api_key = getattr(self.config, "google_api_key", None) or getattr(
