@@ -87,7 +87,7 @@ class GeminiDirectProcessor:
         # Performance-Monitoring
         self.processing_times: list[float] = []
         self.error_count = 0
-        
+
         # Initial check und Log
         if self._is_available:
             self.logger.info("✅ GeminiDirectProcessor bereit")
