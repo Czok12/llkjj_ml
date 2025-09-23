@@ -1,5 +1,14 @@
 """Data extraction modules for LLKJJ ML Pipeline"""
 
+# Suppress Pydantic warnings from third-party libraries (e.g., Docling)
+import warnings
+
+warnings.filterwarnings(
+    "ignore",
+    message=r'Field "model_.*" in .* has conflict with protected namespace "model_"',
+    category=UserWarning,
+)
+
 # All extraction modules require docling - make everything conditional
 __all__ = []
 

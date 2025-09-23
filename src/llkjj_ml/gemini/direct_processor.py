@@ -317,7 +317,7 @@ KLASSIFIZIERUNGSREGELN:
 ANTWORTFORMAT (JSON):
 {
   "invoice_data": {
-    "supplier": "Lieferant Name",
+    "supplier_name": "Lieferant Name",
     "invoice_number": "Rechnungsnummer",
     "invoice_date": "YYYY-MM-DD",
     "total_amount": 0.00,

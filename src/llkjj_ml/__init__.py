@@ -1,5 +1,14 @@
 # Package marker
 
+# Suppress Pydantic warnings from third-party libraries (e.g., Docling)
+import warnings
+
+warnings.filterwarnings(
+    "ignore",
+    message=r'Field "model_.*" in .* has conflict with protected namespace "model_"',
+    category=UserWarning,
+)
+
 # Main modules
 # Package info from package_api
 from . import (

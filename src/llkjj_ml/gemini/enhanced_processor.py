@@ -53,7 +53,6 @@ class ValidationConfig(BaseModel):
         "invoice_number",
         "total_amount",
     ]
-    minimum_confidence: float = 0.7
     require_invoice_items: bool = True
     minimum_item_count: int = 1
 
@@ -240,13 +239,7 @@ class EnhancedGeminiProcessor(GeminiDirectProcessor):
                 validation_info["missing_fields"].append(field)
                 validation_info["is_complete"] = False
 
-        # 2. Minimum Confidence prüfen
-        overall_confidence = result.invoice_data.get("confidence", 0)
-        if overall_confidence < self.validation_config.minimum_confidence:
-            validation_info["confidence_issues"].append(
-                f"Overall confidence {overall_confidence} below minimum {self.validation_config.minimum_confidence}"
-            )
-            validation_info["is_complete"] = False
+        # 2. Confidence-Prüfung übersprungen (Gemini-Integration)
 
         # 3. Invoice Items prüfen
         if self.validation_config.require_invoice_items:
@@ -272,13 +265,9 @@ class EnhancedGeminiProcessor(GeminiDirectProcessor):
 
         # 5. Zusammenfassung
         if not validation_info["is_complete"]:
-            reasons = []
+            reasons: list[str] = []
             if validation_info["missing_fields"]:
                 reasons.append(f"Missing fields: {validation_info['missing_fields']}")
-            if validation_info["confidence_issues"]:
-                reasons.append(
-                    f"Low confidence: {validation_info['confidence_issues']}"
-                )
             if validation_info["item_issues"]:
                 reasons.append(f"Item issues: {validation_info['item_issues']}")
 
