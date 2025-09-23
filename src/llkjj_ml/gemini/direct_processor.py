@@ -30,7 +30,7 @@ class GeminiDirectConfig(BaseModel):
 
     model_config = {"protected_namespaces": ()}
 
-    model_name: str = "gemini-2.5-flash"
+    model_name: str = "gemini-2.5-pro"
     max_pdf_size_mb: int = 20
     temperature: float = 0.1  # Niedrige Temperatur für konsistente Klassifizierung
     max_output_tokens: int = 8192
@@ -212,13 +212,18 @@ class GeminiDirectProcessor:
             return result
 
     def _validate_pdf(self, pdf_path: Path) -> bool:
-        """Validiere PDF-Datei."""
+        """Validiere PDF-Datei mit umfassender Inhaltsprüfung."""
         try:
             if not pdf_path.exists():
                 logger.error(f"PDF nicht gefunden: {pdf_path}")
                 return False
 
-            file_size_mb = pdf_path.stat().st_size / (1024 * 1024)
+            file_size = pdf_path.stat().st_size
+            if file_size == 0:
+                logger.error(f"PDF ist leer: {pdf_path}")
+                return False
+
+            file_size_mb = file_size / (1024 * 1024)
             if file_size_mb > self.config.max_pdf_size_mb:
                 logger.error(
                     f"PDF zu groß: {file_size_mb:.1f}MB > {self.config.max_pdf_size_mb}MB"
@@ -227,6 +232,35 @@ class GeminiDirectProcessor:
 
             if pdf_path.suffix.lower() != ".pdf":
                 logger.error(f"Datei ist keine PDF: {pdf_path}")
+                return False
+
+            # PDF-Inhalt mit PyMuPDF prüfen
+            try:
+                import fitz  # PyMuPDF
+                
+                with fitz.open(pdf_path) as pdf_doc:
+                    page_count = pdf_doc.page_count
+                    
+                    if page_count == 0:
+                        logger.error(f"PDF hat keine Seiten: {pdf_path}")
+                        return False
+                    
+                    # Prüfe erste Seite auf Inhalt
+                    first_page = pdf_doc[0]
+                    text_content = first_page.get_text().strip()
+                    
+                    # Auch wenn kein Text, könnte es Bilder geben
+                    if not text_content:
+                        image_list = first_page.get_images()
+                        if not image_list:
+                            logger.warning(f"PDF Seite 1 scheint leer zu sein: {pdf_path}")
+                            # Nicht blockieren, da es trotzdem verarbeitbar sein könnte
+                    
+                    logger.debug(f"PDF validiert: {page_count} Seiten, {len(text_content)} Zeichen Text")
+                    return True
+                    
+            except Exception as pdf_error:
+                logger.error(f"PDF-Inhaltsprüfung fehlgeschlagen: {pdf_error}")
                 return False
 
             return True
@@ -523,7 +557,7 @@ ANTWORT (JSON):
 
 
 def create_gemini_direct_processor(
-    api_key: str | None = None, model_name: str = "gemini-2.5-flash"
+    api_key: str | None = None, model_name: str = "gemini-2.5-pro"
 ) -> GeminiDirectProcessor:
     """
     Factory für GeminiDirectProcessor.
