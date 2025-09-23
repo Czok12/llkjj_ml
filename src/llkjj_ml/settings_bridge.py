@@ -291,14 +291,6 @@ class ConfigBridge:
             "config/ml/elektro_lieferanten.txt",
         )
 
-    @property
-    def gemini_prompt_file(self) -> str:
-        return getattr(
-            self._ml_config,
-            "gemini_prompt_file",
-            "config/ml/gemini_extraction_prompt.txt",
-        )
-
     # Pfad-Properties
     @property
     def project_root(self) -> Path:

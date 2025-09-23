@@ -283,36 +283,32 @@ class GeminiDirectProcessor:
 
     def _build_extraction_prompt(self) -> str:
         """
-        Erstelle optimierten Prompt für Elektrohandwerk-Rechnungen.
+        Lade optimierten Prompt für Elektrohandwerk-Rechnungen aus Datei.
 
         Returns:
             Detaillierter Prompt für SKR03-Klassifizierung
         """
-        return """
+        # Lade Prompt aus config/ml/gemini_direct_prompt.txt
+        prompt_file = (
+            Path(__file__).parent.parent.parent.parent.parent
+            / "config"
+            / "ml"
+            / "gemini_direct_prompt.txt"
+        )
+
+        try:
+            with open(prompt_file, encoding="utf-8") as f:
+                return f.read().strip()
+
+        except FileNotFoundError:
+            logger.warning(
+                f"Prompt-Datei nicht gefunden: {prompt_file}. Verwende Fallback-Prompt."
+            )
+            # Fallback-Prompt für den Fall, dass die Datei nicht existiert
+            return """
 Du bist ein Experte für deutsche Finanzbuchhaltung im Elektrohandwerk mit Spezialisierung auf SKR03-Kontenplan.
 
 AUFGABE: Analysiere diese Eingangsrechnung und klassifiziere alle Positionen nach SKR03.
-
-ELEKTROHANDWERK-KONTEXT:
-- Typische Lieferanten: Rexel, Sonepar, Conrad, ELV, WAGO, Phoenix Contact, Siemens, ABB, Schneider Electric
-- Hauptkategorien: Elektroinstallationsmaterial, Kabel, Leuchten, Schaltanlagen, Messgeräte, Werkzeuge
-
-SKR03-HAUPTKONTEN für Elektrohandwerk:
-- 3400: Wareneingänge Elektromaterial (Standardkonto)
-- 3300: Rohstoffe und Einzelteile
-- 4930: Bürobedarf/Software
-- 4985: Werkzeuge/Kleingeräte (unter 800€)
-- 0490: Anlagegüter (über 800€)
-- 4200: Gas/Strom/Wasser
-- 4210: Telekommunikation
-- 4240: Reparaturen/Wartung
-
-KLASSIFIZIERUNGSREGELN:
-1. Elektromaterial → 3400 (Standardkonto)
-2. Kleingeräte/Werkzeuge < 800€ → 4985
-3. Anlagegüter > 800€ → 0490
-4. Büromaterial → 4930
-5. Bei Unsicherheit → 3400 (Standardkonto)
 
 ANTWORTFORMAT (JSON):
 {
@@ -326,7 +322,6 @@ ANTWORTFORMAT (JSON):
   "invoice_items": [
     {
       "position": 1,
-      "article_number": "Art-Nr oder null",
       "description": "Vollständige Artikelbezeichnung",
       "quantity": 0.0,
       "unit_price": 0.00,
@@ -334,18 +329,14 @@ ANTWORTFORMAT (JSON):
       "skr03_account": "3400",
       "skr03_category": "wareneingang_elektro_allgemein",
       "classification_confidence": 0.95,
-      "classification_reasoning": "Kurze Begründung für SKR03-Zuordnung"
+      "classification_reasoning": "Kurze Begründung"
     }
   ]
 }
-
-WICHTIG:
-- Jeden Artikel einzeln klassifizieren
-- Confidence zwischen 0.0-1.0
-- Bei Unsicherheit: 3400 verwenden
-- Deutsche Artikelbezeichnungen beibehalten
-- Preise aus Netto-Beträgen (ohne MwSt.)
 """
+        except Exception as e:
+            logger.error(f"Fehler beim Laden der Prompt-Datei: {e}")
+            raise RuntimeError(f"Prompt-Datei konnte nicht geladen werden: {e}") from e
 
     async def _call_gemini_api(
         self, pdf_base64: str, prompt: str

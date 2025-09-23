@@ -413,9 +413,9 @@ class ModularProcessor:
     def _enhance_with_gemini_direct(self, text_content: str) -> dict[str, Any]:
         """Direct Gemini enhancement of text content"""
         try:
-            # Load prompt template
+            # Load prompt template (HINWEIS: Nicht mehr verwendet, da PDF-direkte Verarbeitung bevorzugt)
             prompt_file = (
-                Path(__file__).parent.parent / "config" / "gemini_extraction_prompt.txt"
+                Path(__file__).parent.parent / "config" / "gemini_direct_prompt.txt"
             )
 
             try:

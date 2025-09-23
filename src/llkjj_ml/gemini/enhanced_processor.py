@@ -127,7 +127,9 @@ class EnhancedGeminiProcessor(GeminiDirectProcessor):
 
         # Früher Check: Wenn API-Key nicht verfügbar, direkt Exception werfen
         if not self._is_available:
-            logger.warning("API key not available - throwing exception to trigger fallback")
+            logger.warning(
+                "API key not available - throwing exception to trigger fallback"
+            )
             raise Exception("API key not available")
 
         # Cache-Check
@@ -227,7 +229,6 @@ class EnhancedGeminiProcessor(GeminiDirectProcessor):
         validation_info: dict[str, Any] = {
             "is_complete": True,
             "missing_fields": [],
-            "confidence_issues": [],
             "item_issues": [],
             "reason": "",
         }
