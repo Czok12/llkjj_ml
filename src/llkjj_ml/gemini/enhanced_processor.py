@@ -126,6 +126,11 @@ class EnhancedGeminiProcessor(GeminiDirectProcessor):
         """
         self.metrics.total_attempts += 1
 
+        # Früher Check: Wenn API-Key nicht verfügbar, direkt Exception werfen
+        if not self._is_available:
+            logger.warning("API key not available - throwing exception to trigger fallback")
+            raise Exception("API key not available")
+
         # Cache-Check
         if use_cache:
             cached_result = await self._check_cache(pdf_path)

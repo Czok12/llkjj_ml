@@ -140,11 +140,22 @@ class ConfigBridge:
         else:
             self._ml_config = self._settings
 
+        # Override für Tests (ermöglicht setattr in Tests)
+        self._google_api_key_override: str | None = None
+
     # Properties für Kompatibilität mit der alten Config-Klasse
 
     @property
     def google_api_key(self) -> str | None:
+        # Test-Override hat Priorität
+        if self._google_api_key_override is not None:
+            return self._google_api_key_override
         return getattr(self._ml_config, "google_api_key", None)
+
+    @google_api_key.setter
+    def google_api_key(self, value: str | None) -> None:
+        """Setter für Tests - ermöglicht temporäres Überschreiben der API-Key."""
+        self._google_api_key_override = value
 
     @property
     def gemini_model(self) -> str:

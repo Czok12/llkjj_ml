@@ -84,20 +84,23 @@ class GeminiDirectProcessor:
         # Client-Reuse: Lazy Loading für bessere Performance
         self._client: Any | None = None
 
-        # Validierung der Gemini-API-Konfiguration
-        api_key = getattr(self.config, "google_api_key", None) or getattr(
-            self.config, "api_key", None
-        )
-        if not api_key:
-            self.logger.warning("⚠️ Keine Google API Key konfiguriert")
-            self._is_available = False
-        else:
-            self._is_available = True
-            self.logger.info("✅ GeminiDirectProcessor bereit")
-
         # Performance-Monitoring
         self.processing_times: list[float] = []
         self.error_count = 0
+        
+        # Initial check und Log
+        if self._is_available:
+            self.logger.info("✅ GeminiDirectProcessor bereit")
+        else:
+            self.logger.warning("⚠️ Keine Google API Key konfiguriert")
+
+    @property
+    def _is_available(self) -> bool:
+        """Dynamisch prüfen, ob API-Key verfügbar ist."""
+        api_key = getattr(self.config, "google_api_key", None) or getattr(
+            self.config, "api_key", None
+        )
+        return api_key is not None
 
     def _initialize_gemini_client(self) -> None:
         """Initialize Gemini Client with proper error handling (Lazy Loading)."""
