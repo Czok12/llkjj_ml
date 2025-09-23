@@ -236,29 +236,33 @@ class GeminiDirectProcessor:
 
             # PDF-Inhalt mit PyMuPDF prüfen
             try:
-                import fitz  # PyMuPDF
-                
+                import fitz  # type: ignore[import-untyped]  # PyMuPDF
+
                 with fitz.open(pdf_path) as pdf_doc:
                     page_count = pdf_doc.page_count
-                    
+
                     if page_count == 0:
                         logger.error(f"PDF hat keine Seiten: {pdf_path}")
                         return False
-                    
+
                     # Prüfe erste Seite auf Inhalt
                     first_page = pdf_doc[0]
                     text_content = first_page.get_text().strip()
-                    
+
                     # Auch wenn kein Text, könnte es Bilder geben
                     if not text_content:
                         image_list = first_page.get_images()
                         if not image_list:
-                            logger.warning(f"PDF Seite 1 scheint leer zu sein: {pdf_path}")
+                            logger.warning(
+                                f"PDF Seite 1 scheint leer zu sein: {pdf_path}"
+                            )
                             # Nicht blockieren, da es trotzdem verarbeitbar sein könnte
-                    
-                    logger.debug(f"PDF validiert: {page_count} Seiten, {len(text_content)} Zeichen Text")
+
+                    logger.debug(
+                        f"PDF validiert: {page_count} Seiten, {len(text_content)} Zeichen Text"
+                    )
                     return True
-                    
+
             except Exception as pdf_error:
                 logger.error(f"PDF-Inhaltsprüfung fehlgeschlagen: {pdf_error}")
                 return False
