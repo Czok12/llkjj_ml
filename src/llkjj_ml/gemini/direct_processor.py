@@ -48,8 +48,8 @@ class InvoiceItem(BaseModel):
     total_price: float | None = None
     skr03_account: str
     skr03_category: str
-    classification_confidence: float
-    classification_reasoning: str
+    classification_confidence: float = 0.8  # Default-Wert für fehlende Confidence
+    classification_reasoning: str = "Automatische Klassifizierung"  # Default-Wert
 
 
 class GeminiDirectResult(BaseModel):
@@ -180,15 +180,54 @@ class GeminiDirectProcessor:
 
             result.success = True
             result.invoice_data = parsed_data.get("invoice_data", {})
-            result.invoice_items = [
-                InvoiceItem(**item) for item in parsed_data.get("invoice_items", [])
-            ]
+
+            # Fehlertolerante Verarbeitung der Invoice Items
+            invoice_items = []
+            raw_items = parsed_data.get("invoice_items", [])
+
+            for i, item in enumerate(raw_items):
+                try:
+                    # Stelle sicher, dass alle Pflichtfelder vorhanden sind
+                    if not item.get("description"):
+                        logger.warning(f"Item {i}: Fehlende Beschreibung, überspringe")
+                        continue
+
+                    if not item.get("skr03_account"):
+                        logger.warning(f"Item {i}: Fehlendes SKR03-Konto, setze Default")
+                        item["skr03_account"] = "3400"  # Standard Elektro-Konto
+
+                    if not item.get("skr03_category"):
+                        item["skr03_category"] = "wareneingang_elektro_allgemein"
+
+                    # Default-Werte für optionale Felder setzen
+                    item.setdefault("classification_confidence", 0.8)
+                    item.setdefault("classification_reasoning", "Automatische Klassifizierung")
+
+                    invoice_items.append(InvoiceItem(**item))
+
+                except Exception as item_error:
+                    logger.error(f"Fehler bei Item {i}: {item_error}. Item-Daten: {item}")
+                    # Item überspringen, aber Verarbeitung fortsetzen
+                    continue
+
+            result.invoice_items = invoice_items
             result.token_usage = parsed_data.get("token_usage", {})
             result.processing_time_ms = int((time.time() - start_time) * 1000)
 
+            # Detailliertes Logging für bessere Diagnose
+            total_raw_items = len(raw_items)
+            processed_items = len(invoice_items)
+
+            if total_raw_items != processed_items:
+                logger.warning(
+                    f"⚠️ {total_raw_items - processed_items} von {total_raw_items} Items "
+                    f"konnten nicht verarbeitet werden"
+                )
+
             logger.info(
-                f"✅ Gemini-Processing erfolgreich: {len(result.invoice_items)} Items, "
-                f"{result.processing_time_ms}ms"
+                f"✅ Gemini-Processing erfolgreich: {processed_items}/{total_raw_items} Items, "
+                f"{result.processing_time_ms}ms, "
+                f"Invoice-Data: {bool(result.invoice_data)}"
             )
 
             return result
