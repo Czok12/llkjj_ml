@@ -193,7 +193,9 @@ class GeminiDirectProcessor:
                         continue
 
                     if not item.get("skr03_account"):
-                        logger.warning(f"Item {i}: Fehlendes SKR03-Konto, setze Default")
+                        logger.warning(
+                            f"Item {i}: Fehlendes SKR03-Konto, setze Default"
+                        )
                         item["skr03_account"] = "3400"  # Standard Elektro-Konto
 
                     if not item.get("skr03_category"):
@@ -201,12 +203,16 @@ class GeminiDirectProcessor:
 
                     # Default-Werte für optionale Felder setzen
                     item.setdefault("classification_confidence", 0.8)
-                    item.setdefault("classification_reasoning", "Automatische Klassifizierung")
+                    item.setdefault(
+                        "classification_reasoning", "Automatische Klassifizierung"
+                    )
 
                     invoice_items.append(InvoiceItem(**item))
 
                 except Exception as item_error:
-                    logger.error(f"Fehler bei Item {i}: {item_error}. Item-Daten: {item}")
+                    logger.error(
+                        f"Fehler bei Item {i}: {item_error}. Item-Daten: {item}"
+                    )
                     # Item überspringen, aber Verarbeitung fortsetzen
                     continue
 
